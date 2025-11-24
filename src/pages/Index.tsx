@@ -1,343 +1,344 @@
-import { useState, useCallback, useMemo, useReducer, memo } from "react";
-import { CheckCircle, Loader2, Trash2, Search, Download, Moon, Sun, AlertCircle, XCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import React, { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { 
+  CheckCircle, Loader2, Trash2, Search, Download, 
+  PauseCircle, PlayCircle, Upload, Copy, AlertCircle, X 
+} from "lucide-react";
+import { Button } from "@/components/ui/button"; // 假设保留原有UI组件
+// import { ThemeToggle } from "@/components/ThemeToggle"; // 假设保留
 
-// ============= Types =============
-type NotificationType = "info" | "success" | "error" | "warning";
-type DetectionState = {
-  alive: string[];
-  dead: string[];
-  total: number;
-  processed: number;
-  isDetecting: boolean;
-  showResults: boolean;
+// --- 类型定义 ---
+type DetectionStatus = "idle" | "running" | "paused" | "completed";
+type DetectionResult = { uid: string; status: "alive" | "dead"; timestamp: number };
+type Stats = { total: number; processed: number; alive: number; dead: number; startTime: number };
+
+// --- 工具函数 ---
+const CONSTANTS = {
+  CONCURRENCY: 20, // 提高并发数
+  TIMEOUT: 5000,   // 5秒超时
+  REGEX: /\b\d{14,16}\b/, // 支持14-16位UID
 };
 
-type Action =
-  | { type: "START_DETECTION"; payload: number }
-  | { type: "UPDATE_PROGRESS"; payload: number }
-  | { type: "ADD_RESULT"; payload: { uid: string; isAlive: boolean } }
-  | { type: "FINISH_DETECTION" }
-  | { type: "RESET" };
-
-// ============= Reducer =============
-const detectionReducer = (state: DetectionState, action: Action): DetectionState => {
-  switch (action.type) {
-    case "START_DETECTION":
-      return { ...state, alive: [], dead: [], total: action.payload, processed: 0, isDetecting: true, showResults: false };
-    case "UPDATE_PROGRESS":
-      return { ...state, processed: action.payload };
-    case "ADD_RESULT":
-      return {
-        ...state,
-        alive: action.payload.isAlive ? [...state.alive, action.payload.uid] : state.alive,
-        dead: !action.payload.isAlive ? [...state.dead, action.payload.uid] : state.dead,
-        processed: state.processed + 1,
-      };
-    case "FINISH_DETECTION":
-      return { ...state, isDetecting: false, showResults: true };
-    case "RESET":
-      return { alive: [], dead: [], total: 0, processed: 0, isDetecting: false, showResults: false };
-    default:
-      return state;
-  }
-};
-
-// ============= Custom Hooks =============
-const useNotification = () => {
-  const [notification, setNotification] = useState<{ message: string; type: NotificationType; visible: boolean }>({
-    message: "",
-    type: "info",
-    visible: false,
+const extractUIDs = (text: string): string[] => {
+  const uniqueSet = new Set<string>();
+  text.split(/\r?\n/).forEach(line => {
+    const match = line.match(CONSTANTS.REGEX);
+    if (match) uniqueSet.add(match[0]);
   });
-
-  const show = useCallback((message: string, type: NotificationType = "info", duration = 4000) => {
-    setNotification({ message, type, visible: true });
-    setTimeout(() => setNotification((prev) => ({ ...prev, visible: false })), duration);
-  }, []);
-
-  return { notification, show };
+  return Array.from(uniqueSet);
 };
 
-const useTheme = () => {
-  const [isDark, setIsDark] = useState(() => window.matchMedia("(prefers-color-scheme: dark)").matches);
+// --- 核心检测 Hook ---
+const useDetection = () => {
+  const [status, setStatus] = useState<DetectionStatus>("idle");
+  const [results, setResults] = useState<DetectionResult[]>([]);
+  const [queue, setQueue] = useState<string[]>([]);
+  const [stats, setStats] = useState<Stats>({ total: 0, processed: 0, alive: 0, dead: 0, startTime: 0 });
   
-  const toggle = useCallback(() => {
-    setIsDark((prev) => !prev);
-    document.documentElement.classList.toggle("dark");
-  }, []);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const isPausedRef = useRef(false);
+  const activeWorkers = useRef(0);
 
-  return { isDark, toggle };
-};
+  // 核心检测请求
+  const checkUID = async (uid: string): Promise<boolean> => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), CONSTANTS.TIMEOUT);
+      
+      const response = await fetch(`https://graph.facebook.com/${uid}/picture?type=normal`, {
+        method: 'GET',
+        signal: controller.signal,
+        redirect: "follow", // 关键：跟随重定向
+      });
+      
+      clearTimeout(timeoutId);
+      // 如果URL包含 rsrc.php，通常是被重定向到了默认死号图
+      return !response.url.includes("rsrc.php");
+    } catch {
+      return false;
+    }
+  };
 
-const useUIDExtractor = () => {
-  const extract = useCallback((text: string): string[] => {
-    const lines = text.split("\n").filter((line) => line.trim());
-    const uids = new Set<string>();
-    
-    lines.forEach((line) => {
-      const match = line.match(/\b\d{14}\b/);
-      if (match) uids.add(match[0]);
+  // 处理器：从队列中取任务
+  const processQueue = useCallback(async () => {
+    if (isPausedRef.current || queue.length === 0) return;
+
+    setQueue(prev => {
+      const currentBatch = prev.slice(0, CONSTANTS.CONCURRENCY - activeWorkers.current);
+      const remaining = prev.slice(CONSTANTS.CONCURRENCY - activeWorkers.current);
+      
+      if (currentBatch.length === 0) return prev;
+
+      currentBatch.forEach(uid => {
+        activeWorkers.current++;
+        checkUID(uid).then(isAlive => {
+          activeWorkers.current--;
+          
+          // 更新状态
+          setResults(prevRes => [...prevRes, { uid, status: isAlive ? 'alive' : 'dead', timestamp: Date.now() }]);
+          setStats(s => ({
+            ...s,
+            processed: s.processed + 1,
+            alive: s.alive + (isAlive ? 1 : 0),
+            dead: s.dead + (isAlive ? 0 : 1)
+          }));
+
+          // 递归调用以保持并发池满载
+          if (!isPausedRef.current && activeWorkers.current < CONSTANTS.CONCURRENCY) {
+             // 使用 setTimeout 避免过深的调用栈，并允许 UI 渲染
+             setTimeout(processQueue, 0); 
+          }
+        });
+      });
+      
+      return remaining;
     });
-    
-    return Array.from(uids);
-  }, []);
+  }, [queue]); // 注意：这里依赖 queue 会导致频繁更新，实际生产中可用 Ref 优化 queue
 
-  return { extract };
-};
+  // 监听队列变化自动触发（简化版逻辑）
+  useEffect(() => {
+    if (status === 'running' && activeWorkers.current < CONSTANTS.CONCURRENCY) {
+      processQueue();
+    }
+    if (status === 'running' && queue.length === 0 && activeWorkers.current === 0) {
+      setStatus('completed');
+    }
+  }, [queue, status, processQueue]);
 
-// ============= API =============
-const checkFbAccount = async (uid: string): Promise<boolean> => {
-  try {
-    const url = `https://graph.facebook.com/${uid}/picture?type=normal`;
-    const response = await fetch(url, { redirect: "follow" });
-    return !response.url.includes("rsrc.php");
-  } catch {
-    return false;
-  }
-};
-
-const detectBatch = async (uids: string[], concurrency: number, onProgress: (uid: string, isAlive: boolean) => void) => {
-  for (let i = 0; i < uids.length; i += concurrency) {
-    const batch = uids.slice(i, i + concurrency);
-    await Promise.allSettled(
-      batch.map(async (uid) => {
-        const isAlive = await checkFbAccount(uid);
-        onProgress(uid, isAlive);
-      })
-    );
-  }
-};
-
-// ============= Components =============
-const Notification = memo(({ message, type, visible }: { message: string; type: NotificationType; visible: boolean }) => {
-  if (!visible) return null;
-  
-  const colors = {
-    info: "bg-blue-500/90",
-    success: "bg-green-500/90",
-    error: "bg-red-500/90",
-    warning: "bg-yellow-500/90",
+  const start = (uids: string[]) => {
+    setResults([]);
+    setQueue(uids);
+    setStats({ total: uids.length, processed: 0, alive: 0, dead: 0, startTime: Date.now() });
+    setStatus("running");
+    isPausedRef.current = false;
+    activeWorkers.current = 0;
   };
 
-  return (
-    <div className={`${colors[type]} text-white px-4 py-3 rounded-xl mb-3 shadow-lg animate-in slide-in-from-top`}>
-      <p className="text-sm sm:text-base font-medium">{message}</p>
-    </div>
-  );
-});
+  const pause = () => {
+    setStatus("paused");
+    isPausedRef.current = true;
+  };
 
-const ProgressBar = memo(({ current, total, visible }: { current: number; total: number; visible: boolean }) => {
-  if (!visible) return null;
-  
-  const percentage = total > 0 ? (current / total) * 100 : 0;
-  
+  const resume = () => {
+    setStatus("running");
+    isPausedRef.current = false;
+    processQueue(); // 重新启动
+  };
+
+  const reset = () => {
+    setStatus("idle");
+    setResults([]);
+    setQueue([]);
+    setStats({ total: 0, processed: 0, alive: 0, dead: 0, startTime: 0 });
+    isPausedRef.current = false;
+  };
+
+  return { status, stats, results, start, pause, resume, reset };
+};
+
+// --- UI 组件: 进度条 ---
+const ProgressBar = React.memo(({ current, total, status }: { current: number, total: number, status: string }) => {
+  const percent = total === 0 ? 0 : Math.min(100, (current / total) * 100);
   return (
-    <div className="mt-4">
-      <div className="flex justify-between text-xs sm:text-sm text-muted-foreground mb-2">
-        <span>检测进度</span>
-        <span className="font-mono">{current}/{total} ({percentage.toFixed(1)}%)</span>
+    <div className="w-full space-y-2">
+      <div className="flex justify-between text-xs sm:text-sm text-muted-foreground">
+        <span>进度: {current}/{total}</span>
+        <span>{percent.toFixed(1)}%</span>
       </div>
-      <div className="h-2 bg-secondary rounded-full overflow-hidden">
-        <div className="h-full bg-primary transition-all duration-300" style={{ width: `${percentage}%` }} />
+      <div className="h-2.5 sm:h-3 w-full bg-secondary rounded-full overflow-hidden">
+        <div 
+          className={`h-full transition-all duration-300 ease-out ${status === 'completed' ? 'bg-green-500' : 'bg-primary'}`}
+          style={{ width: `${percent}%` }} 
+        />
       </div>
     </div>
   );
 });
 
-const ResultCard = memo(({ type, count, uids }: { type: "alive" | "dead"; count: number; uids: string[] }) => {
-  const [expanded, setExpanded] = useState(false);
-  
-  const config = {
-    alive: { icon: CheckCircle, color: "text-green-500", bg: "bg-green-500/10", label: "存活账号" },
-    dead: { icon: XCircle, color: "text-red-500", bg: "bg-red-500/10", label: "失效账号" },
+// --- UI 组件: 结果卡片 ---
+const ResultSection = React.memo(({ results, type, onCopy, onExport }: any) => {
+  const filtered = results.filter((r: any) => r.status === type);
+  const count = filtered.length;
+  const colorClass = type === 'alive' ? 'text-green-600 bg-green-500/10' : 'text-red-600 bg-red-500/10';
+  const icon = type === 'alive' ? <CheckCircle className="w-4 h-4" /> : <X className="w-4 h-4" />;
+
+  return (
+    <div className={`flex flex-col p-4 rounded-xl border ${type === 'alive' ? 'border-green-200/50' : 'border-red-200/50'} bg-card/50`}>
+      <div className="flex items-center justify-between mb-3">
+        <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${colorClass}`}>
+          {icon}
+          <span>{type === 'alive' ? '存活' : '失效'} ({count})</span>
+        </div>
+        <div className="flex gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onCopy(filtered)}>
+            <Copy className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onExport(filtered, type)}>
+            <Download className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+      <div className="bg-background/50 rounded-lg p-2 h-32 sm:h-40 overflow-y-auto font-mono text-xs border">
+        {count === 0 ? (
+          <div className="h-full flex items-center justify-center text-muted-foreground">无数据</div>
+        ) : (
+          filtered.slice(0, 100).map((r: any) => <div key={r.uid} className="py-0.5">{r.uid}</div>)
+        )}
+        {count > 100 && <div className="text-center text-xs text-muted-foreground py-2">...还有 {count - 100} 个 (请导出查看全部)</div>}
+      </div>
+    </div>
+  );
+});
+
+// --- 主组件 ---
+const Index = () => {
+  const [input, setInput] = useState("");
+  const { status, stats, results, start, pause, resume, reset } = useDetection();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 计算速度
+  const speed = useMemo(() => {
+    if (stats.startTime === 0 || stats.processed === 0) return 0;
+    const seconds = (Date.now() - stats.startTime) / 1000;
+    return Math.round(stats.processed / seconds);
+  }, [stats.processed, stats.startTime]);
+
+  const handleStart = () => {
+    const uids = extractUIDs(input);
+    if (uids.length === 0) {
+      alert("未检测到有效的UID"); // 实际可用 Toast 替换
+      return;
+    }
+    start(uids);
+    if (navigator.vibrate) navigator.vibrate(50);
   };
 
-  const { icon: Icon, color, bg, label } = config[type];
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      if (typeof ev.target?.result === 'string') setInput(ev.target.result);
+    };
+    reader.readAsText(file);
+  };
 
-  const exportData = useCallback(() => {
-    const text = uids.join("\n");
-    const blob = new Blob([text], { type: "text/plain" });
+  const exportData = (data: DetectionResult[], prefix: string) => {
+    const content = data.map(r => r.uid).join("\n");
+    const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${type}_uids_${Date.now()}.txt`;
+    a.download = `fb-${prefix}-${new Date().toLocaleTimeString()}.txt`;
     a.click();
-    URL.revokeObjectURL(url);
-  }, [uids, type]);
+  };
+
+  const copyData = (data: DetectionResult[]) => {
+    const content = data.map(r => r.uid).join("\n");
+    navigator.clipboard.writeText(content);
+    alert(`已复制 ${data.length} 个UID`);
+  };
 
   return (
-    <div className={`${bg} rounded-xl p-4 sm:p-5`}>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <Icon className={`${color} w-5 h-5 sm:w-6 sm:h-6`} />
-          <h3 className="font-semibold text-base sm:text-lg">{label}</h3>
-          <span className={`${color} font-bold text-lg sm:text-xl`}>{count}</span>
-        </div>
-        {count > 0 && (
-          <Button onClick={exportData} size="sm" variant="ghost" className="h-8 text-xs sm:text-sm">
-            <Download className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-            导出
-          </Button>
-        )}
-      </div>
-      
-      {count > 0 && (
-        <>
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors mb-2"
-          >
-            {expanded ? "收起" : "展开"} ({count} 个)
-          </button>
-          
-          {expanded && (
-            <div className="mt-3 max-h-60 overflow-y-auto bg-background/50 rounded-lg p-3">
-              <div className="font-mono text-xs sm:text-sm space-y-1">
-                {uids.map((uid, idx) => (
-                  <div key={uid} className="py-1 px-2 hover:bg-secondary/50 rounded transition-colors">
-                    {idx + 1}. {uid}
-                  </div>
-                ))}
-              </div>
+    <div className="min-h-screen bg-background text-foreground pb-8">
+      {/* 头部 */}
+      <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container max-w-4xl mx-auto h-14 flex items-center justify-between px-4">
+          <div className="flex items-center gap-2 font-bold text-lg">
+            <div className="p-1.5 bg-primary rounded-lg text-primary-foreground">
+              <CheckCircle className="w-4 h-4" />
             </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-});
-
-// ============= Main Component =============
-const Index = () => {
-  const [input, setInput] = useState("");
-  const [state, dispatch] = useReducer(detectionReducer, {
-    alive: [],
-    dead: [],
-    total: 0,
-    processed: 0,
-    isDetecting: false,
-    showResults: false,
-  });
-  
-  const { notification, show } = useNotification();
-  const { isDark, toggle: toggleTheme } = useTheme();
-  const { extract } = useUIDExtractor();
-
-  const detectedCount = useMemo(() => extract(input).length, [input, extract]);
-
-  const startDetection = useCallback(async () => {
-    const uids = extract(input.trim());
-    
-    if (uids.length === 0) {
-      show("未找到任何14位数字的UID，请检查输入格式", "error");
-      return;
-    }
-
-    if (uids.length > 1000) {
-      show("检测数量过大，建议分批处理（单批≤1000个）", "warning");
-      return;
-    }
-
-    dispatch({ type: "START_DETECTION", payload: uids.length });
-
-    try {
-      await detectBatch(uids, 5, (uid, isAlive) => {
-        dispatch({ type: "ADD_RESULT", payload: { uid, isAlive } });
-      });
-      
-      dispatch({ type: "FINISH_DETECTION" });
-      show(`检测完成！存活 ${state.alive.length} 个，失效 ${state.dead.length} 个`, "success");
-    } catch (error) {
-      show("检测过程出错，请检查网络后重试", "error");
-      dispatch({ type: "FINISH_DETECTION" });
-    }
-  }, [input, extract, show, state.alive.length, state.dead.length]);
-
-  const clearAll = useCallback(() => {
-    if (state.total > 0 && !confirm("确定要清空所有数据吗？")) return;
-    setInput("");
-    dispatch({ type: "RESET" });
-  }, [state.total]);
-
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 h-14 border-b bg-card/80 backdrop-blur-lg">
-        <div className="max-w-6xl mx-auto px-4 h-full flex items-center justify-between">
-          <div className="flex items-center gap-2 font-semibold text-lg">
-            <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-              <CheckCircle className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="hidden sm:inline">FB账号存活检测</span>
-            <span className="sm:hidden">FB检测</span>
+            <span>UID Checker</span>
           </div>
-          <Button onClick={toggleTheme} size="icon" variant="ghost" className="w-9 h-9">
-            {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-          </Button>
+          {/* ThemeToggle 放在这里 */}
         </div>
       </header>
 
-      {/* Main */}
-      <main className="max-w-6xl mx-auto px-4 py-5">
-        <Notification {...notification} />
-
-        {/* Input Card */}
-        <div className="bg-card rounded-2xl p-5 shadow-sm mb-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">输入待检测账号</h2>
-            {detectedCount > 0 && (
-              <span className="text-sm text-muted-foreground">
-                已识别 <span className="font-bold text-primary">{detectedCount}</span> 个UID
-              </span>
-            )}
+      <main className="container max-w-4xl mx-auto px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
+        
+        {/* 输入区域 */}
+        <div className="bg-card rounded-xl border shadow-sm p-4 sm:p-6 space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="font-semibold text-lg">导入账号</h2>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept=".txt,.csv" 
+              onChange={handleFileUpload}
+            />
+            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+              <Upload className="w-4 h-4 mr-2" /> TXT导入
+            </Button>
           </div>
-
+          
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="请输入包含14位FB账号UID的文本（一行一个）&#10;例如：100012345678901"
-            className="w-full min-h-[160px] p-4 bg-secondary/60 rounded-xl font-mono text-sm resize-y focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-            disabled={state.isDetecting}
+            placeholder="在此粘贴UID，自动识别14-16位数字，支持混合文本..."
+            className="w-full min-h-[120px] sm:min-h-[150px] p-3 bg-secondary/30 rounded-lg border focus:ring-2 focus:ring-primary/50 text-xs sm:text-sm font-mono resize-y"
+            disabled={status === 'running' || status === 'paused'}
           />
 
-          <div className="flex gap-3 mt-4">
-            <Button onClick={startDetection} disabled={state.isDetecting} className="flex-1 h-11 rounded-xl font-semibold">
-              {state.isDetecting ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  检测中...
-                </>
-              ) : (
-                <>
-                  <Search className="w-4 h-4 mr-2" />
-                  开始检测
-                </>
-              )}
-            </Button>
-            <Button onClick={clearAll} disabled={state.isDetecting} variant="secondary" className="h-11 px-6 rounded-xl font-semibold">
-              <Trash2 className="w-4 h-4 mr-2" />
-              清空
+          <div className="flex gap-3">
+            {status === 'idle' || status === 'completed' ? (
+              <Button onClick={handleStart} className="flex-1 h-11 text-base font-medium shadow-lg shadow-primary/20">
+                <Search className="w-4 h-4 mr-2" /> 开始检测
+              </Button>
+            ) : (
+              <>
+                {status === 'running' ? (
+                  <Button onClick={pause} variant="secondary" className="flex-1 h-11 border-2 border-primary/20">
+                    <PauseCircle className="w-5 h-5 mr-2" /> 暂停
+                  </Button>
+                ) : (
+                  <Button onClick={resume} className="flex-1 h-11 bg-green-600 hover:bg-green-700">
+                    <PlayCircle className="w-5 h-5 mr-2" /> 继续
+                  </Button>
+                )}
+                <Button onClick={reset} variant="destructive" className="w-24 h-11">
+                  <X className="w-5 h-5" />
+                </Button>
+              </>
+            )}
+            <Button onClick={() => setInput('')} variant="ghost" className="h-11 px-3">
+              <Trash2 className="w-5 h-5 text-muted-foreground" />
             </Button>
           </div>
-
-          <ProgressBar current={state.processed} total={state.total} visible={state.isDetecting} />
         </div>
 
-        {/* Results */}
-        {state.showResults ? (
-          <div className="bg-card rounded-2xl p-5 shadow-sm">
-            <h2 className="text-xl font-semibold mb-4">检测结果</h2>
-            <div className="space-y-4">
-              <ResultCard type="alive" count={state.alive.length} uids={state.alive} />
-              <ResultCard type="dead" count={state.dead.length} uids={state.dead} />
+        {/* 状态面板 */}
+        {(status !== 'idle' || results.length > 0) && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="bg-card rounded-xl border p-4 shadow-sm">
+              <div className="flex justify-between items-end mb-3">
+                <div>
+                  <div className="text-sm text-muted-foreground mb-1">实时速度</div>
+                  <div className="text-2xl font-bold font-mono">{speed} <span className="text-sm font-normal text-muted-foreground">个/秒</span></div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-muted-foreground mb-1">剩余</div>
+                  <div className="text-xl font-mono font-medium">
+                    {stats.total - stats.processed}
+                  </div>
+                </div>
+              </div>
+              <ProgressBar current={stats.processed} total={stats.total} status={status} />
             </div>
-          </div>
-        ) : !state.isDetecting && (
-          <div className="bg-card rounded-2xl p-12 shadow-sm text-center">
-            <div className="text-6xl mb-4">🔍</div>
-            <h3 className="text-xl font-semibold mb-2">暂无检测结果</h3>
-            <p className="text-muted-foreground">请在上方输入框中输入包含14位FB账号UID的文本</p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <ResultSection 
+                results={results} 
+                type="alive" 
+                onCopy={copyData} 
+                onExport={exportData} 
+              />
+              <ResultSection 
+                results={results} 
+                type="dead" 
+                onCopy={copyData} 
+                onExport={exportData} 
+              />
+            </div>
           </div>
         )}
       </main>
