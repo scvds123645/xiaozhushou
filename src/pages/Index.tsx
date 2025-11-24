@@ -95,7 +95,8 @@ const ResultSection = React.memo(({
   results, 
   type, 
   onCopy, 
-  onExport 
+  onExport,
+  onResultChange
 }: {
   title: string;
   count: number;
@@ -103,6 +104,7 @@ const ResultSection = React.memo(({
   type: 'alive' | 'dead';
   onCopy: () => void;
   onExport: () => void;
+  onResultChange: (value: string) => void;
 }) => {
   const colorClass = type === 'alive' 
     ? 'text-green-600 bg-green-500/10 border-green-200/50' 
@@ -129,8 +131,8 @@ const ResultSection = React.memo(({
       </div>
       <textarea
         value={results}
-        readOnly
-        className="bg-background/50 rounded-lg p-2 h-64 sm:h-80 font-mono text-xs border resize-none"
+        onChange={(e) => onResultChange(e.target.value)}
+        className="bg-background/50 rounded-lg p-2 h-64 sm:h-80 font-mono text-xs border resize-none focus:ring-2 focus:ring-primary/50"
         placeholder={count === 0 ? '无数据' : ''}
       />
     </div>
@@ -265,6 +267,7 @@ const Index = () => {
               type="alive"
               onCopy={() => copyData(liveList)}
               onExport={() => exportData(liveList, 'alive')}
+              onResultChange={setLiveList}
             />
             <ResultSection 
               title="失效"
@@ -273,6 +276,7 @@ const Index = () => {
               type="dead"
               onCopy={() => copyData(dieList)}
               onExport={() => exportData(dieList, 'dead')}
+              onResultChange={setDieList}
             />
           </div>
         )}
