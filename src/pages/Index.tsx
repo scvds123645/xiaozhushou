@@ -129,7 +129,7 @@ export default function Index() {
       username: emailData.username,
       birthday: genBirthday(),
     });
-    toast({ title: "生成成功", duration: 1500 });
+    toast({ title: "创号成功(没有180天🥰)", duration: 1500 });
   }, [toast]);
 
   const refreshEmail = useCallback(async () => {
