@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 import { 
   CheckCircle, Trash2, Search, Download, 
-  Upload, Copy, X 
+  Copy, X 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -150,7 +150,6 @@ const Index = () => {
   const [stats, setStats] = useState<Stats>({ liveCount: 0, dieCount: 0, processed: 0, total: 0 });
   const [isChecking, setIsChecking] = useState(false);
   
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const checkFbLiveRef = useRef<CheckFbLive | null>(null);
 
   const handleStart = () => {
@@ -196,16 +195,6 @@ const Index = () => {
     );
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      if (typeof ev.target?.result === 'string') setInput(ev.target.result);
-    };
-    reader.readAsText(file);
-  };
-
   const exportData = (data: string, prefix: string) => {
     const blob = new Blob([data], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
@@ -247,24 +236,7 @@ const Index = () => {
         
         {/* 输入区域 */}
         <div className="bg-card rounded-xl border shadow-sm p-4 sm:p-6 space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="font-semibold text-lg">导入账号</h2>
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              className="hidden" 
-              accept=".txt,.csv" 
-              onChange={handleFileUpload}
-            />
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isChecking}
-            >
-              <Upload className="w-4 h-4 mr-2" /> TXT导入
-            </Button>
-          </div>
+          <h2 className="font-semibold text-lg">导入账号</h2>
           
           <textarea
             value={input}
