@@ -1,7 +1,7 @@
-import { useState, useCallback, memo } from "react";
+import { useState, useCallback, memo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Copy, RefreshCw, CheckCircle2 } from "lucide-react";
+import { Copy, RefreshCw, CheckCircle2, AlertCircle, Info } from "lucide-react";
 
 // ============ 数据配置 ============
 const MOBILE_PREFIXES = [
@@ -71,6 +71,74 @@ interface UserInfo {
   birthday: string;
 }
 
+type ToastType = 'success' | 'error' | 'info';
+
+interface ToastState {
+  show: boolean;
+  message: string;
+  type: ToastType;
+}
+
+type CopyState = 'idle' | 'copying' | 'success' | 'error';
+
+// ============ 自定义 Hooks ============
+const useToast = () => {
+  const [toast, setToast] = useState<ToastState>({ show: false, message: "", type: 'success' });
+
+  const showToast = useCallback((message: string, type: ToastType = 'success', duration: number = 2000) => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: "", type: 'success' }), duration);
+  }, []);
+
+  return { toast, showToast };
+};
+
+const useCopyToClipboard = () => {
+  const [copyStates, setCopyStates] = useState<Map<string, CopyState>>(new Map());
+
+  const getCopyState = useCallback((key: string): CopyState => {
+    return copyStates.get(key) || 'idle';
+  }, [copyStates]);
+
+  const setCopyState = useCallback((key: string, state: CopyState) => {
+    setCopyStates(prev => {
+      const newMap = new Map(prev);
+      newMap.set(key, state);
+      return newMap;
+    });
+  }, []);
+
+  const copyToClipboard = useCallback(async (text: string, key: string): Promise<boolean> => {
+    const currentState = copyStates.get(key);
+    if (currentState === 'copying' || currentState === 'success') {
+      return false;
+    }
+
+    setCopyState(key, 'copying');
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyState(key, 'success');
+      
+      setTimeout(() => {
+        setCopyState(key, 'idle');
+      }, 2000);
+      
+      return true;
+    } catch (error) {
+      setCopyState(key, 'error');
+      
+      setTimeout(() => {
+        setCopyState(key, 'idle');
+      }, 2000);
+      
+      return false;
+    }
+  }, [copyStates, setCopyState]);
+
+  return { copyToClipboard, getCopyState };
+};
+
 // ============ Facebook Logo ============
 const FacebookLogo = () => (
   <svg className="w-8 h-8" fill="#1877F2" viewBox="0 0 24 24">
@@ -78,23 +146,76 @@ const FacebookLogo = () => (
   </svg>
 );
 
-// ============ 子组件 ============
+// ============ Toast 组件 ============
+const Toast = memo(({ toast }: { toast: ToastState }) => {
+  if (!toast.show) return null;
+
+  const icons = {
+    success: <CheckCircle2 className="w-5 h-5 text-green-600" />,
+    error: <AlertCircle className="w-5 h-5 text-red-600" />,
+    info: <Info className="w-5 h-5 text-blue-600" />
+  };
+
+  return (
+    <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+      <div className="bg-white rounded-lg shadow-lg border border-[#CED0D4] px-4 py-3 flex items-center gap-2">
+        {icons[toast.type]}
+        <span className="text-sm font-semibold text-[#050505]">{toast.message}</span>
+      </div>
+    </div>
+  );
+});
+
+// ============ 复制按钮组件 ============
+const CopyButton = memo(({ 
+  copyKey, 
+  copyState, 
+  onCopy 
+}: { 
+  copyKey: string;
+  copyState: CopyState;
+  onCopy: () => void;
+}) => {
+  const isDisabled = copyState === 'copying' || copyState === 'success';
+  const showCheck = copyState === 'success';
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={onCopy}
+      disabled={isDisabled}
+      className="h-7 w-7 p-0 hover:bg-[#E4E6EB] rounded-full transition-all disabled:opacity-50"
+      title={showCheck ? "已复制" : "复制"}
+    >
+      {showCheck ? (
+        <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+      ) : (
+        <Copy className="h-3.5 w-3.5 text-[#65676B]" />
+      )}
+    </Button>
+  );
+});
+
+// ============ 信息字段组件 ============
 const InfoField = memo(({ 
   label, 
   value, 
+  copyKey,
+  copyState,
   onCopy, 
   onRefresh, 
   isLink, 
-  linkHref, 
-  copying 
+  linkHref
 }: {
   label: string;
   value: string;
+  copyKey: string;
+  copyState: CopyState;
   onCopy: () => void;
   onRefresh?: () => void;
   isLink?: boolean;
   linkHref?: string;
-  copying: boolean;
 }) => (
   <div className="bg-[#F0F2F5] rounded-lg p-3">
     <div className="flex items-center justify-between mb-2">
@@ -105,22 +226,14 @@ const InfoField = memo(({
             variant="ghost"
             size="sm"
             onClick={onRefresh}
-            disabled={copying}
+            disabled={copyState === 'copying'}
             className="h-7 w-7 p-0 hover:bg-[#E4E6EB] rounded-full transition-all disabled:opacity-50"
             title="重新生成"
           >
             <RefreshCw className="h-3.5 w-3.5 text-[#65676B]" />
           </Button>
         )}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onCopy}
-          disabled={copying}
-          className="h-7 w-7 p-0 hover:bg-[#E4E6EB] rounded-full transition-all disabled:opacity-50"
-        >
-          <Copy className="h-3.5 w-3.5 text-[#65676B]" />
-        </Button>
+        <CopyButton copyKey={copyKey} copyState={copyState} onCopy={onCopy} />
       </div>
     </div>
     {isLink && linkHref ? (
@@ -138,52 +251,56 @@ const InfoField = memo(({
   </div>
 ));
 
-const TelegramCard = memo(({ onCopy, copying }: { onCopy: () => void; copying: boolean }) => (
-  <Card className="p-4 rounded-lg border-[#CED0D4] bg-white shadow-sm">
-    <div className="flex items-center gap-3 mb-3">
-      <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
-        <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295-.002 0-.003 0-.005 0l.213-3.054 5.56-5.022c.24-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.832.941z"/>
-        </svg>
+// ============ Telegram 卡片组件 ============
+const TelegramCard = memo(({ 
+  copyKey,
+  copyState,
+  onCopy 
+}: { 
+  copyKey: string;
+  copyState: CopyState;
+  onCopy: () => void;
+}) => {
+  const isDisabled = copyState === 'copying' || copyState === 'success';
+  
+  return (
+    <Card className="p-4 rounded-lg border-[#CED0D4] bg-white shadow-sm">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+          <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295-.002 0-.003 0-.005 0l.213-3.054 5.56-5.022c.24-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.832.941z"/>
+          </svg>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[#050505] font-bold text-sm mb-0.5">🎯 神秘代码@fang180</p>
+          <p className="text-[#65676B] text-xs">创号教程、工具更新和独家资源</p>
+        </div>
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[#050505] font-bold text-sm mb-0.5">🎯 神秘代码@fang180</p>
-        <p className="text-[#65676B] text-xs">创号教程、工具更新和独家资源</p>
-      </div>
-    </div>
-    <Button 
-      onClick={onCopy}
-      disabled={copying}
-      className="w-full bg-[#1877F2] hover:bg-[#166FE5] text-white font-semibold rounded-lg h-9 transition-colors disabled:opacity-50"
-    >
-      复制神秘代码
-    </Button>
-  </Card>
-));
+      <Button 
+        onClick={onCopy}
+        disabled={isDisabled}
+        className="w-full bg-[#1877F2] hover:bg-[#166FE5] text-white font-semibold rounded-lg h-9 transition-colors disabled:opacity-50"
+      >
+        {copyState === 'success' ? '✓ 已复制' : '复制神秘代码'}
+      </Button>
+    </Card>
+  );
+});
 
 // ============ 主组件 ============
 const Index = () => {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
-  const [copying, setCopying] = useState(false);
-  const [toast, setToast] = useState<{ show: boolean; message: string }>({ show: false, message: "" });
+  const { toast, showToast } = useToast();
+  const { copyToClipboard, getCopyState } = useCopyToClipboard();
 
-  const showToast = useCallback((message: string) => {
-    setToast({ show: true, message });
-    setTimeout(() => setToast({ show: false, message: "" }), 2000);
-  }, []);
-
-  const copyToClipboard = useCallback(async (text: string, label: string) => {
-    if (copying) return;
-    setCopying(true);
-    try {
-      await navigator.clipboard.writeText(text);
-      showToast(`已复制${label}`);
-    } catch {
-      showToast("复制失败，请手动复制");
-    } finally {
-      setTimeout(() => setCopying(false), 300);
+  const handleCopy = useCallback(async (text: string, key: string, label: string) => {
+    const success = await copyToClipboard(text, key);
+    if (success) {
+      showToast(`已复制${label}`, 'success');
+    } else {
+      showToast('复制失败，请手动复制', 'error');
     }
-  }, [copying, showToast]);
+  }, [copyToClipboard, showToast]);
 
   const handleGenerate = useCallback(() => {
     const emailData = generateEmail();
@@ -195,27 +312,19 @@ const Index = () => {
       emailUsername: emailData.emailUsername,
       birthday: generateBirthday(),
     });
-    showToast("生成成功");
+    showToast("生成成功", 'success');
   }, [showToast]);
 
   const regenerateEmail = useCallback(() => {
     if (!userInfo) return;
     const emailData = generateEmail();
     setUserInfo(prev => prev ? { ...prev, ...emailData } : null);
-    showToast("邮箱已更新");
+    showToast("邮箱已更新", 'success');
   }, [userInfo, showToast]);
 
   return (
     <div className="min-h-screen bg-[#F0F2F5]">
-      {/* 自定义 Toast 提示 */}
-      {toast.show && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
-          <div className="bg-white rounded-lg shadow-lg border border-[#CED0D4] px-4 py-3 flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-green-600" />
-            <span className="text-sm font-semibold text-[#050505]">{toast.message}</span>
-          </div>
-        </div>
-      )}
+      <Toast toast={toast} />
 
       {/* Facebook 风格顶部导航栏 */}
       <div className="bg-white shadow-sm border-b border-[#CED0D4] sticky top-0 z-10">
@@ -241,25 +350,44 @@ const Index = () => {
         {/* 信息展示卡片 */}
         {userInfo && (
           <Card className="p-4 space-y-3 rounded-lg border-[#CED0D4] bg-white shadow-sm">
-            <InfoField label="姓氏" value={userInfo.lastName} onCopy={() => copyToClipboard(userInfo.lastName, "姓氏")} copying={copying} />
-            <InfoField label="名字" value={userInfo.firstName} onCopy={() => copyToClipboard(userInfo.firstName, "名字")} copying={copying} />
+            <InfoField 
+              label="姓氏" 
+              value={userInfo.lastName} 
+              copyKey="lastName"
+              copyState={getCopyState("lastName")}
+              onCopy={() => handleCopy(userInfo.lastName, "lastName", "姓氏")} 
+            />
+            <InfoField 
+              label="名字" 
+              value={userInfo.firstName} 
+              copyKey="firstName"
+              copyState={getCopyState("firstName")}
+              onCopy={() => handleCopy(userInfo.firstName, "firstName", "名字")} 
+            />
             
             <div className="bg-[#F0F2F5] rounded-lg p-3">
               <span className="text-sm font-semibold text-[#65676B] block mb-2">生日</span>
               <p className="text-base font-semibold text-[#050505]">{userInfo.birthday}</p>
             </div>
             
-            <InfoField label="手机号" value={userInfo.phone} onCopy={() => copyToClipboard(userInfo.phone, "手机号")} copying={copying} />
+            <InfoField 
+              label="手机号" 
+              value={userInfo.phone} 
+              copyKey="phone"
+              copyState={getCopyState("phone")}
+              onCopy={() => handleCopy(userInfo.phone, "phone", "手机号")} 
+            />
             
             <div>
               <InfoField 
                 label="邮箱" 
                 value={userInfo.email} 
-                onCopy={() => copyToClipboard(userInfo.email, "邮箱")} 
+                copyKey="email"
+                copyState={getCopyState("email")}
+                onCopy={() => handleCopy(userInfo.email, "email", "邮箱")} 
                 onRefresh={regenerateEmail}
                 isLink
                 linkHref={`https://yopmail.com?${userInfo.emailUsername}`}
-                copying={copying}
               />
               <p className="text-xs text-[#65676B] mt-2 px-1">💡 点击邮箱地址可跳转查收验证码 不要在TG打开</p>
             </div>
@@ -267,7 +395,11 @@ const Index = () => {
         )}
 
         {/* Telegram 频道引流 */}
-        <TelegramCard onCopy={() => copyToClipboard("@fang180", "神秘代码")} copying={copying} />
+        <TelegramCard 
+          copyKey="telegram"
+          copyState={getCopyState("telegram")}
+          onCopy={() => handleCopy("@fang180", "telegram", "神秘代码")} 
+        />
       </div>
     </div>
   );
