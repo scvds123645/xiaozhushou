@@ -3,8 +3,7 @@ import {
   CheckCircle, Loader2, Trash2, Search, Download, 
   PauseCircle, PlayCircle, Upload, Copy, AlertCircle, X 
 } from "lucide-react";
-import { Button } from "@/components/ui/button"; // 假设保留原有UI组件
-// import { ThemeToggle } from "@/components/ThemeToggle"; // 假设保留
+import { Button } from "@/components/ui/button";
 
 // --- 类型定义 ---
 type DetectionStatus = "idle" | "running" | "paused" | "completed";
@@ -13,9 +12,9 @@ type Stats = { total: number; processed: number; alive: number; dead: number; st
 
 // --- 工具函数 ---
 const CONSTANTS = {
-  CONCURRENCY: 20, // 提高并发数
-  TIMEOUT: 5000,   // 5秒超时
-  REGEX: /\b\d{14,16}\b/, // 支持14-16位UID
+  CONCURRENCY: 20,
+  TIMEOUT: 5000,
+  REGEX: /\b\d{14,16}\b/,
 };
 
 const extractUIDs = (text: string): string[] => {
@@ -34,7 +33,6 @@ const useDetection = () => {
   const [queue, setQueue] = useState<string[]>([]);
   const [stats, setStats] = useState<Stats>({ total: 0, processed: 0, alive: 0, dead: 0, startTime: 0 });
   
-  const abortControllerRef = useRef<AbortController | null>(null);
   const isPausedRef = useRef(false);
   const activeWorkers = useRef(0);
 
@@ -47,11 +45,10 @@ const useDetection = () => {
       const response = await fetch(`https://graph.facebook.com/${uid}/picture?type=normal`, {
         method: 'GET',
         signal: controller.signal,
-        redirect: "follow", // 关键：跟随重定向
+        redirect: "follow",
       });
       
       clearTimeout(timeoutId);
-      // 如果URL包含 rsrc.php，通常是被重定向到了默认死号图
       return !response.url.includes("rsrc.php");
     } catch {
       return false;
@@ -59,21 +56,22 @@ const useDetection = () => {
   };
 
   // 处理器：从队列中取任务
-  const processQueue = useCallback(async () => {
-    if (isPausedRef.current || queue.length === 0) return;
+  const processQueue = useCallback(() => {
+    if (isPausedRef.current) return;
 
     setQueue(prev => {
-      const currentBatch = prev.slice(0, CONSTANTS.CONCURRENCY - activeWorkers.current);
-      const remaining = prev.slice(CONSTANTS.CONCURRENCY - activeWorkers.current);
+      if (prev.length === 0) return prev;
       
-      if (currentBatch.length === 0) return prev;
+      const availableSlots = CONSTANTS.CONCURRENCY - activeWorkers.current;
+      if (availableSlots <= 0) return prev;
+
+      const currentBatch = prev.slice(0, availableSlots);
+      const remaining = prev.slice(availableSlots);
 
       currentBatch.forEach(uid => {
         activeWorkers.current++;
         checkUID(uid).then(isAlive => {
-          activeWorkers.current--;
-          
-          // 更新状态
+          // 更新结果和统计
           setResults(prevRes => [...prevRes, { uid, status: isAlive ? 'alive' : 'dead', timestamp: Date.now() }]);
           setStats(s => ({
             ...s,
@@ -82,27 +80,43 @@ const useDetection = () => {
             dead: s.dead + (isAlive ? 0 : 1)
           }));
 
-          // 递归调用以保持并发池满载
-          if (!isPausedRef.current && activeWorkers.current < CONSTANTS.CONCURRENCY) {
-             // 使用 setTimeout 避免过深的调用栈，并允许 UI 渲染
-             setTimeout(processQueue, 0); 
-          }
+          // 完成一个任务后减少计数
+          activeWorkers.current--;
+          
+          // 检查是否全部完成
+          setQueue(currentQueue => {
+            if (currentQueue.length === 0 && activeWorkers.current === 0) {
+              setStatus('completed');
+            } else if (!isPausedRef.current && currentQueue.length > 0) {
+              // 继续处理剩余任务
+              setTimeout(processQueue, 0);
+            }
+            return currentQueue;
+          });
+        }).catch(() => {
+          // 处理异常情况
+          activeWorkers.current--;
+          setStats(s => ({ ...s, processed: s.processed + 1, dead: s.dead + 1 }));
+          
+          setQueue(currentQueue => {
+            if (currentQueue.length === 0 && activeWorkers.current === 0) {
+              setStatus('completed');
+            }
+            return currentQueue;
+          });
         });
       });
-      
+
       return remaining;
     });
-  }, [queue]); // 注意：这里依赖 queue 会导致频繁更新，实际生产中可用 Ref 优化 queue
+  }, []);
 
-  // 监听队列变化自动触发（简化版逻辑）
+  // 监听状态变化自动触发处理
   useEffect(() => {
-    if (status === 'running' && activeWorkers.current < CONSTANTS.CONCURRENCY) {
+    if (status === 'running' && queue.length > 0 && activeWorkers.current < CONSTANTS.CONCURRENCY) {
       processQueue();
     }
-    if (status === 'running' && queue.length === 0 && activeWorkers.current === 0) {
-      setStatus('completed');
-    }
-  }, [queue, status, processQueue]);
+  }, [status, queue, processQueue]);
 
   const start = (uids: string[]) => {
     setResults([]);
@@ -121,7 +135,7 @@ const useDetection = () => {
   const resume = () => {
     setStatus("running");
     isPausedRef.current = false;
-    processQueue(); // 重新启动
+    processQueue();
   };
 
   const reset = () => {
@@ -130,6 +144,7 @@ const useDetection = () => {
     setQueue([]);
     setStats({ total: 0, processed: 0, alive: 0, dead: 0, startTime: 0 });
     isPausedRef.current = false;
+    activeWorkers.current = 0;
   };
 
   return { status, stats, results, start, pause, resume, reset };
@@ -205,7 +220,7 @@ const Index = () => {
   const handleStart = () => {
     const uids = extractUIDs(input);
     if (uids.length === 0) {
-      alert("未检测到有效的UID"); // 实际可用 Toast 替换
+      alert("未检测到有效的UID");
       return;
     }
     start(uids);
@@ -228,8 +243,9 @@ const Index = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `fb-${prefix}-${new Date().toLocaleTimeString()}.txt`;
+    a.download = `fb-${prefix}-${new Date().toLocaleTimeString().replace(/:/g, '-')}.txt`;
     a.click();
+    URL.revokeObjectURL(url);
   };
 
   const copyData = (data: DetectionResult[]) => {
@@ -249,7 +265,6 @@ const Index = () => {
             </div>
             <span>UID Checker</span>
           </div>
-          {/* ThemeToggle 放在这里 */}
         </div>
       </header>
 
@@ -316,9 +331,11 @@ const Index = () => {
                   <div className="text-2xl font-bold font-mono">{speed} <span className="text-sm font-normal text-muted-foreground">个/秒</span></div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm text-muted-foreground mb-1">剩余</div>
-                  <div className="text-xl font-mono font-medium">
-                    {stats.total - stats.processed}
+                  <div className="text-sm text-muted-foreground mb-1">状态</div>
+                  <div className="text-lg font-medium">
+                    {status === 'running' && <span className="text-blue-600">检测中...</span>}
+                    {status === 'paused' && <span className="text-orange-600">已暂停</span>}
+                    {status === 'completed' && <span className="text-green-600">✓ 已完成</span>}
                   </div>
                 </div>
               </div>
