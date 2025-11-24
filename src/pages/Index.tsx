@@ -130,14 +130,9 @@ const ResultSection = React.memo(({
       <textarea
         value={results}
         readOnly
-        className="bg-background/50 rounded-lg p-2 h-32 sm:h-40 font-mono text-xs border resize-none"
+        className="bg-background/50 rounded-lg p-2 h-64 sm:h-80 font-mono text-xs border resize-none"
         placeholder={count === 0 ? '无数据' : ''}
       />
-      {lines.length > 100 && (
-        <div className="text-center text-xs text-muted-foreground mt-2">
-          显示前100个，共 {lines.length} 个
-        </div>
-      )}
     </div>
   );
 });
