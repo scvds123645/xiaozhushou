@@ -1,407 +1,312 @@
-import React, { useState, useRef, useEffect } from "react";
-import { 
-  CheckCircle, Search, Download, 
-  Copy, X 
-} from "lucide-react";
+import { useState, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Copy, RefreshCw, Sparkles } from "lucide-react";
+import toast, { Toaster } from 'react-hot-toast';
 
-// --- 类型定义 ---
-type DetectionResult = { uid: string; status: "alive" | "dead" };
-type Stats = { liveCount: number; dieCount: number; processed: number; total: number };
+// ============ 数据配置 ============
+const MOBILE_PREFIXES = ["134","135","136","137","138","139","147","150","151","152","157","158","159","178","182","183","184","187","188","198","130","131","132","145","155","156","166","171","175","176","185","186","133","149","153","173","177","180","181","189","191","199"];
+const EMAIL_SUFFIXES = [
+ "@yopmail.com","@00two.shop"
+ ];
 
-// --- 加载 SweetAlert2 ---
-const useSweetAlert = () => {
-  const [Swal, setSwal] = useState<any>(null);
+const NAME_PARTS = ["john","mike","alex","david","chris","james","robert","michael","william","daniel","smith","brown","jones","wilson","taylor","davis","miller","moore","anderson","jackson","white","harris","martin","lee","walker","sam","tom","ben","joe","max"];
 
-  useEffect(() => {
-    // 加载 SweetAlert2 CSS
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/11.7.32/sweetalert2.min.css';
-    document.head.appendChild(link);
+// ============ 工具函数 ============
+const random = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
+const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+const pad = (n: number, len = 2) => String(n).padStart(len, "0");
 
-    // 加载 SweetAlert2 JS
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/11.7.32/sweetalert2.all.min.js';
-    script.onload = () => {
-      setSwal((window as any).Swal);
-    };
-    document.head.appendChild(script);
+const genName = (vowelStart: boolean) => {
+  const v = "aeiou", c = "bcdfghjklmnpqrstvwxyz";
+  let name = "";
+  for (let i = 0; i < 15; i++) {
+    const useVowel = vowelStart ? i % 2 === 0 : i % 2 !== 0;
+    name += random([...(useVowel ? v : c)]);
+  }
+  return name.charAt(0).toUpperCase() + name.slice(1);
+};
 
-    return () => {
-      document.head.removeChild(link);
-      document.head.removeChild(script);
-    };
+const genEmail = () => {
+  let username = Array.from({ length: randomInt(2, 3) }, () => random(NAME_PARTS)).join("");
+  while (username.length < 20) {
+    username += Math.random() > 0.5 && (20 - username.length) >= 3
+      ? pad(randomInt(0, 999), 3)
+      : random([..."abcdefghijklmnopqrstuvwxyz"]);
+  }
+  username = username.substring(0, 20);
+  return { email: username + random(EMAIL_SUFFIXES), username };
+};
+
+const genPhone = () => "86" + random(MOBILE_PREFIXES) + pad(randomInt(0, 99999999), 8);
+
+const genBirthday = () => {
+  const year = new Date().getFullYear() - randomInt(18, 25);
+  return `${year}年${pad(randomInt(1, 12))}月${pad(randomInt(1, 28))}日`;
+};
+
+// ============ 优化后的子组件 (使用 memo 避免不必要的重渲染) ============
+const InfoRow = memo(({ label, value, onCopy, onRefresh, link, loading }: any) => (
+  <div className="space-y-1.5">
+    <div className="flex items-center justify-between">
+      <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{label}</label>
+      <div className="flex gap-1">
+        {onRefresh && (
+          <button
+            onClick={onRefresh}
+            disabled={loading}
+            className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-gray-200 disabled:opacity-50"
+            style={{ transition: 'background-color 0.15s' }}
+          >
+            <RefreshCw className={`h-4 w-4 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        )}
+        <button
+          onClick={onCopy}
+          className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-gray-200"
+          style={{ transition: 'background-color 0.15s' }}
+        >
+          <Copy className="h-4 w-4 text-gray-600" />
+        </button>
+      </div>
+    </div>
+    <div className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3">
+      {link ? (
+        <a 
+          href={link} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="text-sm font-normal text-blue-600 hover:underline break-all"
+        >
+          {value}
+        </a>
+      ) : (
+        <p className="text-sm font-normal text-gray-900 break-all">{value}</p>
+      )}
+    </div>
+  </div>
+));
+
+InfoRow.displayName = 'InfoRow';
+
+const TgBanner = memo(({ onCopy }: any) => (
+  <Card className="p-4 rounded-lg bg-white border border-gray-300">
+    <div className="flex items-center gap-3 mb-3">
+      <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+        <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295-.002 0-.003 0-.005 0l.213-3.054 5.56-5.022c.24-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.832.941z"/>
+        </svg>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-gray-900 font-semibold text-sm">神秘代码 @fang180</p>
+        <p className="text-gray-500 text-xs">创号教程、工具更新和独家资源</p>
+      </div>
+    </div>
+    <Button 
+      onClick={onCopy} 
+      className="w-full bg-gray-200 text-gray-700 hover:bg-gray-300 font-semibold rounded-md h-9"
+      style={{ transition: 'background-color 0.15s' }}
+    >
+      复制神秘代码
+    </Button>
+  </Card>
+));
+
+TgBanner.displayName = 'TgBanner';
+
+// ============ 主组件 ============
+export default function Index() {
+  const [info, setInfo] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [bgLoaded, setBgLoaded] = useState(false);
+
+  const copy = useCallback(async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`已复制${label}`, {
+        duration: 1500,
+        style: {
+          background: '#10b981',
+          color: '#fff',
+          fontWeight: '500',
+        },
+        iconTheme: {
+          primary: '#fff',
+          secondary: '#10b981',
+        },
+      });
+    } catch {
+      toast.error('复制失败，请手动复制', {
+        duration: 2000,
+        style: {
+          background: '#ef4444',
+          color: '#fff',
+          fontWeight: '500',
+        },
+      });
+    }
   }, []);
 
-  return Swal;
-};
+  const generate = useCallback(() => {
+    const emailData = genEmail();
+    setInfo({
+      lastName: genName(false),
+      firstName: genName(true),
+      phone: genPhone(),
+      email: emailData.email,
+      username: emailData.username,
+      birthday: genBirthday(),
+    });
+    toast.success('创号成功(没有180天🥰)', {
+      duration: 1500,
+      icon: '🎉',
+      style: {
+        background: '#10b981',
+        color: '#fff',
+        fontWeight: '500',
+      },
+    });
+  }, []);
 
-// --- 核心检测类 ---
-class CheckFbLive {
-  liveCount: number = 0;
-  dieCount: number = 0;
-  content: string = '';
-
-  constructor(content: string = '') {
-    this.content = content;
-  }
-
-  get objIds(): string[] {
-    return this.content
-      .split('\n')
-      .map(item => item.trim())
-      .filter(item => item.length > 0);
-  }
-
-  async checkLive(uid: string): Promise<boolean> {
-    try {
-      const response = await fetch(`https://graph.facebook.com/${uid}/picture?type=normal`, {
-        method: 'GET',
-        redirect: 'follow'
-      });
-      return !response.url.includes('static');
-    } catch {
-      return false;
-    }
-  }
-
-  async checkLives(
-    arrayIds: string[], 
-    callback: ((uid: string, live: boolean) => void) | null = null
-  ): Promise<void> {
-    for (let uid of arrayIds) {
-      let realUid = uid.toString().trim();
-      
-      // 提取数字UID
-      if (!/^\d+$/.test(realUid)) {
-        const match = uid.match(/(\d{14})/);
-        if (!match) continue;
-        realUid = match[1];
+  const refreshEmail = useCallback(async () => {
+    if (!info) return;
+    setLoading(true);
+    
+    toast.promise(
+      new Promise(async (resolve) => {
+        await new Promise(r => setTimeout(r, 300));
+        const emailData = genEmail();
+        setInfo((prev: any) => ({ ...prev, ...emailData, email: emailData.email, username: emailData.username }));
+        setLoading(false);
+        resolve(true);
+      }),
+      {
+        loading: '正在更新邮箱...',
+        success: '邮箱已更新',
+        error: '更新失败',
+      },
+      {
+        style: {
+          fontWeight: '500',
+        },
+        success: {
+          duration: 1500,
+          style: {
+            background: '#10b981',
+            color: '#fff',
+          },
+        },
+        loading: {
+          style: {
+            background: '#3b82f6',
+            color: '#fff',
+          },
+        },
       }
-
-      const live = await this.checkLive(realUid);
-      this[live ? 'liveCount' : 'dieCount']++;
-      
-      if (callback) callback(realUid, live);
-    }
-  }
-
-  checkLiveWithThreads(
-    threads: number = 50,
-    callbackCheckLive: ((uid: string, live: boolean) => void) | null = null,
-    onDone: (() => void) | null = null
-  ): void {
-    const array = this.objIds;
-    const chunkSize = Math.ceil(array.length / threads);
-    const dataPerThreads: string[][] = [];
-
-    // 分配数据到每个线程
-    for (let i = 0; i < array.length; i += chunkSize) {
-      const chunk = array.slice(i, i + chunkSize);
-      dataPerThreads.push(chunk);
-    }
-
-    const total = dataPerThreads.length;
-    let done = 0;
-
-    for (let listIds of dataPerThreads) {
-      this.checkLives(listIds, callbackCheckLive).then(() => {
-        done++;
-        if (done >= total && onDone) {
-          onDone();
-        }
-      });
-    }
-  }
-}
-
-// --- UI 组件: 结果卡片 ---
-const ResultSection = React.memo(({ 
-  title, 
-  count, 
-  results, 
-  type, 
-  onCopy, 
-  onExport,
-  onResultChange
-}: {
-  title: string;
-  count: number;
-  results: string;
-  type: 'alive' | 'dead';
-  onCopy: () => void;
-  onExport: () => void;
-  onResultChange: (value: string) => void;
-}) => {
-  const colorClass = type === 'alive' 
-    ? 'text-green-600 bg-green-500/10 border-green-200/50' 
-    : 'text-red-600 bg-red-500/10 border-red-200/50';
-  const icon = type === 'alive' ? <CheckCircle className="w-4 h-4" /> : <X className="w-4 h-4" />;
-  
-  const lines = results.split('\n').filter(l => l.trim());
+    );
+  }, [info]);
 
   return (
-    <div className={`flex flex-col p-4 rounded-xl border ${colorClass} bg-card/50`}>
-      <div className="flex items-center justify-between mb-3">
-        <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${colorClass}`}>
-          {icon}
-          <span>{title} ({count})</span>
+    <div 
+      className="min-h-screen"
+      style={{
+        backgroundColor: '#e3f2fd',
+        backgroundImage: bgLoaded ? 'url(https://www.584136.xyz/%E5%A4%B4%E5%83%8F/%E8%83%8C%E6%99%AF89.jpg)' : 'none',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        backgroundAttachment: 'scroll'
+      }}
+    >
+      {/* Toast 容器 */}
+      <Toaster 
+        position="top-center"
+        toastOptions={{
+          style: {
+            maxWidth: '90vw',
+            borderRadius: '8px',
+            padding: '12px 16px',
+          },
+        }}
+      />
+
+      {/* 预加载背景图片 */}
+      <img 
+        src="https://www.584136.xyz/%E5%A4%B4%E5%83%8F/%E8%83%8C%E6%99%AF89.jpg" 
+        alt="" 
+        style={{ display: 'none' }}
+        onLoad={() => setBgLoaded(true)}
+        loading="lazy"
+      />
+
+      {/* 纯色半透明遮罩层 (替代 backdrop-blur) */}
+      <div className="min-h-screen" style={{ backgroundColor: 'rgba(255, 255, 255, 0.75)' }}>
+        {/* Facebook风格顶部导航栏 */}
+        <div className="bg-white border-b border-gray-300 sticky top-0 z-50" style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
+          <div className="max-w-5xl mx-auto px-4 h-14 flex items-center">
+            <div className="flex items-center gap-2">
+              <svg className="w-10 h-10 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+              </svg>
+              <span className="text-xl font-bold text-blue-600">创号小助手</span>
+            </div>
+          </div>
         </div>
-        <div className="flex gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onCopy}>
-            <Copy className="w-4 h-4" />
+
+        <div className="max-w-md mx-auto px-4 py-6 space-y-4">
+          {/* 生成按钮 */}
+          <Button
+            onClick={generate}
+            className="w-full h-11 text-base font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white"
+            style={{ 
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              transition: 'background-color 0.15s, box-shadow 0.15s'
+            }}
+          >
+            <Sparkles className="w-4 h-4 mr-2" />
+            开始创号
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onExport}>
-            <Download className="w-4 h-4" />
-          </Button>
+
+          {/* 信息卡片 */}
+          {info && (
+            <Card 
+              className="p-4 space-y-4 rounded-lg bg-white border border-gray-300"
+              style={{ boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}
+            >
+              <InfoRow label="姓氏" value={info.lastName} onCopy={() => copy(info.lastName, "姓氏")} />
+              <InfoRow label="名字" value={info.firstName} onCopy={() => copy(info.firstName, "名字")} />
+              
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">生日</label>
+                <div className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3">
+                  <p className="text-sm font-normal text-gray-900">{info.birthday}</p>
+                </div>
+              </div>
+
+              <InfoRow label="手机号" value={info.phone} onCopy={() => copy(info.phone, "手机号")} />
+              
+              <div className="space-y-2">
+                <InfoRow 
+                  label="邮箱" 
+                  value={info.email} 
+                  onCopy={() => copy(info.email, "邮箱")} 
+                  onRefresh={refreshEmail}
+                  link={`https://yopmail.com?${info.username}`}
+                  loading={loading}
+                />
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                  <p className="text-xs text-blue-900">
+                    💡 点击邮箱跳转查收验证码(不要在TG打开)
+                  </p>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Telegram横幅 */}
+          <TgBanner onCopy={() => copy("@fang180", "神秘代码")} />
         </div>
       </div>
-      <textarea
-        value={results}
-        onChange={(e) => onResultChange(e.target.value)}
-        className="bg-background/50 rounded-lg p-2 h-64 sm:h-80 font-mono text-xs border resize-none focus:ring-2 focus:ring-primary/50"
-        placeholder={count === 0 ? '无数据' : ''}
-      />
     </div>
   );
-});
-
-// --- 主组件 ---
-const Index = () => {
-  const [input, setInput] = useState("");
-  const [liveList, setLiveList] = useState("");
-  const [dieList, setDieList] = useState("");
-  const [stats, setStats] = useState<Stats>({ liveCount: 0, dieCount: 0, processed: 0, total: 0 });
-  const [isChecking, setIsChecking] = useState(false);
-  
-  const checkFbLiveRef = useRef<CheckFbLive | null>(null);
-  const Swal = useSweetAlert();
-
-  const showAutoCloseAlert = (title: string, html: string, timer: number = 2000) => {
-    if (!Swal) return;
-
-    let timerInterval: any;
-    Swal.fire({
-      title: title,
-      html: html,
-      timer: timer,
-      timerProgressBar: true,
-      didOpen: () => {
-        Swal.showLoading();
-        const timerElement = Swal.getPopup().querySelector("b");
-        if (timerElement) {
-          timerInterval = setInterval(() => {
-            timerElement.textContent = `${Swal.getTimerLeft()}`;
-          }, 100);
-        }
-      },
-      willClose: () => {
-        clearInterval(timerInterval);
-      }
-    }).then((result: any) => {
-      if (result.dismiss === Swal.DismissReason.timer) {
-        console.log("Alert was closed by the timer");
-      }
-    });
-  };
-
-  const handleStart = () => {
-    if (!input.trim()) {
-      if (Swal) {
-        Swal.fire({
-          icon: 'warning',
-          title: '提示',
-          text: '请输入UID列表',
-          confirmButtonText: '确定'
-        });
-      } else {
-        alert("请输入UID列表");
-      }
-      return;
-    }
-
-    setIsChecking(true);
-    setLiveList("");
-    setDieList("");
-    setStats({ liveCount: 0, dieCount: 0, processed: 0, total: 0 });
-
-    const checker = new CheckFbLive(input);
-    checkFbLiveRef.current = checker;
-    
-    const totalIds = checker.objIds.length;
-    setStats(prev => ({ ...prev, total: totalIds }));
-
-    // 显示开始检测提示
-    showAutoCloseAlert(
-      "开始检测",
-      `正在检测 <b>${totalIds}</b> 个UID，请稍候...`,
-      1500
-    );
-
-    checker.checkLiveWithThreads(
-      100,
-      (uid, live) => {
-        if (live) {
-          setLiveList(prev => prev ? `${prev}\n${uid}` : uid);
-          setStats(prev => ({ 
-            ...prev, 
-            liveCount: checker.liveCount,
-            processed: checker.liveCount + checker.dieCount
-          }));
-        } else {
-          setDieList(prev => prev ? `${prev}\n${uid}` : uid);
-          setStats(prev => ({ 
-            ...prev, 
-            dieCount: checker.dieCount,
-            processed: checker.liveCount + checker.dieCount
-          }));
-        }
-      },
-      () => {
-        setIsChecking(false);
-        if (navigator.vibrate) navigator.vibrate(100);
-        
-        // 显示完成提示
-        if (Swal) {
-          Swal.fire({
-            icon: 'success',
-            title: '检测完成!',
-            html: `
-              <div style="text-align: left; padding: 10px;">
-                <p>✅ 存活: <b>${checker.liveCount}</b> 个</p>
-                <p>❌ 失效: <b>${checker.dieCount}</b> 个</p>
-                <p>📊 总计: <b>${checker.liveCount + checker.dieCount}</b> 个</p>
-              </div>
-            `,
-            timer: 3000,
-            timerProgressBar: true,
-            showConfirmButton: true,
-            confirmButtonText: '确定'
-          });
-        }
-      }
-    );
-  };
-
-  const exportData = (data: string, prefix: string) => {
-    const blob = new Blob([data], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `fb-${prefix}-${new Date().toLocaleTimeString().replace(/:/g, '-')}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-
-    // 显示导出成功提示
-    showAutoCloseAlert(
-      "导出成功",
-      `文件已保存为 <b>fb-${prefix}-*.txt</b>`,
-      1500
-    );
-  };
-
-  const copyData = (data: string) => {
-    const lines = data.split('\n').filter(l => l.trim()).length;
-    navigator.clipboard.writeText(data);
-    
-    // 使用 SweetAlert2 显示复制成功
-    showAutoCloseAlert(
-      "复制成功",
-      `已复制 <b>${lines}</b> 个UID到剪贴板`,
-      1500
-    );
-  };
-
-  const clearAll = () => {
-    setInput("");
-    setLiveList("");
-    setDieList("");
-    setStats({ liveCount: 0, dieCount: 0, processed: 0, total: 0 });
-  };
-
-  return (
-    <div className="min-h-screen bg-background text-foreground pb-8">
-      {/* 头部 */}
-      <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container max-w-4xl mx-auto h-14 flex items-center justify-between px-4">
-          <div className="flex items-center gap-2 font-bold text-lg">
-            <div className="p-1.5 bg-primary rounded-lg text-primary-foreground">
-              <CheckCircle className="w-4 h-4" />
-            </div>
-            <span>UID Checker</span>
-          </div>
-        </div>
-      </header>
-
-      <main className="container max-w-4xl mx-auto px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
-        
-        {/* 输入区域 */}
-        <div className="bg-card rounded-xl border shadow-sm p-4 sm:p-6 space-y-4">
-          <h2 className="font-semibold text-lg">导入账号</h2>
-          
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="在此粘贴UID,每行一个,支持混合文本(自动提取14位数字)..."
-            className="w-full min-h-[120px] sm:min-h-[150px] p-3 bg-secondary/30 rounded-lg border focus:ring-2 focus:ring-primary/50 text-xs sm:text-sm font-mono resize-y"
-            disabled={isChecking}
-          />
-
-          <div className="flex gap-3">
-            <Button 
-              onClick={handleStart} 
-              disabled={isChecking}
-              className="flex-1 h-11 text-base font-medium shadow-lg shadow-primary/20"
-            >
-              <Search className="w-4 h-4 mr-2" /> 
-              {isChecking ? '检测中...' : '开始检测'}
-            </Button>
-          </div>
-
-          {/* 进度显示 */}
-          {isChecking && stats.total > 0 && (
-            <div className="bg-secondary/30 rounded-lg p-3 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>进度: {stats.processed} / {stats.total}</span>
-                <span>{Math.round((stats.processed / stats.total) * 100)}%</span>
-              </div>
-              <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
-                <div 
-                  className="bg-primary h-full transition-all duration-300"
-                  style={{ width: `${(stats.processed / stats.total) * 100}%` }}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* 结果区域 */}
-        {(liveList || dieList) && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <ResultSection 
-              title="存活"
-              count={stats.liveCount}
-              results={liveList}
-              type="alive"
-              onCopy={() => copyData(liveList)}
-              onExport={() => exportData(liveList, 'alive')}
-              onResultChange={setLiveList}
-            />
-            <ResultSection 
-              title="失效"
-              count={stats.dieCount}
-              results={dieList}
-              type="dead"
-              onCopy={() => copyData(dieList)}
-              onExport={() => exportData(dieList, 'dead')}
-              onResultChange={setDieList}
-            />
-          </div>
-        )}
-      </main>
-    </div>
-  );
-};
-
-export default Index;
+}
