@@ -139,6 +139,15 @@ const useDetection = () => {
   };
 
   const reset = () => {
+    // 只重置状态和队列，保留已有结果
+    setStatus("idle");
+    setQueue([]);
+    isPausedRef.current = false;
+    activeWorkers.current = 0;
+  };
+
+  const clearAll = () => {
+    // 完全清空所有数据
     setStatus("idle");
     setResults([]);
     setQueue([]);
@@ -147,7 +156,7 @@ const useDetection = () => {
     activeWorkers.current = 0;
   };
 
-  return { status, stats, results, start, pause, resume, reset };
+  return { status, stats, results, start, pause, resume, reset, clearAll };
 };
 
 // --- UI 组件: 进度条 ---
@@ -207,7 +216,7 @@ const ResultSection = React.memo(({ results, type, onCopy, onExport }: any) => {
 // --- 主组件 ---
 const Index = () => {
   const [input, setInput] = useState("");
-  const { status, stats, results, start, pause, resume, reset } = useDetection();
+  const { status, stats, results, start, pause, resume, reset, clearAll } = useDetection();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 计算速度
@@ -315,7 +324,17 @@ const Index = () => {
                 </Button>
               </>
             )}
-            <Button onClick={() => setInput('')} variant="ghost" className="h-11 px-3">
+            <Button 
+              onClick={() => {
+                setInput('');
+                if (status !== 'running' && status !== 'paused') {
+                  clearAll();
+                }
+              }} 
+              variant="ghost" 
+              className="h-11 px-3"
+              title="清空输入框和结果"
+            >
               <Trash2 className="w-5 h-5 text-muted-foreground" />
             </Button>
           </div>
