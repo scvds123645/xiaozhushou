@@ -1,284 +1,225 @@
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Copy, RefreshCw, CheckCircle2, AlertCircle, Info } from "lucide-react";
+import { Copy, RefreshCw, Sparkles } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 // ============ 数据配置 ============
-const MOBILE_PREFIXES = [
-  "134","135","136","137","138","139","147","150","151","152","157","158","159","178","182","183","184","187","188","198",
-  "130","131","132","145","155","156","166","171","175","176","185","186",
-  "133","149","153","173","177","180","181","189","191","199"
-];
+const MOBILE_PREFIXES = ["134","135","136","137","138","139","147","150","151","152","157","158","159","178","182","183","184","187","188","198","130","131","132","145","155","156","166","171","175","176","185","186","133","149","153","173","177","180","181","189","191","199"];
 
-const EMAIL_SUFFIXES = ["@yopmail.com","@00two.shop","@00two.site"];
+const EMAIL_SUFFIXES = ["@yopmail.com","@gmail.yopmail.com","@00two.shop","@123456.yopmail.com","@abc.yopmail.com","@ali.yopmail.com","@jetable.org","@mail.yopmail.com","@yomail.info","@cool.fr.nf","@jetable.fr.nf","@nospam.ze.tc","@nomail.xl.cx","@mega.zik.dj","@speed.1s.fr","@courriel.fr.nf","@moncourrier.fr.nf","@monmail.fr.nf","@hide.biz.st","@mymail.infos.st","@guerrillamail.com","@sharklasers.com","@grr.la","@guerrillamail.biz","@guerrillamail.de","@spam4.me","@mintemail.com","@tmails.net","@temp-mail.org","@temp-mail.io","@10minutemail.com","@mailinator.com","@dispostable.com","@throwaway.email","@maildrop.cc","@tempmail.dev","@getnada.com","@emailondeck.com","@trashmail.com","@mohmal.com","@tempinbox.com","@harakirimail.com","@mailcatch.com","@yopmail.fr","@yopmail.net","@cool.fr.nf","@jetable.fr.nf","@courriel.fr.nf","@monemail.fr.nf","@imails.info"];
 
-const NAME_FRAGMENTS = [
-  "john","mike","alex","david","chris","james","robert","michael","william","daniel",
-  "matthew","joseph","thomas","charles","mark","paul","steven","brian","kevin","jason",
-  "jeff","ryan","eric","smith","brown","jones","wilson","taylor","davis","miller",
-  "moore","anderson","jackson","white","harris","martin","thompson","garcia","lee",
-  "walker","hall","allen","young","king","wright","lopez","sam","tom","ben","joe","max"
-];
+const NAME_PARTS = ["john","mike","alex","david","chris","james","robert","michael","william","daniel","smith","brown","jones","wilson","taylor","davis","miller","moore","anderson","jackson","white","harris","martin","lee","walker","sam","tom","ben","joe","max"];
 
 // ============ 工具函数 ============
-const randomChoice = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+const random = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
 const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
-const padZero = (num: number, length: number = 2) => num.toString().padStart(length, "0");
+const pad = (n: number, len = 2) => String(n).padStart(len, "0");
 
-const generateName = (startWithVowel: boolean): string => {
-  const vowels = "aeiou", consonants = "bcdfghjklmnpqrstvwxyz";
+const genName = (vowelStart: boolean) => {
+  const v = "aeiou", c = "bcdfghjklmnpqrstvwxyz";
   let name = "";
   for (let i = 0; i < 15; i++) {
-    const useVowel = startWithVowel ? i % 2 === 0 : i % 2 !== 0;
-    const char = randomChoice([...(useVowel ? vowels : consonants)]);
-    name += i === 0 ? char.toUpperCase() : char;
+    const useVowel = vowelStart ? i % 2 === 0 : i % 2 !== 0;
+    name += random([...(useVowel ? v : c)]);
   }
-  return name;
+  return name.charAt(0).toUpperCase() + name.slice(1);
 };
 
-const generateEmailUsername = (): string => {
-  const fragmentCount = randomInt(2, 3);
-  let username = Array.from({ length: fragmentCount }, () => randomChoice(NAME_FRAGMENTS)).join("");
-  
+const genEmail = () => {
+  let username = Array.from({ length: randomInt(2, 3) }, () => random(NAME_PARTS)).join("");
   while (username.length < 20) {
     username += Math.random() > 0.5 && (20 - username.length) >= 3
-      ? padZero(randomInt(0, 999), 3)
-      : randomChoice([..."abcdefghijklmnopqrstuvwxyz"]);
+      ? pad(randomInt(0, 999), 3)
+      : random([..."abcdefghijklmnopqrstuvwxyz"]);
   }
-  return username.substring(0, 20).toLowerCase();
+  username = username.substring(0, 20);
+  return { email: username + random(EMAIL_SUFFIXES), username };
 };
 
-const generateEmail = () => {
-  const username = generateEmailUsername();
-  return { email: username + randomChoice(EMAIL_SUFFIXES), emailUsername: username };
+const genPhone = () => "86" + random(MOBILE_PREFIXES) + pad(randomInt(0, 99999999), 8);
+
+const genBirthday = () => {
+  const year = new Date().getFullYear() - randomInt(18, 25);
+  return `${year}年${pad(randomInt(1, 12))}月${pad(randomInt(1, 28))}日`;
 };
 
-const generatePhoneNumber = () => "86" + randomChoice(MOBILE_PREFIXES) + padZero(randomInt(0, 99999999), 8);
-
-const generateBirthday = () => {
-  const age = randomInt(18, 25);
-  const birthYear = new Date().getFullYear() - age;
-  return `${birthYear}年${padZero(randomInt(1, 12))}月${padZero(randomInt(1, 28))}日`;
-};
-
-// ============ 类型定义 ============
-interface UserInfo {
-  lastName: string;
-  firstName: string;
-  phone: string;
-  email: string;
-  emailUsername: string;
-  birthday: string;
-}
-
-// ============ Facebook Logo ============
-const FacebookLogo = () => (
-  <svg className="w-8 h-8" fill="#1877F2" viewBox="0 0 24 24">
-    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-  </svg>
-);
-
-// ============ Snackbar 组件 ============
-const Snackbar = ({ message, type, show }: { message: string; type: 'success' | 'error' | 'info'; show: boolean }) => {
-  if (!show) return null;
-
-  const styles = {
-    success: { icon: <CheckCircle2 className="w-5 h-5 text-green-600" />, bg: "bg-white" },
-    error: { icon: <AlertCircle className="w-5 h-5 text-red-600" />, bg: "bg-white" },
-    info: { icon: <Info className="w-5 h-5 text-blue-600" />, bg: "bg-white" }
-  };
-
-  return (
-    <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-md animate-in slide-in-from-bottom-4 fade-in duration-300">
-      <div className={`${styles[type].bg} rounded-2xl shadow-xl border border-[#CED0D4] px-5 py-3.5 flex items-center gap-3`}>
-        {styles[type].icon}
-        <span className="text-sm font-semibold text-[#050505] flex-1">{message}</span>
+// ============ 组件 ============
+const InfoRow = ({ label, value, onCopy, onRefresh, link, loading }: any) => (
+  <div className="space-y-2">
+    <div className="flex items-center justify-between">
+      <span className="text-sm font-medium text-slate-600">{label}</span>
+      <div className="flex gap-1">
+        {onRefresh && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onRefresh}
+            disabled={loading}
+            className="h-8 w-8 p-0 hover:bg-slate-100 active:scale-90 transition-all"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onCopy}
+          className="h-8 w-8 p-0 hover:bg-slate-100 active:scale-90 transition-all"
+        >
+          <Copy className="h-4 w-4" />
+        </Button>
       </div>
     </div>
-  );
-};
+    {link ? (
+      <a href={link} target="_blank" rel="noopener noreferrer" className="text-base font-medium text-blue-600 hover:text-blue-700 underline break-all inline-block transition-colors">
+        {value}
+      </a>
+    ) : (
+      <p className="text-base font-medium text-slate-900 break-all">{value}</p>
+    )}
+  </div>
+);
+
+const TgBanner = ({ onCopy }: any) => (
+  <Card className="p-5 rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 shadow-xl">
+    <div className="flex items-center gap-3 mb-4">
+      <div className="flex-shrink-0 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg">
+        <svg className="w-7 h-7 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295-.002 0-.003 0-.005 0l.213-3.054 5.56-5.022c.24-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.832.941z"/>
+        </svg>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-white font-semibold text-base mb-1">🎯 神秘代码@fang180</p>
+        <p className="text-blue-50 text-xs opacity-90">创号教程、工具更新和独家资源</p>
+      </div>
+    </div>
+    <Button onClick={onCopy} className="w-full bg-white text-blue-600 hover:bg-blue-50 font-semibold rounded-xl shadow-lg active:scale-95 transition-all" size="lg">
+      复制神秘代码
+    </Button>
+  </Card>
+);
+
+const Welcome = () => (
+  <Card className="p-6 rounded-2xl shadow-lg border-2 border-dashed border-slate-200 bg-gradient-to-br from-slate-50 to-white">
+    <div className="text-center space-y-4">
+      <div className="flex justify-center">
+        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center animate-pulse">
+          <Sparkles className="w-8 h-8 text-white" />
+        </div>
+      </div>
+      <div>
+        <h3 className="text-xl font-bold text-slate-900 mb-2">开始创建账号</h3>
+        <p className="text-sm text-slate-600 leading-relaxed">
+          点击上方按钮，自动生成姓名、生日、<br/>手机号和临时邮箱地址
+        </p>
+      </div>
+      <div className="pt-2 space-y-2 text-xs text-slate-500">
+        <p>💡 所有信息随机生成，仅供合法用途</p>
+        <p>📧 临时邮箱可接收验证码，10分钟有效</p>
+      </div>
+    </div>
+  </Card>
+);
 
 // ============ 主组件 ============
-const Index = () => {
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
-  const [snackbar, setSnackbar] = useState({ show: false, message: "", type: 'success' as 'success' | 'error' | 'info' });
-  const [copyStates, setCopyStates] = useState<Record<string, boolean>>({});
+export default function Index() {
+  const [info, setInfo] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
-  const showSnackbar = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success') => {
-    setSnackbar({ show: true, message, type });
-    setTimeout(() => setSnackbar(prev => ({ ...prev, show: false })), 2000);
-  }, []);
-
-  const handleCopy = useCallback(async (text: string, key: string, label: string) => {
-    if (copyStates[key]) return;
-    
-    setCopyStates(prev => ({ ...prev, [key]: true }));
-    
+  const copy = useCallback(async (text: string, label: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      showSnackbar(`已复制${label}`, 'success');
+      toast({ title: "✓ 已复制" + label, duration: 1500 });
     } catch {
-      showSnackbar('复制失败，请手动复制', 'error');
-    } finally {
-      setTimeout(() => setCopyStates(prev => ({ ...prev, [key]: false })), 2000);
+      toast({ title: "复制失败", description: "请手动复制", duration: 2000 });
     }
-  }, [copyStates, showSnackbar]);
+  }, [toast]);
 
-  const handleGenerate = useCallback(() => {
-    const emailData = generateEmail();
-    setUserInfo({
-      lastName: generateName(false),
-      firstName: generateName(true),
-      phone: generatePhoneNumber(),
+  const generate = useCallback(() => {
+    const emailData = genEmail();
+    setInfo({
+      lastName: genName(false),
+      firstName: genName(true),
+      phone: genPhone(),
       email: emailData.email,
-      emailUsername: emailData.emailUsername,
-      birthday: generateBirthday(),
+      username: emailData.username,
+      birthday: genBirthday(),
     });
-    showSnackbar("生成成功", 'success');
-  }, [showSnackbar]);
+    toast({ title: "🎉 生成成功", duration: 1500 });
+  }, [toast]);
 
-  const regenerateEmail = useCallback(() => {
-    if (!userInfo) return;
-    const emailData = generateEmail();
-    setUserInfo(prev => prev ? { ...prev, ...emailData } : null);
-    showSnackbar("邮箱已更新", 'success');
-  }, [userInfo, showSnackbar]);
-
-  const InfoField = ({ label, value, copyKey, onRefresh, isLink, linkHref }: {
-    label: string;
-    value: string;
-    copyKey: string;
-    onRefresh?: () => void;
-    isLink?: boolean;
-    linkHref?: string;
-  }) => {
-    const isCopied = copyStates[copyKey];
-    
-    return (
-      <div className="bg-[#F0F2F5] rounded-lg p-3">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-semibold text-[#65676B]">{label}</span>
-          <div className="flex gap-1">
-            {onRefresh && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onRefresh}
-                disabled={isCopied}
-                className="h-7 w-7 p-0 hover:bg-[#E4E6EB] rounded-full transition-all disabled:opacity-50"
-                title="重新生成"
-              >
-                <RefreshCw className="h-3.5 w-3.5 text-[#65676B]" />
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleCopy(value, copyKey, label)}
-              disabled={isCopied}
-              className="h-7 w-7 p-0 hover:bg-[#E4E6EB] rounded-full transition-all disabled:opacity-50"
-              title={isCopied ? "已复制" : "复制"}
-            >
-              {isCopied ? (
-                <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-              ) : (
-                <Copy className="h-3.5 w-3.5 text-[#65676B]" />
-              )}
-            </Button>
-          </div>
-        </div>
-        {isLink && linkHref ? (
-          <a
-            href={linkHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-base font-semibold text-[#1877F2] hover:underline break-all"
-          >
-            {value}
-          </a>
-        ) : (
-          <p className="text-base font-semibold text-[#050505] break-all">{value}</p>
-        )}
-      </div>
-    );
-  };
+  const refreshEmail = useCallback(async () => {
+    if (!info) return;
+    setLoading(true);
+    await new Promise(r => setTimeout(r, 300));
+    const emailData = genEmail();
+    setInfo((prev: any) => ({ ...prev, ...emailData, email: emailData.email, username: emailData.username }));
+    toast({ title: "✓ 邮箱已更新", duration: 1500 });
+    setLoading(false);
+  }, [info, toast]);
 
   return (
-    <div className="min-h-screen bg-[#F0F2F5]">
-      <Snackbar {...snackbar} />
-
-      {/* Facebook 风格顶部导航栏 */}
-      <div className="bg-white shadow-sm border-b border-[#CED0D4] sticky top-0 z-10">
-        <div className="max-w-md mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FacebookLogo />
-            <h1 className="text-lg font-bold text-[#050505]">账号生成器</h1>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 px-4 py-8">
+      <div className="max-w-md mx-auto space-y-5">
+        {/* Header */}
+        <div className="text-center space-y-3">
+          <div className="flex items-center justify-center gap-2 flex-wrap">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              脸书创号小助手
+            </h1>
+            <span className="text-xs font-bold text-white bg-gradient-to-r from-blue-500 to-purple-500 px-2.5 py-1 rounded-full shadow-lg">
+              v2.0
+            </span>
           </div>
-          <span className="text-xs font-semibold text-white bg-[#1877F2] px-2 py-1 rounded-full">v2.0</span>
         </div>
-      </div>
 
-      {/* 主内容区 */}
-      <div className="max-w-md mx-auto px-4 py-5 space-y-4">
-        {/* 生成按钮 */}
+        {/* Generate Button */}
         <Button
-          onClick={handleGenerate}
-          className="w-full h-11 bg-[#1877F2] hover:bg-[#166FE5] text-white font-bold rounded-lg shadow-sm transition-colors text-base"
+          onClick={generate}
+          size="lg"
+          className="w-full h-14 text-lg font-bold rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 shadow-xl hover:shadow-2xl active:scale-95 transition-all"
         >
+          <Sparkles className="w-5 h-5 mr-2" />
           开始创号
         </Button>
 
-        {/* 信息展示卡片 */}
-        {userInfo && (
-          <Card className="p-4 space-y-3 rounded-lg border-[#CED0D4] bg-white shadow-sm">
-            <InfoField label="姓氏" value={userInfo.lastName} copyKey="lastName" />
-            <InfoField label="名字" value={userInfo.firstName} copyKey="firstName" />
-            
-            <div className="bg-[#F0F2F5] rounded-lg p-3">
-              <span className="text-sm font-semibold text-[#65676B] block mb-2">生日</span>
-              <p className="text-base font-semibold text-[#050505]">{userInfo.birthday}</p>
+        {/* Info Card */}
+        {info ? (
+          <Card className="p-5 space-y-4 rounded-2xl shadow-xl border-slate-200 bg-white/80 backdrop-blur">
+            <InfoRow label="姓氏" value={info.lastName} onCopy={() => copy(info.lastName, "姓氏")} />
+            <div className="border-t border-slate-100" />
+            <InfoRow label="名字" value={info.firstName} onCopy={() => copy(info.firstName, "名字")} />
+            <div className="border-t border-slate-100" />
+            <div className="space-y-2">
+              <span className="text-sm font-medium text-slate-600">生日</span>
+              <p className="text-base font-medium text-slate-900">{info.birthday}</p>
             </div>
-            
-            <InfoField label="手机号" value={userInfo.phone} copyKey="phone" />
-            
-            <div>
-              <InfoField 
+            <div className="border-t border-slate-100" />
+            <InfoRow label="手机号" value={info.phone} onCopy={() => copy(info.phone, "手机号")} />
+            <div className="border-t border-slate-100" />
+            <div className="space-y-2">
+              <InfoRow 
                 label="邮箱" 
-                value={userInfo.email} 
-                copyKey="email"
-                onRefresh={regenerateEmail}
-                isLink
-                linkHref={`https://yopmail.com?${userInfo.emailUsername}`}
+                value={info.email} 
+                onCopy={() => copy(info.email, "邮箱")} 
+                onRefresh={refreshEmail}
+                link={`https://yopmail.com?${info.username}`}
+                loading={loading}
               />
-              <p className="text-xs text-[#65676B] mt-2 px-1">💡 点击邮箱地址可跳转查收验证码 不要在TG打开</p>
+              <p className="text-xs text-slate-500 bg-slate-50 px-3 py-2 rounded-lg">
+                💡 点击邮箱跳转查收验证码（不要在TG打开）
+              </p>
             </div>
           </Card>
+        ) : (
+          <Welcome />
         )}
 
-        {/* Telegram 频道引流 */}
-        <Card className="p-4 rounded-lg border-[#CED0D4] bg-white shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
-              <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295-.002 0-.003 0-.005 0l.213-3.054 5.56-5.022c.24-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.832.941z"/>
-              </svg>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[#050505] font-bold text-sm mb-0.5">🎯 神秘代码@fang180</p>
-              <p className="text-[#65676B] text-xs">创号教程、工具更新和独家资源</p>
-            </div>
-          </div>
-          <Button 
-            onClick={() => handleCopy("@fang180", "telegram", "神秘代码")}
-            disabled={copyStates.telegram}
-            className="w-full bg-[#1877F2] hover:bg-[#166FE5] text-white font-semibold rounded-lg h-9 transition-colors disabled:opacity-50"
-          >
-            {copyStates.telegram ? '✓ 已复制' : '复制神秘代码'}
-          </Button>
-        </Card>
+        {/* Telegram Banner */}
+        <TgBanner onCopy={() => copy("@fang180", "神秘代码")} />
       </div>
     </div>
   );
-};
-
-export default Index;
+}
