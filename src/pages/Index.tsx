@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { 
-  CheckCircle, Trash2, Search, Download, 
+  CheckCircle, Search, Download, 
   Copy, X 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -254,14 +254,6 @@ const Index = () => {
             >
               <Search className="w-4 h-4 mr-2" /> 
               {isChecking ? '检测中...' : '开始检测'}
-            </Button>
-            <Button 
-              onClick={clearAll} 
-              variant="ghost" 
-              className="h-11 px-3"
-              disabled={isChecking}
-            >
-              <Trash2 className="w-5 h-5 text-muted-foreground" />
             </Button>
           </div>
         </div>
