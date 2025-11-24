@@ -48,81 +48,58 @@ const genBirthday = () => {
 const InfoRow = ({ label, value, onCopy, onRefresh, link, loading }: any) => (
   <div className="space-y-1.5">
     <div className="flex items-center justify-between">
-      <label className="text-xs font-bold text-white uppercase tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] select-none" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.5)' }}>{label}</label>
+      <label className="text-xs font-semibold text-white/80 uppercase tracking-wide">{label}</label>
       <div className="flex gap-1">
         {onRefresh && (
           <button
             onClick={onRefresh}
             disabled={loading}
-            className="h-8 w-8 flex items-center justify-center rounded-lg bg-white/20 hover:bg-white/30 backdrop-blur-sm disabled:opacity-50 transition-all border border-white/40 shadow-lg"
+            className="h-8 w-8 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur-sm disabled:opacity-50 transition-all border border-white/20"
           >
-            <RefreshCw className={`h-4 w-4 text-white drop-shadow-lg ${loading ? 'animate-spin' : ''}`} style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))' }} />
+            <RefreshCw className={`h-4 w-4 text-white ${loading ? 'animate-spin' : ''}`} />
           </button>
         )}
         <button
           onClick={onCopy}
-          className="h-8 w-8 flex items-center justify-center rounded-lg bg-white/20 hover:bg-white/30 backdrop-blur-sm transition-all border border-white/40 shadow-lg"
+          className="h-8 w-8 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-all border border-white/20"
         >
-          <Copy className="h-4 w-4 text-white drop-shadow-lg" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))' }} />
+          <Copy className="h-4 w-4 text-white" />
         </button>
       </div>
     </div>
-    <div className="bg-white/25 backdrop-blur-md border-2 border-white/40 rounded-xl px-4 py-3.5 shadow-2xl shadow-black/30">
+    <div className="bg-white/15 backdrop-blur-md border border-white/30 rounded-xl px-4 py-3 shadow-lg shadow-black/10">
       {link ? (
         <a 
           href={link} 
           target="_blank" 
           rel="noopener noreferrer" 
-          className="text-sm font-bold text-white hover:text-blue-100 hover:underline break-all transition-colors select-all"
-          style={{ 
-            textShadow: '0 2px 4px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.6)',
-            WebkitFontSmoothing: 'antialiased',
-            MozOsxFontSmoothing: 'grayscale'
-          }}
+          className="text-sm font-medium text-blue-200 hover:text-blue-100 hover:underline break-all transition-colors"
         >
           {value}
         </a>
       ) : (
-        <p className="text-sm font-bold text-white break-all select-all" style={{ 
-          textShadow: '0 2px 4px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.6)',
-          WebkitFontSmoothing: 'antialiased',
-          MozOsxFontSmoothing: 'grayscale',
-          letterSpacing: '0.02em'
-        }}>{value}</p>
+        <p className="text-sm font-medium text-gray-100 break-all">{value}</p>
       )}
     </div>
   </div>
 );
 
 const TgBanner = ({ onCopy }: any) => (
-  <Card className="p-4 rounded-2xl bg-white/25 backdrop-blur-lg border-2 border-white/40 shadow-2xl shadow-black/30">
+  <Card className="p-4 rounded-2xl bg-white/20 backdrop-blur-lg border border-white/30 shadow-xl shadow-black/10">
     <div className="flex items-center gap-3 mb-3">
-      <div className="flex-shrink-0 w-10 h-10 bg-blue-500/40 backdrop-blur-sm rounded-full flex items-center justify-center border-2 border-white/50 shadow-lg">
-        <svg className="w-5 h-5 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 24 24" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))' }}>
+      <div className="flex-shrink-0 w-10 h-10 bg-blue-500/30 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/30">
+        <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
           <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295-.002 0-.003 0-.005 0l.213-3.054 5.56-5.022c.24-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.832.941z"/>
         </svg>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-white font-extrabold text-sm select-none" style={{ 
-          textShadow: '0 2px 4px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.6)',
-          WebkitFontSmoothing: 'antialiased',
-          MozOsxFontSmoothing: 'grayscale'
-        }}>神秘代码 @fang180</p>
-        <p className="text-white/95 font-semibold text-xs select-none" style={{ 
-          textShadow: '0 1px 3px rgba(0,0,0,0.8)',
-          WebkitFontSmoothing: 'antialiased',
-          MozOsxFontSmoothing: 'grayscale'
-        }}>创号教程、工具更新和独家资源</p>
+        <p className="text-white font-semibold text-sm">神秘代码 @fang180</p>
+        <p className="text-white/70 text-xs">创号教程、工具更新和独家资源</p>
       </div>
     </div>
     <Button 
       onClick={onCopy} 
-      className="w-full bg-white/25 hover:bg-white/35 backdrop-blur-sm text-white font-extrabold rounded-xl h-10 shadow-2xl shadow-black/30 border-2 border-white/40 transition-all select-none"
-      style={{ 
-        textShadow: '0 2px 4px rgba(0,0,0,0.9)',
-        WebkitFontSmoothing: 'antialiased',
-        MozOsxFontSmoothing: 'grayscale'
-      }}
+      className="w-full bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white font-semibold rounded-xl h-9 shadow-lg shadow-black/10 border border-white/30 transition-all"
     >
       复制神秘代码
     </Button>
@@ -169,54 +146,38 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-cover bg-center bg-fixed" style={{ backgroundImage: 'url(https://www.584136.xyz/%E5%A4%B4%E5%83%8F/%E8%83%8C%E6%99%AF89.jpg)' }}>
-      {/* 增强清晰度的顶部导航栏 */}
-      <div className="bg-white/20 backdrop-blur-lg border-b-2 border-white/40 shadow-2xl shadow-black/30 sticky top-0 z-50">
+      {/* 玻璃拟态顶部导航栏 */}
+      <div className="bg-white/15 backdrop-blur-lg border-b border-white/30 shadow-xl shadow-black/10 sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center">
           <div className="flex items-center gap-2">
-            <svg className="w-10 h-10 text-blue-300 drop-shadow-2xl" fill="currentColor" viewBox="0 0 24 24" style={{ filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.9))' }}>
+            <svg className="w-10 h-10 text-blue-300 drop-shadow-lg" fill="currentColor" viewBox="0 0 24 24">
               <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
             </svg>
-            <span className="text-xl font-extrabold text-white select-none" style={{ 
-              textShadow: '0 3px 6px rgba(0,0,0,0.9), 0 0 15px rgba(0,0,0,0.7)',
-              WebkitFontSmoothing: 'antialiased',
-              MozOsxFontSmoothing: 'grayscale',
-              letterSpacing: '0.03em'
-            }}>创号小助手</span>
+            <span className="text-xl font-bold text-white drop-shadow-lg">创号小助手</span>
           </div>
         </div>
       </div>
 
       <div className="max-w-md mx-auto px-4 py-6 space-y-4">
-        {/* 增强清晰度的生成按钮 */}
+        {/* 玻璃拟态生成按钮 */}
         <Button
           onClick={generate}
-          className="w-full h-12 text-base font-extrabold rounded-2xl bg-blue-600/90 hover:bg-blue-600 backdrop-blur-md text-white shadow-2xl shadow-black/40 border-2 border-white/40 transition-all select-none"
-          style={{ 
-            textShadow: '0 2px 6px rgba(0,0,0,0.9)',
-            WebkitFontSmoothing: 'antialiased',
-            MozOsxFontSmoothing: 'grayscale',
-            letterSpacing: '0.05em'
-          }}
+          className="w-full h-11 text-base font-semibold rounded-2xl bg-blue-600/80 hover:bg-blue-600/90 backdrop-blur-md text-white shadow-xl shadow-black/20 border border-white/30 transition-all"
         >
-          <Sparkles className="w-5 h-5 mr-2 drop-shadow-lg" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))' }} />
+          <Sparkles className="w-4 h-4 mr-2" />
           开始创号
         </Button>
 
-        {/* 增强清晰度的信息卡片 */}
+        {/* 玻璃拟态信息卡片 */}
         {info && (
-          <Card className="p-5 space-y-4 rounded-2xl bg-white/25 backdrop-blur-lg border-2 border-white/40 shadow-2xl shadow-black/30">
+          <Card className="p-4 space-y-4 rounded-2xl bg-white/20 backdrop-blur-lg border border-white/30 shadow-xl shadow-black/10">
             <InfoRow label="姓氏" value={info.lastName} onCopy={() => copy(info.lastName, "姓氏")} />
             <InfoRow label="名字" value={info.firstName} onCopy={() => copy(info.firstName, "名字")} />
             
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-white uppercase tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] select-none" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.5)' }}>生日</label>
-              <div className="bg-white/25 backdrop-blur-md border-2 border-white/40 rounded-xl px-4 py-3.5 shadow-2xl shadow-black/30">
-                <p className="text-sm font-bold text-white select-all" style={{ 
-                  textShadow: '0 2px 4px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.6)',
-                  WebkitFontSmoothing: 'antialiased',
-                  MozOsxFontSmoothing: 'grayscale',
-                  letterSpacing: '0.02em'
-                }}>{info.birthday}</p>
+              <label className="text-xs font-semibold text-white/80 uppercase tracking-wide">生日</label>
+              <div className="bg-white/15 backdrop-blur-md border border-white/30 rounded-xl px-4 py-3 shadow-lg shadow-black/10">
+                <p className="text-sm font-medium text-gray-100">{info.birthday}</p>
               </div>
             </div>
 
@@ -231,13 +192,8 @@ export default function Index() {
                 link={`https://yopmail.com?${info.username}`}
                 loading={loading}
               />
-              <div className="bg-blue-500/30 backdrop-blur-sm border-2 border-blue-300/50 rounded-xl px-3.5 py-2.5 shadow-2xl shadow-black/20">
-                <p className="text-xs text-white font-bold select-none" style={{ 
-                  textShadow: '0 2px 4px rgba(0,0,0,0.9)',
-                  WebkitFontSmoothing: 'antialiased',
-                  MozOsxFontSmoothing: 'grayscale',
-                  letterSpacing: '0.01em'
-                }}>
+              <div className="bg-blue-500/20 backdrop-blur-sm border border-blue-300/30 rounded-xl px-3 py-2 shadow-lg shadow-black/10">
+                <p className="text-xs text-blue-100 font-medium">
                   💡 点击邮箱跳转查收验证码（不要在TG打开）
                 </p>
               </div>
@@ -245,7 +201,7 @@ export default function Index() {
           </Card>
         )}
 
-        {/* 增强清晰度的Telegram横幅 */}
+        {/* 玻璃拟态Telegram横幅 */}
         <TgBanner onCopy={() => copy("@fang180", "神秘代码")} />
       </div>
     </div>
