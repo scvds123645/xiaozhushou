@@ -1,284 +1,308 @@
-import { useState, useCallback, useMemo, useReducer } from "react";
-import { CheckCircle, Loader2, Trash2, Search } from "lucide-react";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { InfoBanner } from "@/components/InfoBanner";
-import { InputHint } from "@/components/InputHint";
-import { ProgressBar } from "@/components/ProgressBar";
-import { ResultCard } from "@/components/ResultCard";
+import { useState, useCallback, useMemo, useReducer, memo } from "react";
+import { CheckCircle, Loader2, Trash2, Search, Download, Moon, Sun, AlertCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-// 状态管理优化：使用reducer管理复杂状态
-interface AppState {
-  input: string;
+// ============= Types =============
+type NotificationType = "info" | "success" | "error" | "warning";
+type DetectionState = {
+  alive: string[];
+  dead: string[];
+  total: number;
+  processed: number;
   isDetecting: boolean;
-  aliveIds: string[];
-  deadIds: string[];
-  totalCount: number;
-  processedCount: number;
   showResults: boolean;
-  hint: {
-    message: string;
-    type: "error" | "success" | "warning" | "info";
-    visible: boolean;
-  };
-  notification: {
-    message: string;
-    type: "info" | "success" | "error" | "warning";
-    visible: boolean;
-  };
-}
-
-type AppAction =
-  | { type: "SET_INPUT"; payload: string }
-  | { type: "START_DETECTION" }
-  | { type: "SET_DETECTION_RESULTS"; payload: { alive: string[]; dead: string[] } }
-  | { type: "INCREMENT_PROCESSED_COUNT" }
-  | { type: "SET_PROCESSED_COUNT"; payload: number }
-  | { type: "SET_TOTAL_COUNT"; payload: number }
-  | { type: "SET_SHOW_RESULTS"; payload: boolean }
-  | { type: "SET_HINT"; payload: Partial<AppState["hint"]> }
-  | { type: "SET_NOTIFICATION"; payload: Partial<AppState["notification"]> }
-  | { type: "CLEAR_ALL" };
-
-const initialState: AppState = {
-  input: "",
-  isDetecting: false,
-  aliveIds: [],
-  deadIds: [],
-  totalCount: 0,
-  processedCount: 0,
-  showResults: false,
-  hint: { message: "", type: "info", visible: false },
-  notification: { message: "", type: "info", visible: false },
 };
 
-function appReducer(state: AppState, action: AppAction): AppState {
+type Action =
+  | { type: "START_DETECTION"; payload: number }
+  | { type: "UPDATE_PROGRESS"; payload: number }
+  | { type: "ADD_RESULT"; payload: { uid: string; isAlive: boolean } }
+  | { type: "FINISH_DETECTION" }
+  | { type: "RESET" };
+
+// ============= Reducer =============
+const detectionReducer = (state: DetectionState, action: Action): DetectionState => {
   switch (action.type) {
-    case "SET_INPUT":
-      return { ...state, input: action.payload, hint: { ...state.hint, visible: false } };
     case "START_DETECTION":
+      return { ...state, alive: [], dead: [], total: action.payload, processed: 0, isDetecting: true, showResults: false };
+    case "UPDATE_PROGRESS":
+      return { ...state, processed: action.payload };
+    case "ADD_RESULT":
       return {
         ...state,
-        isDetecting: true,
-        aliveIds: [],
-        deadIds: [],
-        processedCount: 0,
-        showResults: false,
+        alive: action.payload.isAlive ? [...state.alive, action.payload.uid] : state.alive,
+        dead: !action.payload.isAlive ? [...state.dead, action.payload.uid] : state.dead,
+        processed: state.processed + 1,
       };
-    case "SET_DETECTION_RESULTS":
-      return {
-        ...state,
-        aliveIds: action.payload.alive,
-        deadIds: action.payload.dead,
-        showResults: true,
-        isDetecting: false,
-      };
-    case "INCREMENT_PROCESSED_COUNT":
-      return { ...state, processedCount: state.processedCount + 1 };
-    case "SET_PROCESSED_COUNT":
-      return { ...state, processedCount: action.payload };
-    case "SET_TOTAL_COUNT":
-      return { ...state, totalCount: action.payload };
-    case "SET_SHOW_RESULTS":
-      return { ...state, showResults: action.payload };
-    case "SET_HINT":
-      return { ...state, hint: { ...state.hint, ...action.payload } };
-    case "SET_NOTIFICATION":
-      return { ...state, notification: { ...state.notification, ...action.payload } };
-    case "CLEAR_ALL":
-      return {
-        ...initialState,
-        hint: state.hint,
-        notification: state.notification,
-      };
+    case "FINISH_DETECTION":
+      return { ...state, isDetecting: false, showResults: true };
+    case "RESET":
+      return { alive: [], dead: [], total: 0, processed: 0, isDetecting: false, showResults: false };
     default:
       return state;
   }
-}
-
-// 工具函数提取
-const extract14DigitUID = (line: string): string | null => {
-  const match = line.match(/\b\d{14}\b/);
-  return match ? match[0] : null;
 };
 
+// ============= Custom Hooks =============
+const useNotification = () => {
+  const [notification, setNotification] = useState<{ message: string; type: NotificationType; visible: boolean }>({
+    message: "",
+    type: "info",
+    visible: false,
+  });
+
+  const show = useCallback((message: string, type: NotificationType = "info", duration = 4000) => {
+    setNotification({ message, type, visible: true });
+    setTimeout(() => setNotification((prev) => ({ ...prev, visible: false })), duration);
+  }, []);
+
+  return { notification, show };
+};
+
+const useTheme = () => {
+  const [isDark, setIsDark] = useState(() => window.matchMedia("(prefers-color-scheme: dark)").matches);
+  
+  const toggle = useCallback(() => {
+    setIsDark((prev) => !prev);
+    document.documentElement.classList.toggle("dark");
+  }, []);
+
+  return { isDark, toggle };
+};
+
+const useUIDExtractor = () => {
+  const extract = useCallback((text: string): string[] => {
+    const lines = text.split("\n").filter((line) => line.trim());
+    const uids = new Set<string>();
+    
+    lines.forEach((line) => {
+      const match = line.match(/\b\d{14}\b/);
+      if (match) uids.add(match[0]);
+    });
+    
+    return Array.from(uids);
+  }, []);
+
+  return { extract };
+};
+
+// ============= API =============
 const checkFbAccount = async (uid: string): Promise<boolean> => {
   try {
     const url = `https://graph.facebook.com/${uid}/picture?type=normal`;
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      },
-      redirect: "follow",
-    });
+    const response = await fetch(url, { redirect: "follow" });
     return !response.url.includes("rsrc.php");
-  } catch (error) {
-    console.error(`检测UID ${uid} 时发生错误:`, error);
+  } catch {
     return false;
   }
 };
 
-const processBatch = async (uids: string[], concurrency = 5, onProgress: () => void) => {
-  const results: { uid: string; isAlive: boolean }[] = [];
-  
+const detectBatch = async (uids: string[], concurrency: number, onProgress: (uid: string, isAlive: boolean) => void) => {
   for (let i = 0; i < uids.length; i += concurrency) {
     const batch = uids.slice(i, i + concurrency);
-    const batchResults = await Promise.all(
+    await Promise.allSettled(
       batch.map(async (uid) => {
         const isAlive = await checkFbAccount(uid);
-        onProgress();
-        return { uid, isAlive };
+        onProgress(uid, isAlive);
       })
     );
-    results.push(...batchResults);
   }
-  
-  return results;
 };
 
+// ============= Components =============
+const Notification = memo(({ message, type, visible }: { message: string; type: NotificationType; visible: boolean }) => {
+  if (!visible) return null;
+  
+  const colors = {
+    info: "bg-blue-500/90",
+    success: "bg-green-500/90",
+    error: "bg-red-500/90",
+    warning: "bg-yellow-500/90",
+  };
+
+  return (
+    <div className={`${colors[type]} text-white px-4 py-3 rounded-xl mb-3 shadow-lg animate-in slide-in-from-top`}>
+      <p className="text-sm sm:text-base font-medium">{message}</p>
+    </div>
+  );
+});
+
+const ProgressBar = memo(({ current, total, visible }: { current: number; total: number; visible: boolean }) => {
+  if (!visible) return null;
+  
+  const percentage = total > 0 ? (current / total) * 100 : 0;
+  
+  return (
+    <div className="mt-4">
+      <div className="flex justify-between text-xs sm:text-sm text-muted-foreground mb-2">
+        <span>检测进度</span>
+        <span className="font-mono">{current}/{total} ({percentage.toFixed(1)}%)</span>
+      </div>
+      <div className="h-2 bg-secondary rounded-full overflow-hidden">
+        <div className="h-full bg-primary transition-all duration-300" style={{ width: `${percentage}%` }} />
+      </div>
+    </div>
+  );
+});
+
+const ResultCard = memo(({ type, count, uids }: { type: "alive" | "dead"; count: number; uids: string[] }) => {
+  const [expanded, setExpanded] = useState(false);
+  
+  const config = {
+    alive: { icon: CheckCircle, color: "text-green-500", bg: "bg-green-500/10", label: "存活账号" },
+    dead: { icon: XCircle, color: "text-red-500", bg: "bg-red-500/10", label: "失效账号" },
+  };
+
+  const { icon: Icon, color, bg, label } = config[type];
+
+  const exportData = useCallback(() => {
+    const text = uids.join("\n");
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${type}_uids_${Date.now()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [uids, type]);
+
+  return (
+    <div className={`${bg} rounded-xl p-4 sm:p-5`}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Icon className={`${color} w-5 h-5 sm:w-6 sm:h-6`} />
+          <h3 className="font-semibold text-base sm:text-lg">{label}</h3>
+          <span className={`${color} font-bold text-lg sm:text-xl`}>{count}</span>
+        </div>
+        {count > 0 && (
+          <Button onClick={exportData} size="sm" variant="ghost" className="h-8 text-xs sm:text-sm">
+            <Download className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+            导出
+          </Button>
+        )}
+      </div>
+      
+      {count > 0 && (
+        <>
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors mb-2"
+          >
+            {expanded ? "收起" : "展开"} ({count} 个)
+          </button>
+          
+          {expanded && (
+            <div className="mt-3 max-h-60 overflow-y-auto bg-background/50 rounded-lg p-3">
+              <div className="font-mono text-xs sm:text-sm space-y-1">
+                {uids.map((uid, idx) => (
+                  <div key={uid} className="py-1 px-2 hover:bg-secondary/50 rounded transition-colors">
+                    {idx + 1}. {uid}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+});
+
+// ============= Main Component =============
 const Index = () => {
-  const [state, dispatch] = useReducer(appReducer, initialState);
+  const [input, setInput] = useState("");
+  const [state, dispatch] = useReducer(detectionReducer, {
+    alive: [],
+    dead: [],
+    total: 0,
+    processed: 0,
+    isDetecting: false,
+    showResults: false,
+  });
+  
+  const { notification, show } = useNotification();
+  const { isDark, toggle: toggleTheme } = useTheme();
+  const { extract } = useUIDExtractor();
 
-  // 性能优化：使用useCallback缓存函数
-  const showInputHint = useCallback((message: string, type: "error" | "success" | "warning" | "info" = "error") => {
-    dispatch({ type: "SET_HINT", payload: { message, type, visible: true } });
-    setTimeout(() => dispatch({ type: "SET_HINT", payload: { visible: false } }), 4000);
-  }, []);
-
-  const showNotificationBanner = useCallback((message: string, type: "info" | "success" | "error" | "warning" = "success") => {
-    dispatch({ type: "SET_NOTIFICATION", payload: { message, type, visible: true } });
-    setTimeout(() => dispatch({ type: "SET_NOTIFICATION", payload: { visible: false } }), 5000);
-  }, []);
-
-  // 用户体验改进：增强输入验证
-  const validateInput = useCallback((inputValue: string) => {
-    if (!inputValue.trim()) {
-      showInputHint("请输入需要检测的文本", "error");
-      return false;
-    }
-
-    const lines = inputValue.split("\n").map(line => line.trim()).filter(line => line);
-    if (lines.length === 0) {
-      showInputHint("输入的内容无效，请检查格式", "error");
-      return false;
-    }
-
-    const extractedUIDs = lines.map(extract14DigitUID).filter(Boolean) as string[];
-    if (extractedUIDs.length === 0) {
-      showInputHint("未找到任何14位数字的UID，请检查输入格式", "error");
-      return false;
-    }
-
-    return extractedUIDs;
-  }, [showInputHint]);
+  const detectedCount = useMemo(() => extract(input).length, [input, extract]);
 
   const startDetection = useCallback(async () => {
-    const extractedUIDs = validateInput(state.input);
-    if (!extractedUIDs) return;
+    const uids = extract(input.trim());
+    
+    if (uids.length === 0) {
+      show("未找到任何14位数字的UID，请检查输入格式", "error");
+      return;
+    }
 
-    const skippedCount = state.input.split("\n").length - extractedUIDs.length;
+    if (uids.length > 1000) {
+      show("检测数量过大，建议分批处理（单批≤1000个）", "warning");
+      return;
+    }
 
-    dispatch({ type: "START_DETECTION" });
-    dispatch({ type: "SET_TOTAL_COUNT", payload: extractedUIDs.length });
+    dispatch({ type: "START_DETECTION", payload: uids.length });
 
     try {
-      const results = await processBatch(
-        extractedUIDs, 
-        5, 
-        () => dispatch({ type: "INCREMENT_PROCESSED_COUNT" })
-      );
-
-      const alive: string[] = [];
-      const dead: string[] = [];
-
-      results.forEach(({ uid, isAlive }) => {
-        if (isAlive) alive.push(uid);
-        else dead.push(uid);
+      await detectBatch(uids, 5, (uid, isAlive) => {
+        dispatch({ type: "ADD_RESULT", payload: { uid, isAlive } });
       });
-
-      dispatch({ type: "SET_DETECTION_RESULTS", payload: { alive, dead } });
-
-      let successMsg = `检测完成！存活 ${alive.length} 个，失效 ${dead.length} 个`;
-      if (skippedCount > 0) {
-        successMsg += `，跳过 ${skippedCount} 行无效数据`;
-      }
-      showNotificationBanner(successMsg, "success");
+      
+      dispatch({ type: "FINISH_DETECTION" });
+      show(`检测完成！存活 ${state.alive.length} 个，失效 ${state.dead.length} 个`, "success");
     } catch (error) {
-      console.error("检测过程出错:", error);
-      showNotificationBanner("检测过程出错，请检查网络后重试", "error");
-      dispatch({ type: "SET_SHOW_RESULTS", payload: false });
+      show("检测过程出错，请检查网络后重试", "error");
+      dispatch({ type: "FINISH_DETECTION" });
     }
-  }, [state.input, validateInput, showNotificationBanner]);
+  }, [input, extract, show, state.alive.length, state.dead.length]);
 
   const clearAll = useCallback(() => {
-    dispatch({ type: "CLEAR_ALL" });
-  }, []);
-
-  const handleInputChange = useCallback((value: string) => {
-    dispatch({ type: "SET_INPUT", payload: value });
-  }, []);
-
-  // 性能优化：使用useMemo缓存计算结果
-  const hasResults = useMemo(() => 
-    state.showResults && (state.aliveIds.length > 0 || state.deadIds.length > 0), 
-    [state.showResults, state.aliveIds.length, state.deadIds.length]
-  );
-
-  const isEmptyState = useMemo(() => 
-    !state.showResults && !state.isDetecting, 
-    [state.showResults, state.isDetecting]
-  );
+    if (state.total > 0 && !confirm("确定要清空所有数据吗？")) return;
+    setInput("");
+    dispatch({ type: "RESET" });
+  }, [state.total]);
 
   return (
     <div className="min-h-screen bg-background">
-      {/* 导航栏 */}
-      <header className="sticky top-0 z-50 h-12 sm:h-14 border-b border-border/50 bg-card/70 glass-effect">
-        <div className="max-w-6xl mx-auto px-3 sm:px-5 h-full flex items-center justify-between">
-          <div className="flex items-center gap-1.5 sm:gap-2 font-semibold text-base sm:text-lg">
-            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-              <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
+      {/* Header */}
+      <header className="sticky top-0 z-50 h-14 border-b bg-card/80 backdrop-blur-lg">
+        <div className="max-w-6xl mx-auto px-4 h-full flex items-center justify-between">
+          <div className="flex items-center gap-2 font-semibold text-lg">
+            <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
+              <CheckCircle className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="truncate">FB账号存活检测</span>
+            <span className="hidden sm:inline">FB账号存活检测</span>
+            <span className="sm:hidden">FB检测</span>
           </div>
-          <ThemeToggle />
+          <Button onClick={toggleTheme} size="icon" variant="ghost" className="w-9 h-9">
+            {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          </Button>
         </div>
       </header>
 
-      {/* 主内容 */}
-      <main className="max-w-6xl mx-auto px-3 sm:px-5 py-3 sm:py-5">
-        <InfoBanner />
-        
-        {/* 通知横幅 */}
-        <InfoBanner 
-          message={state.notification.message}
-          type={state.notification.type}
-          visible={state.notification.visible}
-        />
+      {/* Main */}
+      <main className="max-w-6xl mx-auto px-4 py-5">
+        <Notification {...notification} />
 
-        {/* 输入卡片 */}
-        <div className="bg-card/70 glass-effect rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm mb-3 sm:mb-5 transition-smooth hover:shadow-md">
-          <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-5">输入待检测账号</h2>
+        {/* Input Card */}
+        <div className="bg-card rounded-2xl p-5 shadow-sm mb-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">输入待检测账号</h2>
+            {detectedCount > 0 && (
+              <span className="text-sm text-muted-foreground">
+                已识别 <span className="font-bold text-primary">{detectedCount}</span> 个UID
+              </span>
+            )}
+          </div>
 
           <textarea
-            value={state.input}
-            onChange={(e) => handleInputChange(e.target.value)}
-            placeholder="请输入包含14位FB账号UID的文本（一行一个）&#10;例如：&#10;100012345678901&#10;UID: 100012345678902 备注信息&#10;账号100012345678903已激活"
-            className="w-full min-h-[140px] sm:min-h-[160px] p-3 sm:p-4 bg-secondary/60 rounded-xl font-mono text-xs sm:text-sm text-foreground resize-y focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-            aria-label="待检测的FB账号UID"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="请输入包含14位FB账号UID的文本（一行一个）&#10;例如：100012345678901"
+            className="w-full min-h-[160px] p-4 bg-secondary/60 rounded-xl font-mono text-sm resize-y focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
             disabled={state.isDetecting}
           />
-          <InputHint 
-            message={state.hint.message} 
-            type={state.hint.type} 
-            visible={state.hint.visible} 
-          />
 
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-3 sm:mt-5 mb-3 sm:mb-5">
-            <Button
-              onClick={startDetection}
-              disabled={state.isDetecting}
-              className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-10 sm:h-11 rounded-xl transition-smooth text-sm sm:text-base"
-            >
+          <div className="flex gap-3 mt-4">
+            <Button onClick={startDetection} disabled={state.isDetecting} className="flex-1 h-11 rounded-xl font-semibold">
               {state.isDetecting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -291,43 +315,29 @@ const Index = () => {
                 </>
               )}
             </Button>
-            <Button
-              onClick={clearAll}
-              disabled={state.isDetecting}
-              variant="secondary"
-              className="flex-1 sm:flex-none sm:min-w-[120px] h-10 sm:h-11 rounded-xl font-semibold text-sm sm:text-base"
-            >
+            <Button onClick={clearAll} disabled={state.isDetecting} variant="secondary" className="h-11 px-6 rounded-xl font-semibold">
               <Trash2 className="w-4 h-4 mr-2" />
               清空
             </Button>
           </div>
 
-          <ProgressBar 
-            current={state.processedCount} 
-            total={state.totalCount} 
-            visible={state.isDetecting} 
-          />
+          <ProgressBar current={state.processed} total={state.total} visible={state.isDetecting} />
         </div>
 
-        {/* 结果展示 */}
-        {hasResults && (
-          <div className="bg-card/70 glass-effect rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm">
-            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-5">检测结果</h2>
-            <div className="grid grid-cols-1 gap-3 sm:gap-4">
-              <ResultCard type="alive" count={state.aliveIds.length} uids={state.aliveIds} />
-              <ResultCard type="dead" count={state.deadIds.length} uids={state.deadIds} />
+        {/* Results */}
+        {state.showResults ? (
+          <div className="bg-card rounded-2xl p-5 shadow-sm">
+            <h2 className="text-xl font-semibold mb-4">检测结果</h2>
+            <div className="space-y-4">
+              <ResultCard type="alive" count={state.alive.length} uids={state.alive} />
+              <ResultCard type="dead" count={state.dead.length} uids={state.dead} />
             </div>
           </div>
-        )}
-
-        {/* 空状态 */}
-        {isEmptyState && (
-          <div className="bg-card/70 glass-effect rounded-xl sm:rounded-2xl p-8 sm:p-12 shadow-sm text-center">
-            <div className="text-4xl sm:text-6xl mb-3 sm:mb-4">🔍</div>
-            <h3 className="text-lg sm:text-xl font-semibold mb-2">暂无检测结果</h3>
-            <p className="text-muted-foreground text-sm sm:text-base px-2">
-              请在上方输入框中输入包含14位FB账号UID的文本，然后点击"开始检测"按钮
-            </p>
+        ) : !state.isDetecting && (
+          <div className="bg-card rounded-2xl p-12 shadow-sm text-center">
+            <div className="text-6xl mb-4">🔍</div>
+            <h3 className="text-xl font-semibold mb-2">暂无检测结果</h3>
+            <p className="text-muted-foreground">请在上方输入框中输入包含14位FB账号UID的文本</p>
           </div>
         )}
       </main>
