@@ -294,27 +294,7 @@ const Index = () => {
           </div>
         </div>
 
-        {/* 统计面板 */}
-        {stats.total > 0 && (
-          <div className="bg-card rounded-xl border p-4 shadow-sm">
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <div className="text-sm text-muted-foreground mb-1">总数</div>
-                <div className="text-2xl font-bold font-mono">{stats.total}</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground mb-1">已检测</div>
-                <div className="text-2xl font-bold font-mono text-blue-600">{stats.processed}</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground mb-1">进度</div>
-                <div className="text-2xl font-bold font-mono">
-                  {stats.total > 0 ? Math.round((stats.processed / stats.total) * 100) : 0}%
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+
 
         {/* 结果区域 */}
         {(liveList || dieList) && (
