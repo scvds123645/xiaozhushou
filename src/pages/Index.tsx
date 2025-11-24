@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 // ============ 数据配置 ============
 const MOBILE_PREFIXES = ["134","135","136","137","138","139","147","150","151","152","157","158","159","178","182","183","184","187","188","198","130","131","132","145","155","156","166","171","175","176","185","186","133","149","153","173","177","180","181","189","191","199"];
 
-const EMAIL_SUFFIXES = ["@yopmail.com","@gmail.yopmail.com","@00two.shop","@123456.yopmail.com","@abc.yopmail.com","@ali.yopmail.com","@jetable.org","@mail.yopmail.com","@yomail.info","@cool.fr.nf","@jetable.fr.nf","@nospam.ze.tc","@nomail.xl.cx","@mega.zik.dj","@speed.1s.fr","@courriel.fr.nf","@moncourrier.fr.nf","@monmail.fr.nf","@hide.biz.st","@mymail.infos.st","@guerrillamail.com","@sharklasers.com","@grr.la","@guerrillamail.biz","@guerrillamail.de","@spam4.me","@mintemail.com","@tmails.net","@temp-mail.org","@temp-mail.io","@10minutemail.com","@mailinator.com","@dispostable.com","@throwaway.email","@maildrop.cc","@tempmail.dev","@getnada.com","@emailondeck.com","@trashmail.com","@mohmal.com","@tempinbox.com","@harakirimail.com","@mailcatch.com","@yopmail.fr","@yopmail.net","@cool.fr.nf","@jetable.fr.nf","@courriel.fr.nf","@monemail.fr.nf","@imails.info"];
+const EMAIL_SUFFIXES = ["@yopmail.com","@gmail.yopmail.com"];
 
 const NAME_PARTS = ["john","mike","alex","david","chris","james","robert","michael","william","daniel","smith","brown","jones","wilson","taylor","davis","miller","moore","anderson","jackson","white","harris","martin","lee","walker","sam","tom","ben","joe","max"];
 
@@ -100,28 +100,6 @@ const TgBanner = ({ onCopy }: any) => (
   </Card>
 );
 
-const Welcome = () => (
-  <Card className="p-6 rounded-2xl shadow-lg border-2 border-dashed border-slate-200 bg-gradient-to-br from-slate-50 to-white">
-    <div className="text-center space-y-4">
-      <div className="flex justify-center">
-        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center animate-pulse">
-          <Sparkles className="w-8 h-8 text-white" />
-        </div>
-      </div>
-      <div>
-        <h3 className="text-xl font-bold text-slate-900 mb-2">开始创建账号</h3>
-        <p className="text-sm text-slate-600 leading-relaxed">
-          点击上方按钮，自动生成姓名、生日、<br/>手机号和临时邮箱地址
-        </p>
-      </div>
-      <div className="pt-2 space-y-2 text-xs text-slate-500">
-        <p>💡 所有信息随机生成，仅供合法用途</p>
-        <p>📧 临时邮箱可接收验证码，10分钟有效</p>
-      </div>
-    </div>
-  </Card>
-);
-
 // ============ 主组件 ============
 export default function Index() {
   const [info, setInfo] = useState<any>(null);
@@ -186,7 +164,7 @@ export default function Index() {
         </Button>
 
         {/* Info Card */}
-        {info ? (
+        {info && (
           <Card className="p-5 space-y-4 rounded-2xl shadow-xl border-slate-200 bg-white/80 backdrop-blur">
             <InfoRow label="姓氏" value={info.lastName} onCopy={() => copy(info.lastName, "姓氏")} />
             <div className="border-t border-slate-100" />
@@ -213,8 +191,6 @@ export default function Index() {
               </p>
             </div>
           </Card>
-        ) : (
-          <Welcome />
         )}
 
         {/* Telegram Banner */}
