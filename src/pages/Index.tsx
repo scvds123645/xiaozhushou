@@ -14,7 +14,7 @@ type Stats = { total: number; processed: number; alive: number; dead: number; st
 const CONSTANTS = {
   CONCURRENCY: 20,
   TIMEOUT: 5000,
-  REGEX: /\b\d{14,16}\b/,
+  REGEX: /\b\d{14}\b/,
 };
 
 const extractUIDs = (text: string): string[] => {
@@ -298,7 +298,7 @@ const Index = () => {
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="在此粘贴UID，自动识别14-16位数字，支持混合文本..."
+            placeholder="在此粘贴UID，自动识别14位数字，支持混合文本..."
             className="w-full min-h-[120px] sm:min-h-[150px] p-3 bg-secondary/30 rounded-lg border focus:ring-2 focus:ring-primary/50 text-xs sm:text-sm font-mono resize-y"
             disabled={status === 'running' || status === 'paused'}
           />
