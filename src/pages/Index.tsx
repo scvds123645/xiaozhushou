@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { 
   CheckCircle, Search, Download, 
   Copy, X 
@@ -8,6 +8,34 @@ import { Button } from "@/components/ui/button";
 // --- 类型定义 ---
 type DetectionResult = { uid: string; status: "alive" | "dead" };
 type Stats = { liveCount: number; dieCount: number; processed: number; total: number };
+
+// --- 加载 SweetAlert2 ---
+const useSweetAlert = () => {
+  const [Swal, setSwal] = useState<any>(null);
+
+  useEffect(() => {
+    // 加载 SweetAlert2 CSS
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/11.7.32/sweetalert2.min.css';
+    document.head.appendChild(link);
+
+    // 加载 SweetAlert2 JS
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/11.7.32/sweetalert2.all.min.js';
+    script.onload = () => {
+      setSwal((window as any).Swal);
+    };
+    document.head.appendChild(script);
+
+    return () => {
+      document.head.removeChild(link);
+      document.head.removeChild(script);
+    };
+  }, []);
+
+  return Swal;
+};
 
 // --- 核心检测类 ---
 class CheckFbLive {
@@ -148,10 +176,48 @@ const Index = () => {
   const [isChecking, setIsChecking] = useState(false);
   
   const checkFbLiveRef = useRef<CheckFbLive | null>(null);
+  const Swal = useSweetAlert();
+
+  const showAutoCloseAlert = (title: string, html: string, timer: number = 2000) => {
+    if (!Swal) return;
+
+    let timerInterval: any;
+    Swal.fire({
+      title: title,
+      html: html,
+      timer: timer,
+      timerProgressBar: true,
+      didOpen: () => {
+        Swal.showLoading();
+        const timerElement = Swal.getPopup().querySelector("b");
+        if (timerElement) {
+          timerInterval = setInterval(() => {
+            timerElement.textContent = `${Swal.getTimerLeft()}`;
+          }, 100);
+        }
+      },
+      willClose: () => {
+        clearInterval(timerInterval);
+      }
+    }).then((result: any) => {
+      if (result.dismiss === Swal.DismissReason.timer) {
+        console.log("Alert was closed by the timer");
+      }
+    });
+  };
 
   const handleStart = () => {
     if (!input.trim()) {
-      alert("请输入UID列表");
+      if (Swal) {
+        Swal.fire({
+          icon: 'warning',
+          title: '提示',
+          text: '请输入UID列表',
+          confirmButtonText: '确定'
+        });
+      } else {
+        alert("请输入UID列表");
+      }
       return;
     }
 
@@ -165,6 +231,13 @@ const Index = () => {
     
     const totalIds = checker.objIds.length;
     setStats(prev => ({ ...prev, total: totalIds }));
+
+    // 显示开始检测提示
+    showAutoCloseAlert(
+      "开始检测",
+      `正在检测 <b>${totalIds}</b> 个UID，请稍候...`,
+      1500
+    );
 
     checker.checkLiveWithThreads(
       100,
@@ -188,6 +261,25 @@ const Index = () => {
       () => {
         setIsChecking(false);
         if (navigator.vibrate) navigator.vibrate(100);
+        
+        // 显示完成提示
+        if (Swal) {
+          Swal.fire({
+            icon: 'success',
+            title: '检测完成!',
+            html: `
+              <div style="text-align: left; padding: 10px;">
+                <p>✅ 存活: <b>${checker.liveCount}</b> 个</p>
+                <p>❌ 失效: <b>${checker.dieCount}</b> 个</p>
+                <p>📊 总计: <b>${checker.liveCount + checker.dieCount}</b> 个</p>
+              </div>
+            `,
+            timer: 3000,
+            timerProgressBar: true,
+            showConfirmButton: true,
+            confirmButtonText: '确定'
+          });
+        }
       }
     );
   };
@@ -200,12 +292,25 @@ const Index = () => {
     a.download = `fb-${prefix}-${new Date().toLocaleTimeString().replace(/:/g, '-')}.txt`;
     a.click();
     URL.revokeObjectURL(url);
+
+    // 显示导出成功提示
+    showAutoCloseAlert(
+      "导出成功",
+      `文件已保存为 <b>fb-${prefix}-*.txt</b>`,
+      1500
+    );
   };
 
   const copyData = (data: string) => {
     const lines = data.split('\n').filter(l => l.trim()).length;
     navigator.clipboard.writeText(data);
-    alert(`已复制 ${lines} 个UID`);
+    
+    // 使用 SweetAlert2 显示复制成功
+    showAutoCloseAlert(
+      "复制成功",
+      `已复制 <b>${lines}</b> 个UID到剪贴板`,
+      1500
+    );
   };
 
   const clearAll = () => {
@@ -238,7 +343,7 @@ const Index = () => {
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="在此粘贴UID，每行一个，支持混合文本（自动提取14位数字）..."
+            placeholder="在此粘贴UID,每行一个,支持混合文本(自动提取14位数字)..."
             className="w-full min-h-[120px] sm:min-h-[150px] p-3 bg-secondary/30 rounded-lg border focus:ring-2 focus:ring-primary/50 text-xs sm:text-sm font-mono resize-y"
             disabled={isChecking}
           />
@@ -253,9 +358,23 @@ const Index = () => {
               {isChecking ? '检测中...' : '开始检测'}
             </Button>
           </div>
+
+          {/* 进度显示 */}
+          {isChecking && stats.total > 0 && (
+            <div className="bg-secondary/30 rounded-lg p-3 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>进度: {stats.processed} / {stats.total}</span>
+                <span>{Math.round((stats.processed / stats.total) * 100)}%</span>
+              </div>
+              <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
+                <div 
+                  className="bg-primary h-full transition-all duration-300"
+                  style={{ width: `${(stats.processed / stats.total) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
-
-
 
         {/* 结果区域 */}
         {(liveList || dieList) && (
