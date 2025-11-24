@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Copy, RefreshCw, Sparkles } from "lucide-react";
@@ -6,9 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 
 // ============ 数据配置 ============
 const MOBILE_PREFIXES = ["134","135","136","137","138","139","147","150","151","152","157","158","159","178","182","183","184","187","188","198","130","131","132","145","155","156","166","171","175","176","185","186","133","149","153","173","177","180","181","189","191","199"];
-const EMAIL_SUFFIXES = [
- "@yopmail.com","@00two.shop"
- ];
+const EMAIL_SUFFIXES = ["@yopmail.com","@00two.shop"];
 const NAME_PARTS = ["john","mike","alex","david","chris","james","robert","michael","william","daniel","smith","brown","jones","wilson","taylor","davis","miller","moore","anderson","jackson","white","harris","martin","lee","walker","sam","tom","ben","joe","max"];
 
 // ============ 工具函数 ============
@@ -44,24 +42,26 @@ const genBirthday = () => {
   return `${year}年${pad(randomInt(1, 12))}月${pad(randomInt(1, 28))}日`;
 };
 
-// ============ 组件 ============
-const InfoRow = ({ label, value, onCopy, onRefresh, link, loading }: any) => (
+// ============ 优化后的子组件 (使用 memo 避免不必要的重渲染) ============
+const InfoRow = memo(({ label, value, onCopy, onRefresh, link, loading }: any) => (
   <div className="space-y-1.5">
     <div className="flex items-center justify-between">
-      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</label>
+      <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{label}</label>
       <div className="flex gap-1">
         {onRefresh && (
           <button
             onClick={onRefresh}
             disabled={loading}
-            className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-gray-100 disabled:opacity-50 transition-colors"
+            className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-gray-200 disabled:opacity-50"
+            style={{ transition: 'background-color 0.15s' }}
           >
             <RefreshCw className={`h-4 w-4 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
           </button>
         )}
         <button
           onClick={onCopy}
-          className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-gray-100 transition-colors"
+          className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-gray-200"
+          style={{ transition: 'background-color 0.15s' }}
         >
           <Copy className="h-4 w-4 text-gray-600" />
         </button>
@@ -82,10 +82,12 @@ const InfoRow = ({ label, value, onCopy, onRefresh, link, loading }: any) => (
       )}
     </div>
   </div>
-);
+));
 
-const TgBanner = ({ onCopy }: any) => (
-  <Card className="p-4 rounded-lg bg-white border border-gray-300 shadow-sm">
+InfoRow.displayName = 'InfoRow';
+
+const TgBanner = memo(({ onCopy }: any) => (
+  <Card className="p-4 rounded-lg bg-white border border-gray-300">
     <div className="flex items-center gap-3 mb-3">
       <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
         <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
@@ -99,17 +101,21 @@ const TgBanner = ({ onCopy }: any) => (
     </div>
     <Button 
       onClick={onCopy} 
-      className="w-full bg-gray-200 text-gray-700 hover:bg-gray-300 font-semibold rounded-md h-9 shadow-none"
+      className="w-full bg-gray-200 text-gray-700 hover:bg-gray-300 font-semibold rounded-md h-9"
+      style={{ transition: 'background-color 0.15s' }}
     >
       复制神秘代码
     </Button>
   </Card>
-);
+));
+
+TgBanner.displayName = 'TgBanner';
 
 // ============ 主组件 ============
 export default function Index() {
   const [info, setInfo] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [bgLoaded, setBgLoaded] = useState(false);
   const { toast } = useToast();
 
   const copy = useCallback(async (text: string, label: string) => {
@@ -148,17 +154,27 @@ export default function Index() {
     <div 
       className="min-h-screen"
       style={{
-        backgroundImage: 'url(https://www.584136.xyz/%E5%A4%B4%E5%83%8F/%E8%83%8C%E6%99%AF89.jpg)',
+        backgroundColor: '#e3f2fd',
+        backgroundImage: bgLoaded ? 'url(https://www.584136.xyz/%E5%A4%B4%E5%83%8F/%E8%83%8C%E6%99%AF89.jpg)' : 'none',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
-        backgroundAttachment: 'fixed'
+        backgroundAttachment: 'scroll'
       }}
     >
-      {/* 半透明遮罩层 */}
-      <div className="min-h-screen bg-black/20 backdrop-blur-[2px]">
+      {/* 预加载背景图片 */}
+      <img 
+        src="https://www.584136.xyz/%E5%A4%B4%E5%83%8F/%E8%83%8C%E6%99%AF89.jpg" 
+        alt="" 
+        style={{ display: 'none' }}
+        onLoad={() => setBgLoaded(true)}
+        loading="lazy"
+      />
+
+      {/* 纯色半透明遮罩层 (替代 backdrop-blur) */}
+      <div className="min-h-screen" style={{ backgroundColor: 'rgba(255, 255, 255, 0.75)' }}>
         {/* Facebook风格顶部导航栏 */}
-        <div className="bg-white/95 backdrop-blur-sm border-b border-gray-300 shadow-sm sticky top-0 z-50">
+        <div className="bg-white border-b border-gray-300 sticky top-0 z-50" style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
           <div className="max-w-5xl mx-auto px-4 h-14 flex items-center">
             <div className="flex items-center gap-2">
               <svg className="w-10 h-10 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
@@ -173,7 +189,11 @@ export default function Index() {
           {/* 生成按钮 */}
           <Button
             onClick={generate}
-            className="w-full h-11 text-base font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+            className="w-full h-11 text-base font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white"
+            style={{ 
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              transition: 'background-color 0.15s, box-shadow 0.15s'
+            }}
           >
             <Sparkles className="w-4 h-4 mr-2" />
             开始创号
@@ -181,12 +201,15 @@ export default function Index() {
 
           {/* 信息卡片 */}
           {info && (
-            <Card className="p-4 space-y-4 rounded-lg bg-white/95 backdrop-blur-sm border border-gray-300 shadow-lg">
+            <Card 
+              className="p-4 space-y-4 rounded-lg bg-white border border-gray-300"
+              style={{ boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}
+            >
               <InfoRow label="姓氏" value={info.lastName} onCopy={() => copy(info.lastName, "姓氏")} />
               <InfoRow label="名字" value={info.firstName} onCopy={() => copy(info.firstName, "名字")} />
               
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">生日</label>
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">生日</label>
                 <div className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3">
                   <p className="text-sm font-normal text-gray-900">{info.birthday}</p>
                 </div>
