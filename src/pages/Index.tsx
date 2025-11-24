@@ -6,9 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 
 // ============ 数据配置 ============
 const MOBILE_PREFIXES = ["134","135","136","137","138","139","147","150","151","152","157","158","159","178","182","183","184","187","188","198","130","131","132","145","155","156","166","171","175","176","185","186","133","149","153","173","177","180","181","189","191","199"];
-
 const EMAIL_SUFFIXES = ["@yopmail.com","@gmail.yopmail.com"];
-
 const NAME_PARTS = ["john","mike","alex","david","chris","james","robert","michael","william","daniel","smith","brown","jones","wilson","taylor","davis","miller","moore","anderson","jackson","white","harris","martin","lee","walker","sam","tom","ben","joe","max"];
 
 // ============ 工具函数 ============
@@ -46,55 +44,61 @@ const genBirthday = () => {
 
 // ============ 组件 ============
 const InfoRow = ({ label, value, onCopy, onRefresh, link, loading }: any) => (
-  <div className="space-y-2">
+  <div className="space-y-1.5">
     <div className="flex items-center justify-between">
-      <span className="text-sm font-medium text-slate-600">{label}</span>
+      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</label>
       <div className="flex gap-1">
         {onRefresh && (
-          <Button
-            variant="ghost"
-            size="sm"
+          <button
             onClick={onRefresh}
             disabled={loading}
-            className="h-8 w-8 p-0 hover:bg-slate-100 active:scale-90 transition-all"
+            className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-gray-100 disabled:opacity-50 transition-colors"
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
+            <RefreshCw className={`h-4 w-4 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
+          </button>
         )}
-        <Button
-          variant="ghost"
-          size="sm"
+        <button
           onClick={onCopy}
-          className="h-8 w-8 p-0 hover:bg-slate-100 active:scale-90 transition-all"
+          className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-gray-100 transition-colors"
         >
-          <Copy className="h-4 w-4" />
-        </Button>
+          <Copy className="h-4 w-4 text-gray-600" />
+        </button>
       </div>
     </div>
-    {link ? (
-      <a href={link} target="_blank" rel="noopener noreferrer" className="text-base font-medium text-blue-600 hover:text-blue-700 underline break-all inline-block transition-colors">
-        {value}
-      </a>
-    ) : (
-      <p className="text-base font-medium text-slate-900 break-all">{value}</p>
-    )}
+    <div className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3">
+      {link ? (
+        <a 
+          href={link} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="text-sm font-normal text-blue-600 hover:underline break-all"
+        >
+          {value}
+        </a>
+      ) : (
+        <p className="text-sm font-normal text-gray-900 break-all">{value}</p>
+      )}
+    </div>
   </div>
 );
 
 const TgBanner = ({ onCopy }: any) => (
-  <Card className="p-5 rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 shadow-xl">
-    <div className="flex items-center gap-3 mb-4">
-      <div className="flex-shrink-0 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg">
-        <svg className="w-7 h-7 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
+  <Card className="p-4 rounded-lg bg-white border border-gray-300 shadow-sm">
+    <div className="flex items-center gap-3 mb-3">
+      <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+        <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
           <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295-.002 0-.003 0-.005 0l.213-3.054 5.56-5.022c.24-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.832.941z"/>
         </svg>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-white font-semibold text-base mb-1">🎯 神秘代码@fang180</p>
-        <p className="text-blue-50 text-xs opacity-90">创号教程、工具更新和独家资源</p>
+        <p className="text-gray-900 font-semibold text-sm">神秘代码 @fang180</p>
+        <p className="text-gray-500 text-xs">创号教程、工具更新和独家资源</p>
       </div>
     </div>
-    <Button onClick={onCopy} className="w-full bg-white text-blue-600 hover:bg-blue-50 font-semibold rounded-xl shadow-lg active:scale-95 transition-all" size="lg">
+    <Button 
+      onClick={onCopy} 
+      className="w-full bg-gray-200 text-gray-700 hover:bg-gray-300 font-semibold rounded-md h-9 shadow-none"
+    >
       复制神秘代码
     </Button>
   </Card>
@@ -109,7 +113,7 @@ export default function Index() {
   const copy = useCallback(async (text: string, label: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      toast({ title: "✓ 已复制" + label, duration: 1500 });
+      toast({ title: "已复制" + label, duration: 1500 });
     } catch {
       toast({ title: "复制失败", description: "请手动复制", duration: 2000 });
     }
@@ -125,7 +129,7 @@ export default function Index() {
       username: emailData.username,
       birthday: genBirthday(),
     });
-    toast({ title: "🎉 生成成功", duration: 1500 });
+    toast({ title: "生成成功", duration: 1500 });
   }, [toast]);
 
   const refreshEmail = useCallback(async () => {
@@ -134,49 +138,49 @@ export default function Index() {
     await new Promise(r => setTimeout(r, 300));
     const emailData = genEmail();
     setInfo((prev: any) => ({ ...prev, ...emailData, email: emailData.email, username: emailData.username }));
-    toast({ title: "✓ 邮箱已更新", duration: 1500 });
+    toast({ title: "邮箱已更新", duration: 1500 });
     setLoading(false);
   }, [info, toast]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 px-4 py-8">
-      <div className="max-w-md mx-auto space-y-5">
-        {/* Header */}
-        <div className="text-center space-y-3">
-          <div className="flex items-center justify-center gap-2 flex-wrap">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              脸书创号小助手
-            </h1>
-            <span className="text-xs font-bold text-white bg-gradient-to-r from-blue-500 to-purple-500 px-2.5 py-1 rounded-full shadow-lg">
-              v2.0
-            </span>
+    <div className="min-h-screen bg-gray-100">
+      {/* Facebook风格顶部导航栏 */}
+      <div className="bg-white border-b border-gray-300 shadow-sm sticky top-0 z-50">
+        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center">
+          <div className="flex items-center gap-2">
+            <svg className="w-10 h-10 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+            </svg>
+            <span className="text-xl font-bold text-blue-600">创号助手</span>
           </div>
         </div>
+      </div>
 
-        {/* Generate Button */}
+      <div className="max-w-md mx-auto px-4 py-6 space-y-4">
+        {/* 生成按钮 */}
         <Button
           onClick={generate}
-          size="lg"
-          className="w-full h-14 text-lg font-bold rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 shadow-xl hover:shadow-2xl active:scale-95 transition-all"
+          className="w-full h-11 text-base font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
         >
-          <Sparkles className="w-5 h-5 mr-2" />
+          <Sparkles className="w-4 h-4 mr-2" />
           开始创号
         </Button>
 
-        {/* Info Card */}
+        {/* 信息卡片 */}
         {info && (
-          <Card className="p-5 space-y-4 rounded-2xl shadow-xl border-slate-200 bg-white/80 backdrop-blur">
+          <Card className="p-4 space-y-4 rounded-lg bg-white border border-gray-300 shadow-sm">
             <InfoRow label="姓氏" value={info.lastName} onCopy={() => copy(info.lastName, "姓氏")} />
-            <div className="border-t border-slate-100" />
             <InfoRow label="名字" value={info.firstName} onCopy={() => copy(info.firstName, "名字")} />
-            <div className="border-t border-slate-100" />
-            <div className="space-y-2">
-              <span className="text-sm font-medium text-slate-600">生日</span>
-              <p className="text-base font-medium text-slate-900">{info.birthday}</p>
+            
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">生日</label>
+              <div className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3">
+                <p className="text-sm font-normal text-gray-900">{info.birthday}</p>
+              </div>
             </div>
-            <div className="border-t border-slate-100" />
+
             <InfoRow label="手机号" value={info.phone} onCopy={() => copy(info.phone, "手机号")} />
-            <div className="border-t border-slate-100" />
+            
             <div className="space-y-2">
               <InfoRow 
                 label="邮箱" 
@@ -186,14 +190,16 @@ export default function Index() {
                 link={`https://yopmail.com?${info.username}`}
                 loading={loading}
               />
-              <p className="text-xs text-slate-500 bg-slate-50 px-3 py-2 rounded-lg">
-                💡 点击邮箱跳转查收验证码（不要在TG打开）
-              </p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                <p className="text-xs text-blue-900">
+                  💡 点击邮箱跳转查收验证码（不要在TG打开）
+                </p>
+              </div>
             </div>
           </Card>
         )}
 
-        {/* Telegram Banner */}
+        {/* Telegram横幅 */}
         <TgBanner onCopy={() => copy("@fang180", "神秘代码")} />
       </div>
     </div>
