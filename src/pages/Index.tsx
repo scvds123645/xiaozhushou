@@ -1,8 +1,7 @@
 import { useState, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Copy, RefreshCw } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Copy, RefreshCw, CheckCircle2 } from "lucide-react";
 
 // ============ 数据配置 ============
 const MOBILE_PREFIXES = [
@@ -166,20 +165,21 @@ const TelegramCard = memo(({ onCopy, copying }: { onCopy: () => void; copying: b
 const Index = () => {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [copying, setCopying] = useState(false);
-  const { toast } = useToast();
+  const [toast, setToast] = useState<{ show: boolean; message: string }>({ show: false, message: "" });
 
-  const showToast = useCallback((title: string, description: string, duration = 1500) => {
-    toast({ title, description, duration });
-  }, [toast]);
+  const showToast = useCallback((message: string) => {
+    setToast({ show: true, message });
+    setTimeout(() => setToast({ show: false, message: "" }), 2000);
+  }, []);
 
   const copyToClipboard = useCallback(async (text: string, label: string) => {
     if (copying) return;
     setCopying(true);
     try {
       await navigator.clipboard.writeText(text);
-      showToast("复制成功", `已复制${label}到剪贴板`);
+      showToast(`已复制${label}`);
     } catch {
-      showToast("复制失败", "请手动复制内容", 2000);
+      showToast("复制失败，请手动复制");
     } finally {
       setTimeout(() => setCopying(false), 300);
     }
@@ -195,18 +195,28 @@ const Index = () => {
       emailUsername: emailData.emailUsername,
       birthday: generateBirthday(),
     });
-    showToast("生成成功", "已为您生成新的账号信息");
+    showToast("生成成功");
   }, [showToast]);
 
   const regenerateEmail = useCallback(() => {
     if (!userInfo) return;
     const emailData = generateEmail();
     setUserInfo(prev => prev ? { ...prev, ...emailData } : null);
-    showToast("邮箱已更新", "已为您重新生成邮箱地址");
+    showToast("邮箱已更新");
   }, [userInfo, showToast]);
 
   return (
     <div className="min-h-screen bg-[#F0F2F5]">
+      {/* 自定义 Toast 提示 */}
+      {toast.show && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="bg-white rounded-lg shadow-lg border border-[#CED0D4] px-4 py-3 flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-green-600" />
+            <span className="text-sm font-semibold text-[#050505]">{toast.message}</span>
+          </div>
+        </div>
+      )}
+
       {/* Facebook 风格顶部导航栏 */}
       <div className="bg-white shadow-sm border-b border-[#CED0D4] sticky top-0 z-10">
         <div className="max-w-md mx-auto px-4 h-14 flex items-center justify-between">
