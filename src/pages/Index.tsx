@@ -96,6 +96,7 @@ export default function App() {
   const [isChecking, setIsChecking] = useState(false);
   const [copiedLive, setCopiedLive] = useState(false);
   const [copiedDie, setCopiedDie] = useState(false);
+  const [ripple, setRipple] = useState<{x: number, y: number, show: boolean}>({x: 0, y: 0, show: false});
   const checkerRef = useRef<CheckFbLive | null>(null);
 
   const handleCopy = async (users: string[], type: 'live' | 'die') => {
@@ -154,37 +155,70 @@ export default function App() {
     );
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-3 sm:p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-8 mb-4 sm:mb-6">
-          <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-            <Users className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 flex-shrink-0" />
-            <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold text-gray-800">
-              Facebook 用戶狀態檢查工具
-            </h1>
-          </div>
+  const createRipple = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const button = e.currentTarget;
+    const rect = button.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    setRipple({x, y, show: true});
+    setTimeout(() => setRipple({x: 0, y: 0, show: false}), 600);
+  };
 
-          <div className="mb-4 sm:mb-6">
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
-              輸入用戶 ID 列表（每行一個）
+  return (
+    <div className="min-h-screen bg-[#0e1621] font-sans" style={{fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'}}>
+      {/* Telegram 顶部导航栏 */}
+      <div className="bg-[#17212b] shadow-lg sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center">
+          <button className="p-2 hover:bg-[#1f2b36] rounded-lg transition-colors mr-3">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#aaaaaa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <line x1="3" y1="12" x2="21" y2="12"/>
+              <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
+          <h1 className="text-[15px] font-medium text-white flex-1 text-center pr-12">
+            用戶狀態檢查
+          </h1>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto p-3 sm:p-4">
+        {/* 输入区域卡片 */}
+        <div className="bg-[#17212b] rounded-xl shadow-lg p-4 mb-4">
+          <div className="mb-3">
+            <label className="block text-[12px] font-medium text-[#aaaaaa] mb-2">
+              輸入用戶 ID 列表
             </label>
             <textarea
-              id="list_uid"
               value={inputIds}
               onChange={(e) => setInputIds(e.target.value)}
-              className="w-full h-32 sm:h-40 px-3 sm:px-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none font-mono text-xs sm:text-sm"
+              className="w-full h-32 sm:h-40 px-3 py-2.5 bg-[#0e1621] text-white border border-[#2b3843] rounded-lg focus:outline-none focus:border-[#3390ec] transition-all resize-none font-mono text-[14px]"
               placeholder="100012345678901&#10;100098765432109&#10;100011122233344"
               disabled={isChecking}
+              style={{caretColor: '#3390ec'}}
             />
           </div>
 
           <button
-            id="btn-check"
-            onClick={handleCheck}
+            onClick={(e) => {
+              createRipple(e);
+              handleCheck();
+            }}
             disabled={isChecking}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl text-sm sm:text-base"
+            className="relative overflow-hidden w-full bg-[#3390ec] hover:bg-[#2481cc] disabled:bg-[#2b3843] text-white font-medium py-2.5 px-4 rounded-[10px] transition-all flex items-center justify-center gap-2 shadow-md text-[14px]"
           >
+            {ripple.show && (
+              <span 
+                className="absolute bg-white opacity-30 rounded-full animate-ping"
+                style={{
+                  left: ripple.x,
+                  top: ripple.y,
+                  width: '20px',
+                  height: '20px',
+                  transform: 'translate(-50%, -50%)'
+                }}
+              />
+            )}
             {isChecking ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -199,49 +233,48 @@ export default function App() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2">
-              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 flex-shrink-0" />
-                <h2 className="text-base sm:text-xl font-bold text-gray-800 truncate">活躍用戶</h2>
+        {/* 结果卡片 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* 活跃用户卡片 */}
+          <div className="bg-[#17212b] rounded-xl shadow-lg p-4">
+            <div className="flex items-center justify-between mb-3 pb-3 border-b border-[#2b3843]">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 bg-[#4CAF50] rounded-full flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-[15px] font-medium text-white">活躍用戶</h2>
+                  <span className="text-[12px] text-[#aaaaaa]">{liveCount} 個用戶</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-                <span id="live_count" className="text-xl sm:text-2xl font-bold text-green-600">
-                  {liveCount}
-                </span>
-                <button
-                  onClick={() => handleCopy(liveUsers, 'live')}
-                  disabled={liveUsers.length === 0}
-                  className="flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-medium rounded-lg transition-all whitespace-nowrap"
-                  title="複製活躍用戶列表"
-                >
-                  {copiedLive ? (
-                    <>
-                      <Check className="w-3 h-3 sm:w-4 sm:h-4" />
-                      <span className="hidden sm:inline">已複製</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3 h-3 sm:w-4 sm:h-4" />
-                      <span className="hidden sm:inline">複製</span>
-                    </>
-                  )}
-                </button>
-              </div>
+              <button
+                onClick={() => handleCopy(liveUsers, 'live')}
+                disabled={liveUsers.length === 0}
+                className="p-2 bg-[#4CAF50] hover:bg-[#45a049] disabled:bg-[#2b3843] rounded-lg transition-all"
+                title="複製活躍用戶列表"
+              >
+                {copiedLive ? (
+                  <Check className="w-4 h-4 text-white" />
+                ) : (
+                  <Copy className="w-4 h-4 text-white" />
+                )}
+              </button>
             </div>
-            <div
-              id="list_live"
-              className="bg-green-50 rounded-lg p-3 sm:p-4 h-64 sm:h-96 overflow-y-auto border-2 border-green-200"
-            >
+            <div className="h-64 sm:h-96 overflow-y-auto custom-scrollbar">
               {liveUsers.length === 0 ? (
-                <p className="text-gray-400 text-center py-8 text-sm sm:text-base">暫無活躍用戶</p>
+                <div className="flex flex-col items-center justify-center h-full text-[#aaaaaa]">
+                  <Users className="w-12 h-12 mb-2 opacity-30" />
+                  <p className="text-[14px]">暫無活躍用戶</p>
+                </div>
               ) : (
-                <div className="space-y-1.5 sm:space-y-2">
+                <div className="space-y-1">
                   {liveUsers.map((uid, index) => (
                     <div
                       key={index}
-                      className="bg-white px-2 sm:px-3 py-1.5 sm:py-2 rounded border border-green-300 font-mono text-xs sm:text-sm break-all"
+                      className="bg-[#2481cc] text-white px-3 py-2 rounded-[10px] font-mono text-[14px] break-all hover:bg-[#2175b8] transition-colors cursor-default"
+                      style={{
+                        animation: `slideIn 0.3s ease-out ${index * 0.05}s both`
+                      }}
                     >
                       {uid}
                     </div>
@@ -251,48 +284,46 @@ export default function App() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2">
-              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                <XCircle className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 flex-shrink-0" />
-                <h2 className="text-base sm:text-xl font-bold text-gray-800 truncate">非活躍用戶</h2>
+          {/* 非活跃用户卡片 */}
+          <div className="bg-[#17212b] rounded-xl shadow-lg p-4">
+            <div className="flex items-center justify-between mb-3 pb-3 border-b border-[#2b3843]">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 bg-[#f44336] rounded-full flex items-center justify-center">
+                  <XCircle className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-[15px] font-medium text-white">非活躍用戶</h2>
+                  <span className="text-[12px] text-[#aaaaaa]">{dieCount} 個用戶</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-                <span id="die_count" className="text-xl sm:text-2xl font-bold text-red-600">
-                  {dieCount}
-                </span>
-                <button
-                  onClick={() => handleCopy(dieUsers, 'die')}
-                  disabled={dieUsers.length === 0}
-                  className="flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 bg-red-600 hover:bg-red-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-medium rounded-lg transition-all whitespace-nowrap"
-                  title="複製非活躍用戶列表"
-                >
-                  {copiedDie ? (
-                    <>
-                      <Check className="w-3 h-3 sm:w-4 sm:h-4" />
-                      <span className="hidden sm:inline">已複製</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3 h-3 sm:w-4 sm:h-4" />
-                      <span className="hidden sm:inline">複製</span>
-                    </>
-                  )}
-                </button>
-              </div>
+              <button
+                onClick={() => handleCopy(dieUsers, 'die')}
+                disabled={dieUsers.length === 0}
+                className="p-2 bg-[#f44336] hover:bg-[#da3a2f] disabled:bg-[#2b3843] rounded-lg transition-all"
+                title="複製非活躍用戶列表"
+              >
+                {copiedDie ? (
+                  <Check className="w-4 h-4 text-white" />
+                ) : (
+                  <Copy className="w-4 h-4 text-white" />
+                )}
+              </button>
             </div>
-            <div
-              id="list_die"
-              className="bg-red-50 rounded-lg p-3 sm:p-4 h-64 sm:h-96 overflow-y-auto border-2 border-red-200"
-            >
+            <div className="h-64 sm:h-96 overflow-y-auto custom-scrollbar">
               {dieUsers.length === 0 ? (
-                <p className="text-gray-400 text-center py-8 text-sm sm:text-base">暫無非活躍用戶</p>
+                <div className="flex flex-col items-center justify-center h-full text-[#aaaaaa]">
+                  <Users className="w-12 h-12 mb-2 opacity-30" />
+                  <p className="text-[14px]">暫無非活躍用戶</p>
+                </div>
               ) : (
-                <div className="space-y-1.5 sm:space-y-2">
+                <div className="space-y-1">
                   {dieUsers.map((uid, index) => (
                     <div
                       key={index}
-                      className="bg-white px-2 sm:px-3 py-1.5 sm:py-2 rounded border border-red-300 font-mono text-xs sm:text-sm break-all"
+                      className="bg-[#182533] text-white px-3 py-2 rounded-[10px] font-mono text-[14px] break-all hover:bg-[#1f2b36] transition-colors cursor-default"
+                      style={{
+                        animation: `slideIn 0.3s ease-out ${index * 0.05}s both`
+                      }}
                     >
                       {uid}
                     </div>
@@ -303,6 +334,36 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      <style>{`
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateX(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #2b3843;
+          border-radius: 3px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #3a4c5e;
+        }
+      `}</style>
     </div>
   );
 }
