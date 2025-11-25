@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Users, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Users, CheckCircle, XCircle, Loader2, Copy, Check } from 'lucide-react';
 
 class CheckFbLive {
   live_count: number = 0;
@@ -94,7 +94,29 @@ export default function App() {
   const [liveCount, setLiveCount] = useState(0);
   const [dieCount, setDieCount] = useState(0);
   const [isChecking, setIsChecking] = useState(false);
+  const [copiedLive, setCopiedLive] = useState(false);
+  const [copiedDie, setCopiedDie] = useState(false);
   const checkerRef = useRef<CheckFbLive | null>(null);
+
+  const handleCopy = async (users: string[], type: 'live' | 'die') => {
+    if (users.length === 0) {
+      alert('沒有可複製的內容');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(users.join('\n'));
+      if (type === 'live') {
+        setCopiedLive(true);
+        setTimeout(() => setCopiedLive(false), 2000);
+      } else {
+        setCopiedDie(true);
+        setTimeout(() => setCopiedDie(false), 2000);
+      }
+    } catch (err) {
+      alert('複製失敗，請手動選擇複製');
+    }
+  };
 
   const handleCheck = async () => {
     if (!inputIds.trim()) {
@@ -184,9 +206,29 @@ export default function App() {
                 <CheckCircle className="w-6 h-6 text-green-600" />
                 <h2 className="text-xl font-bold text-gray-800">活躍用戶</h2>
               </div>
-              <span id="live_count" className="text-2xl font-bold text-green-600">
-                {liveCount}
-              </span>
+              <div className="flex items-center gap-3">
+                <span id="live_count" className="text-2xl font-bold text-green-600">
+                  {liveCount}
+                </span>
+                <button
+                  onClick={() => handleCopy(liveUsers, 'live')}
+                  disabled={liveUsers.length === 0}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white text-sm font-medium rounded-lg transition-all"
+                  title="複製活躍用戶列表"
+                >
+                  {copiedLive ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      已複製
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      複製
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
             <div
               id="list_live"
@@ -215,9 +257,29 @@ export default function App() {
                 <XCircle className="w-6 h-6 text-red-600" />
                 <h2 className="text-xl font-bold text-gray-800">非活躍用戶</h2>
               </div>
-              <span id="die_count" className="text-2xl font-bold text-red-600">
-                {dieCount}
-              </span>
+              <div className="flex items-center gap-3">
+                <span id="die_count" className="text-2xl font-bold text-red-600">
+                  {dieCount}
+                </span>
+                <button
+                  onClick={() => handleCopy(dieUsers, 'die')}
+                  disabled={dieUsers.length === 0}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 disabled:bg-gray-300 text-white text-sm font-medium rounded-lg transition-all"
+                  title="複製非活躍用戶列表"
+                >
+                  {copiedDie ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      已複製
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      複製
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
             <div
               id="list_die"
