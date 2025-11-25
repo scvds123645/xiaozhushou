@@ -9,11 +9,11 @@ const EMAIL_SUFFIXES = ["@yopmail.com","@00two.shop"];
 const NAME_PARTS = ["john","mike","alex","david","chris","james","robert","michael","william","daniel","smith","brown","jones","wilson","taylor","davis","miller","moore","anderson","jackson","white","harris","martin","lee","walker","sam","tom","ben","joe","max"];
 
 // ============ 工具函数 ============
-const random = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
-const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
-const pad = (n: number, len = 2) => String(n).padStart(len, "0");
+const random = (arr) => arr[Math.floor(Math.random() * arr.length)];
+const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+const pad = (n, len = 2) => String(n).padStart(len, "0");
 
-const genName = (vowelStart: boolean) => {
+const genName = (vowelStart) => {
   const v = "aeiou", c = "bcdfghjklmnpqrstvwxyz";
   let name = "";
   for (let i = 0; i < 15; i++) {
@@ -42,7 +42,7 @@ const genBirthday = () => {
 };
 
 // ============ Toast 组件 ============
-const Toast = memo(({ message, type, onClose }: any) => (
+const Toast = memo(({ message, type, onClose }) => (
   <div 
     className="fixed top-4 right-4 flex items-center gap-2 bg-white rounded-lg shadow-lg px-4 py-3 min-w-[200px]"
     style={{
@@ -64,7 +64,7 @@ const Toast = memo(({ message, type, onClose }: any) => (
 Toast.displayName = 'Toast';
 
 // ============ 子组件 ============
-const InfoRow = memo(({ label, value, onCopy, onRefresh, link, loading }: any) => (
+const InfoRow = memo(({ label, value, onCopy, onRefresh, link, loading }) => (
   <div className="space-y-1.5">
     <div className="flex items-center justify-between">
       <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{label}</label>
@@ -105,7 +105,7 @@ const InfoRow = memo(({ label, value, onCopy, onRefresh, link, loading }: any) =
 
 InfoRow.displayName = 'InfoRow';
 
-const TgBanner = memo(({ onCopy }: any) => (
+const TgBanner = memo(({ onCopy }) => (
   <Card className="p-4 rounded-lg bg-white border border-gray-300">
     <div className="flex items-center gap-3 mb-3">
       <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
@@ -131,17 +131,20 @@ TgBanner.displayName = 'TgBanner';
 
 // ============ 主组件 ============
 export default function Index() {
-  const [info, setInfo] = useState<any>(null);
+  const [info, setInfo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [bgLoaded, setBgLoaded] = useState(false);
-  const [toast, setToast] = useState<{message: string; type: 'success' | 'error'} | null>(null);
+  const [toasts, setToasts] = useState([]);
 
-  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 1500);
+  const showToast = useCallback((message, type = 'success') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 1500);
   }, []);
 
-  const copy = useCallback(async (text: string, label: string) => {
+  const copy = useCallback(async (text, label) => {
     try {
       await navigator.clipboard.writeText(text);
       showToast("已复制" + label, 'success');
@@ -168,7 +171,7 @@ export default function Index() {
     setLoading(true);
     await new Promise(r => setTimeout(r, 300));
     const emailData = genEmail();
-    setInfo((prev: any) => ({ ...prev, ...emailData, email: emailData.email, username: emailData.username }));
+    setInfo((prev) => ({ ...prev, ...emailData, email: emailData.email, username: emailData.username }));
     showToast("邮箱已更新", 'success');
     setLoading(false);
   }, [info, showToast]);
@@ -273,8 +276,20 @@ export default function Index() {
         }
       `}</style>
       
-      {/* Toast 提示 - 放在最外层确保始终可见 */}
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      {/* Toast 提示队列 */}
+      {toasts.map((toast, index) => (
+        <div 
+          key={toast.id}
+          style={{
+            position: 'fixed',
+            top: `${16 + index * 60}px`,
+            right: '16px',
+            zIndex: 9999 + index
+          }}
+        >
+          <Toast message={toast.message} type={toast.type} />
+        </div>
+      ))}
     </div>
   );
 }
