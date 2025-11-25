@@ -2,7 +2,7 @@ import React, { useState, useRef, useReducer, useEffect } from 'react';
 import { CheckCircle, Search, Download, Copy, X, AlertCircle, Moon, Sun, Trash2 } from 'lucide-react';
 
 const CONFIG = {
-  API: { TIMEOUT: 5000, MAX_RETRIES: 3, RETRY_DELAY: 1000, RATE_LIMIT: { requests: 100, window: 60000 } },
+  API: { TIMEOUT: 5000, MAX_RETRIES: 3, RETRY_DELAY: 1000, RATE_LIMIT: { requests: 10000, window: 60000 } },
   UI: { MAX_CONCURRENT: 10 }
 };
 
