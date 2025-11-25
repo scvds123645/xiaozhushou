@@ -103,7 +103,11 @@ export default function App() {
   const [copiedLive, setCopiedLive] = useState(false);
   const [copiedDie, setCopiedDie] = useState(false);
   const [ripple, setRipple] = useState<{x: number, y: number, show: boolean}>({x: 0, y: 0, show: false});
+  const [visibleLiveCount, setVisibleLiveCount] = useState(50);
+  const [visibleDieCount, setVisibleDieCount] = useState(50);
   const checkerRef = useRef<CheckFbLive | null>(null);
+  const liveScrollRef = useRef<HTMLDivElement>(null);
+  const dieScrollRef = useRef<HTMLDivElement>(null);
 
   const handleCopy = async (users: string[], type: 'live' | 'die') => {
     if (users.length === 0) {
@@ -136,26 +140,53 @@ export default function App() {
     setDieUsers([]);
     setLiveCount(0);
     setDieCount(0);
+    setVisibleLiveCount(50);
+    setVisibleDieCount(50);
     setIsChecking(true);
 
     // 创建检查器实例
     checkerRef.current = new CheckFbLive(inputIds);
 
+    // 使用批量更新优化性能
+    let liveBatch: string[] = [];
+    let dieBatch: string[] = [];
+    let batchTimer: NodeJS.Timeout;
+
+    const flushBatch = () => {
+      if (liveBatch.length > 0) {
+        setLiveUsers(prev => [...prev, ...liveBatch]);
+        setLiveCount(prev => prev + liveBatch.length);
+        liveBatch = [];
+      }
+      if (dieBatch.length > 0) {
+        setDieUsers(prev => [...prev, ...dieBatch]);
+        setDieCount(prev => prev + dieBatch.length);
+        dieBatch = [];
+      }
+    };
+
     // 开始检查（使用100个线程）
     await checkerRef.current.checkLiveWithThreads(
       100,
       (uid: string, live: boolean) => {
-        // 实时更新回调
+        // 批量更新回调
         if (live) {
-          setLiveUsers(prev => [...prev, uid]);
-          setLiveCount(prev => prev + 1);
+          liveBatch.push(uid);
         } else {
-          setDieUsers(prev => [...prev, uid]);
-          setDieCount(prev => prev + 1);
+          dieBatch.push(uid);
+        }
+
+        // 每收集20个或每50ms刷新一次
+        clearTimeout(batchTimer);
+        if (liveBatch.length + dieBatch.length >= 20) {
+          flushBatch();
+        } else {
+          batchTimer = setTimeout(flushBatch, 50);
         }
       },
       () => {
         // 完成回调
+        flushBatch();
         setIsChecking(false);
       }
     );
@@ -168,6 +199,23 @@ export default function App() {
     const y = e.clientY - rect.top;
     setRipple({x, y, show: true});
     setTimeout(() => setRipple({x: 0, y: 0, show: false}), 600);
+  };
+
+  // 滚动加载更多
+  const handleLiveScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    const bottom = target.scrollHeight - target.scrollTop <= target.clientHeight + 100;
+    if (bottom && visibleLiveCount < liveUsers.length) {
+      setVisibleLiveCount(prev => Math.min(prev + 50, liveUsers.length));
+    }
+  };
+
+  const handleDieScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    const bottom = target.scrollHeight - target.scrollTop <= target.clientHeight + 100;
+    if (bottom && visibleDieCount < dieUsers.length) {
+      setVisibleDieCount(prev => Math.min(prev + 50, dieUsers.length));
+    }
   };
 
   return (
@@ -266,7 +314,7 @@ export default function App() {
                 )}
               </button>
             </div>
-            <div className="h-64 sm:h-96 overflow-y-auto custom-scrollbar">
+            <div className="h-64 sm:h-96 overflow-y-auto custom-scrollbar" ref={liveScrollRef} onScroll={handleLiveScroll}>
               {liveUsers.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-[#aaaaaa]">
                   <Users className="w-12 h-12 mb-2 opacity-30" />
@@ -274,17 +322,19 @@ export default function App() {
                 </div>
               ) : (
                 <div className="space-y-1">
-                  {liveUsers.filter(uid => uid && uid.trim()).map((uid, index) => (
+                  {liveUsers.filter(uid => uid && uid.trim()).slice(0, visibleLiveCount).map((uid, index) => (
                     <div
-                      key={index}
+                      key={`live-${index}`}
                       className="bg-[#2481cc] text-white px-3 py-2 rounded-[10px] font-mono text-[14px] break-all hover:bg-[#2175b8] transition-colors cursor-default"
-                      style={{
-                        animation: `slideIn 0.3s ease-out ${index * 0.05}s both`
-                      }}
                     >
                       {uid}
                     </div>
                   ))}
+                  {visibleLiveCount < liveUsers.length && (
+                    <div className="text-center py-2 text-[12px] text-[#aaaaaa]">
+                      顯示 {visibleLiveCount} / {liveUsers.length} - 向下滾動載入更多
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -315,7 +365,7 @@ export default function App() {
                 )}
               </button>
             </div>
-            <div className="h-64 sm:h-96 overflow-y-auto custom-scrollbar">
+            <div className="h-64 sm:h-96 overflow-y-auto custom-scrollbar" ref={dieScrollRef} onScroll={handleDieScroll}>
               {dieUsers.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-[#aaaaaa]">
                   <Users className="w-12 h-12 mb-2 opacity-30" />
@@ -323,17 +373,19 @@ export default function App() {
                 </div>
               ) : (
                 <div className="space-y-1">
-                  {dieUsers.filter(uid => uid && uid.trim()).map((uid, index) => (
+                  {dieUsers.filter(uid => uid && uid.trim()).slice(0, visibleDieCount).map((uid, index) => (
                     <div
-                      key={index}
+                      key={`die-${index}`}
                       className="bg-[#182533] text-white px-3 py-2 rounded-[10px] font-mono text-[14px] break-all hover:bg-[#1f2b36] transition-colors cursor-default"
-                      style={{
-                        animation: `slideIn 0.3s ease-out ${index * 0.05}s both`
-                      }}
                     >
                       {uid}
                     </div>
                   ))}
+                  {visibleDieCount < dieUsers.length && (
+                    <div className="text-center py-2 text-[12px] text-[#aaaaaa]">
+                      顯示 {visibleDieCount} / {dieUsers.length} - 向下滾動載入更多
+                    </div>
+                  )}
                 </div>
               )}
             </div>
