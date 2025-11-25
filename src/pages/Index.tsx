@@ -44,10 +44,12 @@ const genBirthday = () => {
 // ============ Toast 组件 ============
 const Toast = memo(({ message, type, onClose }: any) => (
   <div 
-    className="fixed top-4 right-4 z-50 flex items-center gap-2 bg-white rounded-lg shadow-lg px-4 py-3 min-w-[200px] animate-in slide-in-from-top-5"
+    className="fixed top-4 right-4 flex items-center gap-2 bg-white rounded-lg shadow-lg px-4 py-3 min-w-[200px]"
     style={{
       boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-      animation: 'slideIn 0.3s ease-out'
+      animation: 'slideIn 0.3s ease-out',
+      zIndex: 9999,
+      pointerEvents: 'auto'
     }}
   >
     {type === 'success' ? (
@@ -258,9 +260,6 @@ export default function Index() {
         </div>
       </div>
       
-      {/* Toast 提示 */}
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      
       <style>{`
         @keyframes slideIn {
           from {
@@ -273,6 +272,9 @@ export default function Index() {
           }
         }
       `}</style>
+      
+      {/* Toast 提示 - 放在最外层确保始终可见 */}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }
