@@ -220,7 +220,6 @@ export default function App() {
                     <>
                       <Check className="w-3 h-3 sm:w-4 sm:h-4" />
                       <span className="hidden sm:inline">已複製</span>
-                      <span className="sm:hidden">✓</span>
                     </>
                   ) : (
                     <>
@@ -272,7 +271,6 @@ export default function App() {
                     <>
                       <Check className="w-3 h-3 sm:w-4 sm:h-4" />
                       <span className="hidden sm:inline">已複製</span>
-                      <span className="sm:hidden">✓</span>
                     </>
                   ) : (
                     <>
