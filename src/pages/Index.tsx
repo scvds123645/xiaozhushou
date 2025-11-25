@@ -1,7 +1,7 @@
 import { useState, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Copy, RefreshCw, Sparkles, CheckCircle, XCircle, X } from "lucide-react";
+import { Copy, RefreshCw, Sparkles, CheckCircle, XCircle } from "lucide-react";
 
 // ============ 数据配置 ============
 const MOBILE_PREFIXES = ["134","135","136","137","138","139","147","150","151","152","157","158","159","178","182","183","184","187","188","198","130","131","132","145","155","156","166","171","175","176","185","186","133","149","153","173","177","180","181","189","191","199"];
@@ -42,13 +42,12 @@ const genBirthday = () => {
 };
 
 // ============ Toast 组件 ============
-const Toast = memo(({ id, message, type, onClose }: any) => (
+const Toast = memo(({ message, type }: any) => (
   <div 
-    className="flex items-center gap-2 bg-white rounded-lg shadow-lg px-4 py-3 min-w-[240px]"
+    className="flex items-center gap-2 bg-white rounded-lg shadow-lg px-4 py-3"
     style={{
       boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-      animation: 'toastIn 0.3s ease-out forwards',
-      pointerEvents: 'auto'
+      animation: 'toastIn 0.3s ease-out forwards'
     }}
   >
     {type === 'success' ? (
@@ -56,38 +55,11 @@ const Toast = memo(({ id, message, type, onClose }: any) => (
     ) : (
       <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
     )}
-    <span className="text-sm text-gray-900 flex-1">{message}</span>
-    <button
-      onClick={() => onClose(id)}
-      className="flex-shrink-0 ml-2 text-gray-400 hover:text-gray-600 transition-colors"
-    >
-      <X className="w-4 h-4" />
-    </button>
+    <span className="text-sm text-gray-900">{message}</span>
   </div>
 ));
 
 Toast.displayName = 'Toast';
-
-const ToastContainer = memo(({ toasts, onClose }: any) => (
-  <div 
-    className="fixed top-4 right-4 flex flex-col gap-2"
-    style={{ zIndex: 99999, pointerEvents: 'none' }}
-  >
-    {toasts.map((toast: any) => (
-      <div
-        key={toast.id}
-        style={{
-          animation: 'toastIn 0.3s ease-out',
-          pointerEvents: 'auto'
-        }}
-      >
-        <Toast {...toast} onClose={onClose} />
-      </div>
-    ))}
-  </div>
-));
-
-ToastContainer.displayName = 'ToastContainer';
 
 // ============ 子组件 ============
 const InfoRow = memo(({ label, value, onCopy, onRefresh, link, loading }: any) => (
@@ -160,18 +132,11 @@ export default function Index() {
   const [info, setInfo] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [bgLoaded, setBgLoaded] = useState(false);
-  const [toasts, setToasts] = useState<any[]>([]);
+  const [toast, setToast] = useState<{message: string; type: 'success' | 'error'} | null>(null);
 
   const addToast = useCallback((message: string, type: 'success' | 'error' = 'success', duration = 1500) => {
-    const id = Date.now() + Math.random();
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, duration);
-  }, []);
-
-  const closeToast = useCallback((id: number) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
+    setToast({ message, type });
+    setTimeout(() => setToast(null), duration);
   }, []);
 
   const copy = useCallback(async (text: string, label: string) => {
@@ -310,7 +275,9 @@ export default function Index() {
         }
       `}</style>
       
-      <ToastContainer toasts={toasts} onClose={closeToast} />
-    </div>
-  );
-}
+      {toast && <div 
+        className="fixed top-4 right-4"
+        style={{ zIndex: 99999 }}
+      >
+        <Toast message={toast.message} type={toast.type} />
+      </div>}
