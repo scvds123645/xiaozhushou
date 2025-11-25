@@ -263,21 +263,13 @@ export default function Index() {
             opacity: 1;
           }
         }
-        @keyframes toastOut {
-          from {
-            transform: translateX(0);
-            opacity: 1;
-          }
-          to {
-            transform: translateX(400px);
-            opacity: 0;
-          }
-        }
       `}</style>
       
-      {toast && <div 
-        className="fixed top-4 right-4"
-        style={{ zIndex: 99999 }}
-      >
-        <Toast message={toast.message} type={toast.type} />
-      </div>}
+      {toast && (
+        <div 
+          className="fixed top-4 right-4"
+          style={{ zIndex: 99999 }}
+        >
+          <Toast message={toast.message} type={toast.type} />
+        </div>
+      )}
