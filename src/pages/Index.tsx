@@ -2,13 +2,12 @@ import { useState, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Copy, RefreshCw, Sparkles } from "lucide-react";
-import toast, { Toaster } from 'react-hot-toast';
+import toast, { Toaster } from "react-hot-toast";
 
 // ============ 数据配置 ============
 const MOBILE_PREFIXES = ["134","135","136","137","138","139","147","150","151","152","157","158","159","178","182","183","184","187","188","198","130","131","132","145","155","156","166","171","175","176","185","186","133","149","153","173","177","180","181","189","191","199"];
 const EMAIL_SUFFIXES = [
- "@yopmail.com","@00two.shop"
- ];
+ "@yopmail.com","@00two.shop"];
 
 const NAME_PARTS = ["john","mike","alex","david","chris","james","robert","michael","william","daniel","smith","brown","jones","wilson","taylor","davis","miller","moore","anderson","jackson","white","harris","martin","lee","walker","sam","tom","ben","joe","max"];
 
@@ -123,27 +122,9 @@ export default function Index() {
   const copy = useCallback(async (text: string, label: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      toast.success(`已复制${label}`, {
-        duration: 1500,
-        style: {
-          background: '#10b981',
-          color: '#fff',
-          fontWeight: '500',
-        },
-        iconTheme: {
-          primary: '#fff',
-          secondary: '#10b981',
-        },
-      });
+      toast.success("已复制" + label, { duration: 1500 });
     } catch {
-      toast.error('复制失败，请手动复制', {
-        duration: 2000,
-        style: {
-          background: '#ef4444',
-          color: '#fff',
-          fontWeight: '500',
-        },
-      });
+      toast.error("复制失败，请手动复制", { duration: 2000 });
     }
   }, []);
 
@@ -157,53 +138,17 @@ export default function Index() {
       username: emailData.username,
       birthday: genBirthday(),
     });
-    toast.success('创号成功(没有180天🥰)', {
-      duration: 1500,
-      icon: '🎉',
-      style: {
-        background: '#10b981',
-        color: '#fff',
-        fontWeight: '500',
-      },
-    });
+    toast.success("创号成功(没有180天🥰)", { duration: 1500 });
   }, []);
 
   const refreshEmail = useCallback(async () => {
     if (!info) return;
     setLoading(true);
-    
-    toast.promise(
-      new Promise(async (resolve) => {
-        await new Promise(r => setTimeout(r, 300));
-        const emailData = genEmail();
-        setInfo((prev: any) => ({ ...prev, ...emailData, email: emailData.email, username: emailData.username }));
-        setLoading(false);
-        resolve(true);
-      }),
-      {
-        loading: '正在更新邮箱...',
-        success: '邮箱已更新',
-        error: '更新失败',
-      },
-      {
-        style: {
-          fontWeight: '500',
-        },
-        success: {
-          duration: 1500,
-          style: {
-            background: '#10b981',
-            color: '#fff',
-          },
-        },
-        loading: {
-          style: {
-            background: '#3b82f6',
-            color: '#fff',
-          },
-        },
-      }
-    );
+    await new Promise(r => setTimeout(r, 300));
+    const emailData = genEmail();
+    setInfo((prev: any) => ({ ...prev, ...emailData, email: emailData.email, username: emailData.username }));
+    toast.success("邮箱已更新", { duration: 1500 });
+    setLoading(false);
   }, [info]);
 
   return (
@@ -218,18 +163,6 @@ export default function Index() {
         backgroundAttachment: 'scroll'
       }}
     >
-      {/* Toast 容器 */}
-      <Toaster 
-        position="top-center"
-        toastOptions={{
-          style: {
-            maxWidth: '90vw',
-            borderRadius: '8px',
-            padding: '12px 16px',
-          },
-        }}
-      />
-
       {/* 预加载背景图片 */}
       <img 
         src="https://www.584136.xyz/%E5%A4%B4%E5%83%8F/%E8%83%8C%E6%99%AF89.jpg" 
@@ -307,6 +240,34 @@ export default function Index() {
           <TgBanner onCopy={() => copy("@fang180", "神秘代码")} />
         </div>
       </div>
+      
+      {/* React Hot Toast 容器 */}
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          duration: 1500,
+          style: {
+            background: '#fff',
+            color: '#333',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            borderRadius: '8px',
+            padding: '12px 16px',
+            fontSize: '14px',
+          },
+          success: {
+            iconTheme: {
+              primary: '#10b981',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
     </div>
   );
 }
