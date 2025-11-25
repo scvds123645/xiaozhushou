@@ -1,7 +1,7 @@
 import { useState, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Copy, RefreshCw, Sparkles, CheckCircle, XCircle } from "lucide-react";
+import { Copy, RefreshCw, Sparkles, CheckCircle, XCircle, X } from "lucide-react";
 
 // ============ 数据配置 ============
 const MOBILE_PREFIXES = ["134","135","136","137","138","139","147","150","151","152","157","158","159","178","182","183","184","187","188","198","130","131","132","145","155","156","166","171","175","176","185","186","133","149","153","173","177","180","181","189","191","199"];
@@ -42,13 +42,12 @@ const genBirthday = () => {
 };
 
 // ============ Toast 组件 ============
-const Toast = memo(({ message, type, onClose }: any) => (
+const Toast = memo(({ id, message, type, onClose }: any) => (
   <div 
-    className="fixed top-4 right-4 flex items-center gap-2 bg-white rounded-lg shadow-lg px-4 py-3 min-w-[200px]"
+    className="flex items-center gap-2 bg-white rounded-lg shadow-lg px-4 py-3 min-w-[240px]"
     style={{
       boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-      animation: 'slideIn 0.3s ease-out',
-      zIndex: 9999,
+      animation: 'toastIn 0.3s ease-out forwards',
       pointerEvents: 'auto'
     }}
   >
@@ -58,10 +57,37 @@ const Toast = memo(({ message, type, onClose }: any) => (
       <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
     )}
     <span className="text-sm text-gray-900 flex-1">{message}</span>
+    <button
+      onClick={() => onClose(id)}
+      className="flex-shrink-0 ml-2 text-gray-400 hover:text-gray-600 transition-colors"
+    >
+      <X className="w-4 h-4" />
+    </button>
   </div>
 ));
 
 Toast.displayName = 'Toast';
+
+const ToastContainer = memo(({ toasts, onClose }: any) => (
+  <div 
+    className="fixed top-4 right-4 flex flex-col gap-2"
+    style={{ zIndex: 99999, pointerEvents: 'none' }}
+  >
+    {toasts.map((toast: any) => (
+      <div
+        key={toast.id}
+        style={{
+          animation: 'toastIn 0.3s ease-out',
+          pointerEvents: 'auto'
+        }}
+      >
+        <Toast {...toast} onClose={onClose} />
+      </div>
+    ))}
+  </div>
+));
+
+ToastContainer.displayName = 'ToastContainer';
 
 // ============ 子组件 ============
 const InfoRow = memo(({ label, value, onCopy, onRefresh, link, loading }: any) => (
@@ -134,21 +160,28 @@ export default function Index() {
   const [info, setInfo] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [bgLoaded, setBgLoaded] = useState(false);
-  const [toast, setToast] = useState<{message: string; type: 'success' | 'error'} | null>(null);
+  const [toasts, setToasts] = useState<any[]>([]);
 
-  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 1500);
+  const addToast = useCallback((message: string, type: 'success' | 'error' = 'success', duration = 1500) => {
+    const id = Date.now() + Math.random();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, duration);
+  }, []);
+
+  const closeToast = useCallback((id: number) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
   const copy = useCallback(async (text: string, label: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      showToast("已复制" + label, 'success');
+      addToast("已复制" + label, 'success');
     } catch {
-      showToast("复制失败，请手动复制", 'error');
+      addToast("复制失败，请手动复制", 'error');
     }
-  }, [showToast]);
+  }, [addToast]);
 
   const generate = useCallback(() => {
     const emailData = genEmail();
@@ -160,8 +193,8 @@ export default function Index() {
       username: emailData.username,
       birthday: genBirthday(),
     });
-    showToast("创号成功(没有180天🥰)", 'success');
-  }, [showToast]);
+    addToast("创号成功(没有180天🥰)", 'success');
+  }, [addToast]);
 
   const refreshEmail = useCallback(async () => {
     if (!info) return;
@@ -169,9 +202,9 @@ export default function Index() {
     await new Promise(r => setTimeout(r, 300));
     const emailData = genEmail();
     setInfo((prev: any) => ({ ...prev, ...emailData, email: emailData.email, username: emailData.username }));
-    showToast("邮箱已更新", 'success');
+    addToast("邮箱已更新", 'success');
     setLoading(false);
-  }, [info, showToast]);
+  }, [info, addToast]);
 
   return (
     <div 
@@ -185,7 +218,6 @@ export default function Index() {
         backgroundAttachment: 'scroll'
       }}
     >
-      {/* 预加载背景图片 */}
       <img 
         src="https://www.584136.xyz/%E5%A4%B4%E5%83%8F/%E8%83%8C%E6%99%AF89.jpg" 
         alt="" 
@@ -194,9 +226,7 @@ export default function Index() {
         loading="lazy"
       />
 
-      {/* 纯色半透明遮罩层 */}
       <div className="min-h-screen" style={{ backgroundColor: 'rgba(255, 255, 255, 0.75)' }}>
-        {/* Facebook风格顶部导航栏 */}
         <div className="bg-white border-b border-gray-300 sticky top-0 z-50" style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
           <div className="max-w-5xl mx-auto px-4 h-14 flex items-center">
             <div className="flex items-center gap-2">
@@ -209,7 +239,6 @@ export default function Index() {
         </div>
 
         <div className="max-w-md mx-auto px-4 py-6 space-y-4">
-          {/* 生成按钮 */}
           <Button
             onClick={generate}
             className="w-full h-11 text-base font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors"
@@ -219,7 +248,6 @@ export default function Index() {
             开始创号
           </Button>
 
-          {/* 信息卡片 */}
           {info && (
             <Card 
               className="p-4 space-y-4 rounded-lg bg-white border border-gray-300"
@@ -255,26 +283,34 @@ export default function Index() {
             </Card>
           )}
 
-          {/* Telegram横幅 */}
           <TgBanner onCopy={() => copy("@fang180", "神秘代码")} />
         </div>
       </div>
       
       <style>{`
-        @keyframes slideIn {
+        @keyframes toastIn {
           from {
-            transform: translateY(-20px);
+            transform: translateX(400px);
             opacity: 0;
           }
           to {
-            transform: translateY(0);
+            transform: translateX(0);
             opacity: 1;
+          }
+        }
+        @keyframes toastOut {
+          from {
+            transform: translateX(0);
+            opacity: 1;
+          }
+          to {
+            transform: translateX(400px);
+            opacity: 0;
           }
         }
       `}</style>
       
-      {/* Toast 提示 - 放在最外层确保始终可见 */}
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      <ToastContainer toasts={toasts} onClose={closeToast} />
     </div>
   );
 }
