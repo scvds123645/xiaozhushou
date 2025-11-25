@@ -41,12 +41,18 @@ class CheckFbLive {
     for (const rawId of arrayIds) {
       let uid = rawId.trim();
       
+      // 跳过空行
+      if (!uid) {
+        continue;
+      }
+      
       // 格式验证：必须是纯数字，否则提取14位数字
       if (!/^\d+$/.test(uid)) {
         const match = uid.match(/\d{14,}/);
         if (match) {
           uid = match[0].substring(0, 14);
         } else {
+          // 格式不正确，跳过这个ID
           continue;
         }
       }
@@ -268,7 +274,7 @@ export default function App() {
                 </div>
               ) : (
                 <div className="space-y-1">
-                  {liveUsers.map((uid, index) => (
+                  {liveUsers.filter(uid => uid && uid.trim()).map((uid, index) => (
                     <div
                       key={index}
                       className="bg-[#2481cc] text-white px-3 py-2 rounded-[10px] font-mono text-[14px] break-all hover:bg-[#2175b8] transition-colors cursor-default"
@@ -317,7 +323,7 @@ export default function App() {
                 </div>
               ) : (
                 <div className="space-y-1">
-                  {dieUsers.map((uid, index) => (
+                  {dieUsers.filter(uid => uid && uid.trim()).map((uid, index) => (
                     <div
                       key={index}
                       className="bg-[#182533] text-white px-3 py-2 rounded-[10px] font-mono text-[14px] break-all hover:bg-[#1f2b36] transition-colors cursor-default"
