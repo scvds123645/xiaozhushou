@@ -6,63 +6,102 @@ import {
 import { Button } from "@/components/ui/button";
 
 // --- 类型定义 ---
+type DetectionResult = { uid: string; status: "alive" | "dead" };
 type Stats = { liveCount: number; dieCount: number; processed: number; total: number };
 
-// --- 核心检测类 (ES6) ---
+// --- 核心检测类 ---
 class CheckFbLive {
-  live_count = 0;
-  die_count = 0;
-  content = '';
+  liveCount: number = 0;
+  dieCount: number = 0;
+  content: string = '';
 
-  constructor(content = '') {
-    this.content = content || '';
+  constructor(content: string = '') {
+    this.content = content;
   }
 
-  get objIds() {
+  get objIds(): string[] {
     return this.content
       .split('\n')
       .map(item => item.trim())
-      .filter(item => item.length);
+      .filter(item => item.length > 0);
   }
 
   /**
-   * @param {string|number} uid
-   * @returns {Promise<boolean>} false when die, true when live
+   * 检查单个UID是否存活
+   * 通过检查图片重定向URL是否包含'static'来判断
    */
-  async checkLive(uid) {
+  async checkLive(uid: string): Promise<boolean> {
     try {
-      const response = await fetch(`https://graph.facebook.com/${uid}/picture?type=normal`, {
-        method: 'GET',
-        redirect: 'follow'
-      });
+      const response = await fetch(
+        `https://graph.facebook.com/${uid}/picture?type=normal`,
+        {
+          method: 'GET',
+          redirect: 'follow'
+        }
+      );
+      // 如果responseURL不包含'static'，说明账号活跃
       return !response.url.includes('static');
     } catch {
       return false;
     }
   }
 
-  async checkLives(arrayIds, callback = null) {
+  /**
+   * 批量检查UID列表
+   * 包含UID验证和提取逻辑
+   */
+  async checkLives(
+    arrayIds: string[], 
+    callback: ((uid: string, live: boolean) => void) | null = null
+  ): Promise<void> {
     for (let uid of arrayIds) {
       let realUid = uid.toString().trim();
       
-      if (!realUid.match(/^\d+$/)) {
-        let match = uid.match(/(\d+)/);
-        if (!match) continue;
-        realUid = match[1];
+      // 验证是否为纯数字UID
+      if (!/^\d+$/.test(realUid)) {
+        // 尝试从混合文本中提取14位数字UID
+        const match = uid.match(/(\d{14})/);
+        if (!match) {
+          // 如果没有14位数字，尝试提取任意数字序列
+          const fallback = uid.match(/(\d+)/);
+          if (!fallback) continue;
+          realUid = fallback[1];
+        } else {
+          realUid = match[1];
+        }
+      }
+
+      const live = await this.checkLive(realUid);
+      
+      // 更新计数器
+      if (live) {
+        this.liveCount++;
+      } else {
+        this.dieCount++;
       }
       
-      let live = await this.checkLive(realUid);
-      this[live ? 'live_count' : 'die_count']++;
-      
-      if (typeof callback === "function") callback(uid, live);
+      if (callback) {
+        callback(realUid, live);
+      }
     }
   }
 
-  checkLiveWithThreads(threads = 50, callbackCheckLive = null, onDone = null) {
+  /**
+   * 多线程并发检测
+   * 将UID列表分成多个批次，每个批次并发处理
+   */
+  checkLiveWithThreads(
+    threads: number = 50,
+    callbackCheckLive: ((uid: string, live: boolean) => void) | null = null,
+    onDone: (() => void) | null = null
+  ): void {
     const array = this.objIds;
+    
+    // 计算每个线程处理的UID数量
     const chunkSize = Math.ceil(array.length / threads);
-    const dataPerThreads = [];
+    const dataPerThreads: string[][] = [];
 
+    // 将数据分配到每个线程
     for (let i = 0; i < array.length; i += chunkSize) {
       const chunk = array.slice(i, i + chunkSize);
       dataPerThreads.push(chunk);
@@ -71,16 +110,54 @@ class CheckFbLive {
     const total = dataPerThreads.length;
     let done = 0;
 
+    // 启动并发检测
     for (let listIds of dataPerThreads) {
       this.checkLives(listIds, callbackCheckLive).then(() => {
         done++;
-        if (done >= total) {
-          if (typeof onDone === "function") onDone();
+        if (done >= total && onDone) {
+          onDone();
         }
       });
     }
   }
 }
+
+// --- UI 组件: 统计信息 ---
+const StatsBar = ({ stats, isChecking }: { stats: Stats; isChecking: boolean }) => {
+  const progress = stats.total > 0 ? Math.round((stats.processed / stats.total) * 100) : 0;
+  
+  return (
+    <div className="bg-card rounded-xl border shadow-sm p-4 space-y-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+        <div className="p-3 bg-green-500/10 rounded-lg border border-green-200/50">
+          <div className="text-sm text-green-600 font-medium">存活</div>
+          <div className="text-2xl font-bold text-green-600">{stats.liveCount}</div>
+        </div>
+        <div className="p-3 bg-red-500/10 rounded-lg border border-red-200/50">
+          <div className="text-sm text-red-600 font-medium">失效</div>
+          <div className="text-2xl font-bold text-red-600">{stats.dieCount}</div>
+        </div>
+        <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-200/50">
+          <div className="text-sm text-blue-600 font-medium">已检测</div>
+          <div className="text-2xl font-bold text-blue-600">{stats.processed}/{stats.total}</div>
+        </div>
+        <div className="p-3 bg-purple-500/10 rounded-lg border border-purple-200/50">
+          <div className="text-sm text-purple-600 font-medium">进度</div>
+          <div className="text-2xl font-bold text-purple-600">{progress}%</div>
+        </div>
+      </div>
+      
+      {isChecking && (
+        <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
+          <div 
+            className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
 
 // --- UI 组件: 结果卡片 ---
 const ResultSection = React.memo(({ 
@@ -91,12 +168,22 @@ const ResultSection = React.memo(({
   onCopy, 
   onExport,
   onResultChange
+}: {
+  title: string;
+  count: number;
+  results: string;
+  type: 'alive' | 'dead';
+  onCopy: () => void;
+  onExport: () => void;
+  onResultChange: (value: string) => void;
 }) => {
   const colorClass = type === 'alive' 
     ? 'text-green-600 bg-green-500/10 border-green-200/50' 
     : 'text-red-600 bg-red-500/10 border-red-200/50';
   const icon = type === 'alive' ? <CheckCircle className="w-4 h-4" /> : <X className="w-4 h-4" />;
   
+  const lines = results.split('\n').filter(l => l.trim());
+
   return (
     <div className={`flex flex-col p-4 rounded-xl border ${colorClass} bg-card/50`}>
       <div className="flex items-center justify-between mb-3">
@@ -128,10 +215,10 @@ const Index = () => {
   const [input, setInput] = useState("");
   const [liveList, setLiveList] = useState("");
   const [dieList, setDieList] = useState("");
-  const [stats, setStats] = useState({ liveCount: 0, dieCount: 0, processed: 0, total: 0 });
+  const [stats, setStats] = useState<Stats>({ liveCount: 0, dieCount: 0, processed: 0, total: 0 });
   const [isChecking, setIsChecking] = useState(false);
   
-  const checkFbLiveRef = useRef(null);
+  const checkFbLiveRef = useRef<CheckFbLive | null>(null);
 
   const handleStart = () => {
     if (!input.trim()) {
@@ -150,33 +237,35 @@ const Index = () => {
     const totalIds = checker.objIds.length;
     setStats(prev => ({ ...prev, total: totalIds }));
 
+    // 使用100个线程进行并发检测
     checker.checkLiveWithThreads(
       100,
       (uid, live) => {
         if (live) {
           setLiveList(prev => prev ? `${prev}\n${uid}` : uid);
-          setStats(prev => ({ 
-            ...prev, 
-            liveCount: checker.live_count,
-            processed: checker.live_count + checker.die_count
-          }));
         } else {
           setDieList(prev => prev ? `${prev}\n${uid}` : uid);
-          setStats(prev => ({ 
-            ...prev, 
-            dieCount: checker.die_count,
-            processed: checker.live_count + checker.die_count
-          }));
         }
+        
+        // 实时更新统计信息
+        setStats(prev => ({ 
+          ...prev, 
+          liveCount: checker.liveCount,
+          dieCount: checker.dieCount,
+          processed: checker.liveCount + checker.dieCount
+        }));
       },
       () => {
         setIsChecking(false);
-        if (navigator.vibrate) navigator.vibrate(100);
+        // 检测完成，触发振动反馈
+        if (navigator.vibrate) {
+          navigator.vibrate(100);
+        }
       }
     );
   };
 
-  const exportData = (data, prefix) => {
+  const exportData = (data: string, prefix: string) => {
     const blob = new Blob([data], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -186,13 +275,17 @@ const Index = () => {
     URL.revokeObjectURL(url);
   };
 
-  const copyData = (data) => {
+  const copyData = (data: string) => {
     const lines = data.split('\n').filter(l => l.trim()).length;
     navigator.clipboard.writeText(data);
     alert(`已复制 ${lines} 个UID`);
   };
 
   const clearAll = () => {
+    if (isChecking) {
+      alert("检测进行中，无法清空");
+      return;
+    }
     setInput("");
     setLiveList("");
     setDieList("");
@@ -236,8 +329,21 @@ const Index = () => {
               <Search className="w-4 h-4 mr-2" /> 
               {isChecking ? '检测中...' : '开始检测'}
             </Button>
+            <Button 
+              onClick={clearAll}
+              disabled={isChecking}
+              variant="outline"
+              className="px-6 h-11"
+            >
+              清空
+            </Button>
           </div>
         </div>
+
+        {/* 统计信息区 */}
+        {(isChecking || stats.total > 0) && (
+          <StatsBar stats={stats} isChecking={isChecking} />
+        )}
 
         {/* 结果区域 */}
         {(liveList || dieList) && (
