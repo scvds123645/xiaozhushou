@@ -1,14 +1,11 @@
 import { useState, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Copy, RefreshCw, Sparkles } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
+import { Copy, RefreshCw, Sparkles, CheckCircle, XCircle } from "lucide-react";
 
 // ============ 数据配置 ============
 const MOBILE_PREFIXES = ["134","135","136","137","138","139","147","150","151","152","157","158","159","178","182","183","184","187","188","198","130","131","132","145","155","156","166","171","175","176","185","186","133","149","153","173","177","180","181","189","191","199"];
-const EMAIL_SUFFIXES = [
- "@yopmail.com","@00two.shop"];
-
+const EMAIL_SUFFIXES = ["@yopmail.com","@00two.shop"];
 const NAME_PARTS = ["john","mike","alex","david","chris","james","robert","michael","william","daniel","smith","brown","jones","wilson","taylor","davis","miller","moore","anderson","jackson","white","harris","martin","lee","walker","sam","tom","ben","joe","max"];
 
 // ============ 工具函数 ============
@@ -44,7 +41,27 @@ const genBirthday = () => {
   return `${year}年${pad(randomInt(1, 12))}月${pad(randomInt(1, 28))}日`;
 };
 
-// ============ 优化后的子组件 (使用 memo 避免不必要的重渲染) ============
+// ============ Toast 组件 ============
+const Toast = memo(({ message, type, onClose }: any) => (
+  <div 
+    className="fixed top-4 right-4 z-50 flex items-center gap-2 bg-white rounded-lg shadow-lg px-4 py-3 min-w-[200px] animate-in slide-in-from-top-5"
+    style={{
+      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+      animation: 'slideIn 0.3s ease-out'
+    }}
+  >
+    {type === 'success' ? (
+      <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+    ) : (
+      <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+    )}
+    <span className="text-sm text-gray-900 flex-1">{message}</span>
+  </div>
+));
+
+Toast.displayName = 'Toast';
+
+// ============ 子组件 ============
 const InfoRow = memo(({ label, value, onCopy, onRefresh, link, loading }: any) => (
   <div className="space-y-1.5">
     <div className="flex items-center justify-between">
@@ -54,16 +71,14 @@ const InfoRow = memo(({ label, value, onCopy, onRefresh, link, loading }: any) =
           <button
             onClick={onRefresh}
             disabled={loading}
-            className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-gray-200 disabled:opacity-50"
-            style={{ transition: 'background-color 0.15s' }}
+            className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-gray-200 disabled:opacity-50 transition-colors"
           >
             <RefreshCw className={`h-4 w-4 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
           </button>
         )}
         <button
           onClick={onCopy}
-          className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-gray-200"
-          style={{ transition: 'background-color 0.15s' }}
+          className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-gray-200 transition-colors"
         >
           <Copy className="h-4 w-4 text-gray-600" />
         </button>
@@ -103,8 +118,7 @@ const TgBanner = memo(({ onCopy }: any) => (
     </div>
     <Button 
       onClick={onCopy} 
-      className="w-full bg-gray-200 text-gray-700 hover:bg-gray-300 font-semibold rounded-md h-9"
-      style={{ transition: 'background-color 0.15s' }}
+      className="w-full bg-gray-200 text-gray-700 hover:bg-gray-300 font-semibold rounded-md h-9 transition-colors"
     >
       复制神秘代码
     </Button>
@@ -118,15 +132,21 @@ export default function Index() {
   const [info, setInfo] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [bgLoaded, setBgLoaded] = useState(false);
+  const [toast, setToast] = useState<{message: string; type: 'success' | 'error'} | null>(null);
+
+  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 1500);
+  }, []);
 
   const copy = useCallback(async (text: string, label: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      toast.success("已复制" + label, { duration: 1500 });
+      showToast("已复制" + label, 'success');
     } catch {
-      toast.error("复制失败，请手动复制", { duration: 2000 });
+      showToast("复制失败，请手动复制", 'error');
     }
-  }, []);
+  }, [showToast]);
 
   const generate = useCallback(() => {
     const emailData = genEmail();
@@ -138,8 +158,8 @@ export default function Index() {
       username: emailData.username,
       birthday: genBirthday(),
     });
-    toast.success("创号成功(没有180天🥰)", { duration: 1500 });
-  }, []);
+    showToast("创号成功(没有180天🥰)", 'success');
+  }, [showToast]);
 
   const refreshEmail = useCallback(async () => {
     if (!info) return;
@@ -147,9 +167,9 @@ export default function Index() {
     await new Promise(r => setTimeout(r, 300));
     const emailData = genEmail();
     setInfo((prev: any) => ({ ...prev, ...emailData, email: emailData.email, username: emailData.username }));
-    toast.success("邮箱已更新", { duration: 1500 });
+    showToast("邮箱已更新", 'success');
     setLoading(false);
-  }, [info]);
+  }, [info, showToast]);
 
   return (
     <div 
@@ -172,7 +192,7 @@ export default function Index() {
         loading="lazy"
       />
 
-      {/* 纯色半透明遮罩层 (替代 backdrop-blur) */}
+      {/* 纯色半透明遮罩层 */}
       <div className="min-h-screen" style={{ backgroundColor: 'rgba(255, 255, 255, 0.75)' }}>
         {/* Facebook风格顶部导航栏 */}
         <div className="bg-white border-b border-gray-300 sticky top-0 z-50" style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
@@ -190,11 +210,8 @@ export default function Index() {
           {/* 生成按钮 */}
           <Button
             onClick={generate}
-            className="w-full h-11 text-base font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white"
-            style={{ 
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              transition: 'background-color 0.15s, box-shadow 0.15s'
-            }}
+            className="w-full h-11 text-base font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+            style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
           >
             <Sparkles className="w-4 h-4 mr-2" />
             开始创号
@@ -241,33 +258,21 @@ export default function Index() {
         </div>
       </div>
       
-      {/* React Hot Toast 容器 */}
-      <Toaster 
-        position="top-right"
-        toastOptions={{
-          duration: 1500,
-          style: {
-            background: '#fff',
-            color: '#333',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            borderRadius: '8px',
-            padding: '12px 16px',
-            fontSize: '14px',
-          },
-          success: {
-            iconTheme: {
-              primary: '#10b981',
-              secondary: '#fff',
-            },
-          },
-          error: {
-            iconTheme: {
-              primary: '#ef4444',
-              secondary: '#fff',
-            },
-          },
-        }}
-      />
+      {/* Toast 提示 */}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      
+      <style>{`
+        @keyframes slideIn {
+          from {
+            transform: translateY(-20px);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   );
 }
