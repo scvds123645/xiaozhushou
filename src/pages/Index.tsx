@@ -1,319 +1,662 @@
-import { useState, useCallback, memo, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Copy, RefreshCw, Sparkles, CheckCircle, XCircle } from "lucide-react";
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  AlertCircle,
+  Check,
+  CheckCircle,
+  Copy,
+  Edit2,
+  Eye,
+  EyeOff,
+  History,
+  Loader2,
+  RefreshCw,
+  Save,
+  Trash2,
+  Users,
+  XCircle,
+  FileText
+} from 'lucide-react';
 
-// ============ 数据配置 / Data Configuration ============
-const MOBILE_PREFIXES = [
-  "134", "135", "136", "137", "138", "139", "147", "150", "151", "152", 
-  "157", "158", "159", "178", "182", "183", "184", "187", "188", "198", 
-  "130", "131", "132", "145", "155", "156", "166", "171", "175", "176", 
-  "185", "186", "133", "149", "153", "173", "177", "180", "181", "189", 
-  "191", "199"
-];
+// --- Types ---
 
-const EMAIL_SUFFIXES = ["@00two.shop", "@00two.site"];
+type UserStatus = 'Live' | 'Die';
 
-const NAME_PARTS = [
-  "john", "mike", "alex", "david", "chris", "james", "robert", "michael", 
-  "william", "daniel", "smith", "brown", "jones", "wilson", "taylor", 
-  "davis", "miller", "moore", "anderson", "jackson", "white", "harris", 
-  "martin", "lee", "walker", "sam", "tom", "ben", "joe", "max"
-];
+interface UserResult {
+  id: string;
+  status: UserStatus;
+  url: string;
+}
 
-// ============ 工具函数 / Utility Functions ============
-const random = (arr) => arr[Math.floor(Math.random() * arr.length)];
-const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-const pad = (n, len = 2) => String(n).padStart(len, "0");
+interface HistoryRecord {
+  key: string;
+  timestamp: number;
+  total: number;
+  live: number;
+  die: number;
+  note: string;
+  users: UserResult[];
+}
 
-const genName = (vowelStart) => {
-  const v = "aeiou", c = "bcdfghjklmnpqrstvwxyz";
-  let name = "";
-  for (let i = 0; i < 8; i++) { // 缩短名字长度以适应手机屏幕
-    const useVowel = vowelStart ? i % 2 === 0 : i % 2 !== 0;
-    name += random([...(useVowel ? v : c)]);
+// --- Constants & Config ---
+
+const STORAGE_KEY = 'fb_history_records';
+const CONCURRENT_LIMIT = 100;
+const ID_REGEX = /\d{14,}/g;
+
+// --- Helper Functions ---
+
+const copyToClipboard = async (text: string): Promise<boolean> => {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } else {
+      // Fallback for older browsers
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-9999px";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      document.execCommand('copy');
+      textArea.remove();
+      return true;
+    }
+  } catch (err) {
+    console.error('Failed to copy', err);
+    return false;
   }
-  return name.charAt(0).toUpperCase() + name.slice(1);
 };
 
-const genEmail = () => {
-  let username = Array.from({ length: randomInt(2, 3) }, () => random(NAME_PARTS)).join("");
-  while (username.length < 10) { // 稍微缩短邮箱用户名长度
-    username += Math.random() > 0.5 && (15 - username.length) >= 3
-      ? pad(randomInt(0, 999), 3)
-      : random([..."abcdefghijklmnopqrstuvwxyz"]);
-  }
-  username = username.substring(0, 15);
-  return { email: username + random(EMAIL_SUFFIXES), username };
+const formatDate = (timestamp: number) => {
+  return new Date(timestamp).toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
 };
 
-const genPhone = () => "86" + random(MOBILE_PREFIXES) + pad(randomInt(0, 99999999), 8);
+// --- Main Component ---
 
-const genBirthday = () => {
-  const year = new Date().getFullYear() - randomInt(18, 25);
-  return `${year}年${pad(randomInt(1, 12))}月${pad(randomInt(1, 28))}日`;
-};
+export default function FacebookChecker() {
+  // --- State: UI & Navigation ---
+  const [activeTab, setActiveTab] = useState<'check' | 'history'>('check');
 
-// ============ Toast Component (Mobile Optimized) ============
-const Toast = memo(({ message, type }) => (
-  <div 
-    className="flex items-center gap-3 bg-white/95 backdrop-blur rounded-full shadow-xl px-5 py-3 border border-gray-100 max-w-[90vw]"
-    style={{
-      boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
-      animation: 'slideDown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-    }}
-  >
-    {type === 'success' ? (
-      <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-    ) : (
-      <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-    )}
-    <span className="text-sm text-gray-800 font-medium whitespace-nowrap">{message}</span>
-  </div>
-));
-Toast.displayName = 'Toast';
+  // --- State: Checker ---
+  const [inputValue, setInputValue] = useState('');
+  const [isChecking, setIsChecking] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [totalToCheck, setTotalToCheck] = useState(0);
+  const [completedCount, setCompletedCount] = useState(0);
+  const [results, setResults] = useState<UserResult[]>([]);
+  
+  // --- State: Results & Save Prompt ---
+  const [showSavePrompt, setShowSavePrompt] = useState(false);
+  const [currentCheckNote, setCurrentCheckNote] = useState('');
+  const [copiedLive, setCopiedLive] = useState(false);
+  const [copiedDie, setCopiedDie] = useState(false);
 
-// ============ InfoRow Component (Touch Optimized) ============
-const InfoRow = memo(({ label, value, onCopy, onRefresh, link, loading }) => (
-  <div className="space-y-1.5 group">
-    <div className="flex items-center justify-between">
-      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider select-none">{label}</label>
-      <div className="flex gap-2"> {/* 增加按钮间距 */}
-        {onRefresh && (
-          <button
-            onClick={onRefresh}
-            disabled={loading}
-            className="h-9 w-9 flex items-center justify-center rounded-full bg-gray-50 active:bg-gray-200 active:scale-90 transition-all touch-manipulation"
-            title="刷新"
-          >
-            <RefreshCw className={`h-4 w-4 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-        )}
-        <button
-          onClick={onCopy}
-          className="h-9 w-9 flex items-center justify-center rounded-full bg-gray-50 active:bg-gray-200 active:scale-90 transition-all touch-manipulation"
-          title="复制"
-        >
-          <Copy className="h-4 w-4 text-gray-600" />
-        </button>
-      </div>
-    </div>
-    <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm active:border-blue-400 transition-colors">
-      {link ? (
-        <a 
-          href={link} 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          className="text-base font-medium text-blue-600 truncate block"
-        >
-          {value}
-        </a>
-      ) : (
-        <p className="text-base font-medium text-gray-900 break-all select-all font-mono tracking-tight">{value}</p>
-      )}
-    </div>
-  </div>
-));
-InfoRow.displayName = 'InfoRow';
+  // --- State: History ---
+  const [historyRecords, setHistoryRecords] = useState<HistoryRecord[]>([]);
+  const [expandedRecords, setExpandedRecords] = useState<Record<string, boolean>>({});
+  const [editingNoteKey, setEditingNoteKey] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState('');
+  const [copiedHistoryKey, setCopiedHistoryKey] = useState<string | null>(null);
 
-// ============ Telegram Banner Component ============
-const TgBanner = memo(({ onCopy }) => (
-  <Card className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 shadow-sm">
-    <div className="flex items-center gap-3 mb-4">
-      <div className="flex-shrink-0 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm">
-        <svg className="w-6 h-6 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295-.002 0-.003 0-.005 0l.213-3.054 5.56-5.022c.24-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.832.941z"/>
-        </svg>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-gray-900 font-bold text-sm">神秘代码 @fang180</p>
-        <p className="text-gray-500 text-xs mt-0.5">创号教程、工具更新和独家资源</p>
-      </div>
-    </div>
-    <Button 
-      onClick={onCopy} 
-      className="w-full bg-white text-blue-600 hover:bg-gray-50 border border-blue-200 font-bold rounded-lg h-10 shadow-sm active:scale-[0.98] transition-all"
-    >
-      复制神秘代码
-    </Button>
-  </Card>
-));
-TgBanner.displayName = 'TgBanner';
-
-// ============ Main Component ============
-export default function AccountGenerator() {
-  const [info, setInfo] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [bgLoaded, setBgLoaded] = useState(false);
-  const [toasts, setToasts] = useState([]);
-
-  // 初始化加载背景图
+  // --- Initialization ---
   useEffect(() => {
-    const img = new Image();
-    img.src = "https://www.584136.xyz/%E5%A4%B4%E5%83%8F/%E8%83%8C%E6%99%AF89.jpg";
-    img.onload = () => setBgLoaded(true);
-  }, []);
-
-  const showToast = useCallback((message, type = 'success') => {
-    const id = Date.now();
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 2500);
-  }, []);
-
-  const copy = useCallback(async (text, label) => {
-    if (!text) return;
-    try {
-      // 兼容移动端剪贴板
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(text);
-        showToast(`已复制${label}`, 'success');
-      } else {
-        // Fallback for older browsers or non-secure contexts
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-        showToast(`已复制${label}`, 'success');
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        setHistoryRecords(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to load history", e);
       }
-    } catch {
-      showToast("复制失败，请长按手动复制", 'error');
     }
-  }, [showToast]);
+  }, []);
 
-  const generate = useCallback(() => {
-    // 增加触觉反馈 (如果设备支持)
-    if (window.navigator && window.navigator.vibrate) {
-      window.navigator.vibrate(50);
+  // Update localStorage whenever history changes
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(historyRecords));
+  }, [historyRecords]);
+
+  // --- Core Logic: Status Checker ---
+
+  const checkSingleUser = async (id: string): Promise<UserResult> => {
+    try {
+      const response = await fetch(`https://graph.facebook.com/${id}/picture?redirect=false`);
+      const data = await response.json();
+      
+      // Logic: If URL contains "static" -> Die, otherwise Live
+      const url = data?.data?.url || '';
+      const isLive = url && !url.includes('static');
+
+      return {
+        id,
+        status: isLive ? 'Live' : 'Die',
+        url
+      };
+    } catch (error) {
+      // Network error or fetch fail counts as Die
+      return { id, status: 'Die', url: '' };
     }
+  };
+
+  const startCheck = async () => {
+    const ids = (inputValue.match(ID_REGEX) || []);
+    if (ids.length === 0) return;
+
+    setIsChecking(true);
+    setResults([]);
+    setShowSavePrompt(false);
+    setTotalToCheck(ids.length);
+    setCompletedCount(0);
+    setProgress(0);
+    setCurrentCheckNote('');
+
+    // Maintain order by initializing results array with nulls or placeholders, 
+    // but here we process concurrency and want to map back to original order.
+    // We will just process and then sort or map? 
+    // Requirement: "Maintain original input order in results"
     
-    const emailData = genEmail();
-    setInfo({
-      lastName: genName(false),
-      firstName: genName(true),
-      phone: genPhone(),
-      email: emailData.email,
-      username: emailData.username,
-      birthday: genBirthday(),
-    });
-    showToast("新身份已生成", 'success');
-  }, [showToast]);
+    // We create a map of promises
+    const queue = [...ids];
+    const resultsMap = new Map<string, UserResult>();
+    let processed = 0;
 
-  const refreshEmail = useCallback(async () => {
-    if (!info) return;
-    setLoading(true);
-    await new Promise(r => setTimeout(r, 600)); 
-    const emailData = genEmail();
-    setInfo((prev) => ({ ...prev, ...emailData }));
-    showToast("邮箱已刷新", 'success');
-    setLoading(false);
-  }, [info, showToast]);
+    const worker = async () => {
+      while (queue.length > 0) {
+        const id = queue.shift();
+        if (!id) break;
+
+        const result = await checkSingleUser(id);
+        resultsMap.set(id, result);
+        
+        processed++;
+        setCompletedCount(processed);
+        setProgress((processed / ids.length) * 100);
+      }
+    };
+
+    // Create concurrent workers
+    const workers = Array(Math.min(ids.length, CONCURRENT_LIMIT))
+      .fill(null)
+      .map(() => worker());
+
+    await Promise.all(workers);
+
+    // Reconstruct results in original order
+    const orderedResults = ids.map(id => resultsMap.get(id)!);
+    setResults(orderedResults);
+    setIsChecking(false);
+    setShowSavePrompt(true);
+  };
+
+  // --- Actions: Results ---
+
+  const copyResults = async (type: 'Live' | 'Die') => {
+    const idsToCopy = results
+      .filter(r => r.status === type)
+      .map(r => r.id)
+      .join('\n');
+    
+    const success = await copyToClipboard(idsToCopy);
+    if (success) {
+      if (type === 'Live') {
+        setCopiedLive(true);
+        setTimeout(() => setCopiedLive(false), 2000);
+      } else {
+        setCopiedDie(true);
+        setTimeout(() => setCopiedDie(false), 2000);
+      }
+    }
+  };
+
+  const saveCurrentResultToHistory = () => {
+    const liveCount = results.filter(r => r.status === 'Live').length;
+    const dieCount = results.filter(r => r.status === 'Die').length;
+
+    const newRecord: HistoryRecord = {
+      key: `fb_history:${Date.now()}`,
+      timestamp: Date.now(),
+      total: results.length,
+      live: liveCount,
+      die: dieCount,
+      note: currentCheckNote,
+      users: results
+    };
+
+    setHistoryRecords(prev => [newRecord, ...prev]);
+    setShowSavePrompt(false);
+    setCurrentCheckNote('');
+    setActiveTab('history');
+  };
+
+  const discardResults = () => {
+    setShowSavePrompt(false);
+    setCurrentCheckNote('');
+  };
+
+  // --- Actions: History ---
+
+  const clearHistory = () => {
+    if (window.confirm("确定要清空所有历史记录吗？")) {
+      setHistoryRecords([]);
+    }
+  };
+
+  const deleteRecord = (key: string) => {
+    if (window.confirm("确定删除这条记录吗？")) {
+      setHistoryRecords(prev => prev.filter(r => r.key !== key));
+    }
+  };
+
+  const recheckRecord = (record: HistoryRecord) => {
+    const ids = record.users.map(u => u.id).join('\n');
+    setInputValue(ids);
+    setActiveTab('check');
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const toggleExpand = (key: string) => {
+    setExpandedRecords(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  const startEditNote = (record: HistoryRecord) => {
+    setEditingNoteKey(record.key);
+    setNoteDraft(record.note);
+  };
+
+  const saveNoteEdit = (key: string) => {
+    setHistoryRecords(prev => prev.map(r => 
+      r.key === key ? { ...r, note: noteDraft } : r
+    ));
+    setEditingNoteKey(null);
+  };
+
+  const copyHistoryIds = async (record: HistoryRecord) => {
+    const ids = record.users.map(u => u.id).join('\n');
+    const success = await copyToClipboard(ids);
+    if (success) {
+      setCopiedHistoryKey(record.key);
+      setTimeout(() => setCopiedHistoryKey(null), 2000);
+    }
+  };
+
+  // --- Render Helpers ---
+  
+  const liveResults = results.filter(r => r.status === 'Live');
+  const dieResults = results.filter(r => r.status === 'Die');
 
   return (
-    <div 
-      className="min-h-screen relative overflow-hidden bg-gray-50"
-      style={{
-        backgroundImage: bgLoaded ? 'url(https://www.584136.xyz/%E5%A4%B4%E5%83%8F/%E8%83%8C%E6%99%AF89.jpg)' : 'none',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed' 
-      }}
-    >
-      {/* Overlay with more blur for readability */}
-      <div className="min-h-screen w-full absolute inset-0 bg-white/80 backdrop-blur-sm overflow-y-auto">
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-indigo-700 to-slate-900 text-slate-800 p-4 font-sans">
+      <div className="max-w-4xl mx-auto space-y-6">
         
-        {/* Header - Sticky */}
-        <header className="bg-white/90 backdrop-blur-md border-b border-gray-200/50 sticky top-0 z-40 shadow-sm supports-[backdrop-filter]:bg-white/60">
-          <div className="max-w-md mx-auto px-5 h-14 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="bg-blue-600 rounded-lg p-1">
-                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                </svg>
-              </div>
-              <h1 className="text-lg font-bold text-gray-900 tracking-tight">创号助手</h1>
+        {/* Header */}
+        <header className="bg-white/10 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-white/20 flex flex-col md:flex-row justify-between items-center gap-4 text-white">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-white/20 rounded-xl">
+              <Users className="w-8 h-8" />
             </div>
-            <div className="px-2 py-0.5 bg-gray-100 rounded-md text-xs font-bold text-gray-500">v2.0</div>
+            <div>
+              <h2 className="text-sm font-medium opacity-80 tracking-wider">Facebook 工具</h2>
+              <h1 className="text-2xl font-bold tracking-tight">账号状态检查器</h1>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 bg-emerald-500/20 px-4 py-2 rounded-full border border-emerald-500/30">
+            <History className="w-4 h-4 text-emerald-300" />
+            <span className="text-sm font-semibold text-emerald-100">即时响应</span>
           </div>
         </header>
 
-        {/* Content */}
-        <main className="max-w-md mx-auto px-4 py-6 space-y-6 pb-24">
-          <Button
-            onClick={generate}
-            className="w-full h-14 text-lg font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 rounded-xl transition-all active:scale-[0.98] active:shadow-none flex items-center justify-center gap-2"
+        {/* Tab Switcher */}
+        <nav className="flex p-1 bg-slate-900/40 rounded-xl backdrop-blur-sm border border-white/10">
+          <button
+            onClick={() => setActiveTab('check')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all duration-300 transform ${
+              activeTab === 'check'
+                ? 'bg-white text-slate-900 shadow-lg scale-100'
+                : 'text-white/80 hover:bg-white/10 hover:text-white scale-95'
+            }`}
           >
-            <Sparkles className="w-5 h-5" />
-            一键生成信息
-          </Button>
+            <RefreshCw className={`w-4 h-4 ${activeTab === 'check' ? '' : 'opacity-50'}`} />
+            状态检查
+          </button>
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all duration-300 transform ${
+              activeTab === 'history'
+                ? 'bg-white text-slate-900 shadow-lg scale-100'
+                : 'text-white/80 hover:bg-white/10 hover:text-white scale-95'
+            }`}
+          >
+            <History className={`w-4 h-4 ${activeTab === 'history' ? '' : 'opacity-50'}`} />
+            历史记录
+          </button>
+        </nav>
 
-          {info && (
-            <div className="space-y-4 animate-[fadeIn_0.4s_ease-out]">
-              <Card className="p-5 space-y-5 bg-white shadow-sm border border-gray-100 rounded-2xl">
-                <div className="grid grid-cols-2 gap-4">
-                  <InfoRow label="姓氏" value={info.lastName} onCopy={() => copy(info.lastName, "姓氏")} />
-                  <InfoRow label="名字" value={info.firstName} onCopy={() => copy(info.firstName, "名字")} />
+        {/* Main Content Area */}
+        <main className="transition-all duration-500 ease-in-out">
+          
+          {/* --- CHECK TAB --- */}
+          {activeTab === 'check' && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              
+              {/* Input Card */}
+              <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-6 space-y-4">
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-slate-700 font-bold flex items-center gap-2">
+                    <Edit2 className="w-4 h-4" />
+                    输入账号 ID (每行一个)
+                  </label>
+                  <span className="text-xs font-mono bg-slate-200 px-2 py-1 rounded text-slate-600">
+                    支持混合文本解析
+                  </span>
                 </div>
+                <textarea
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder="在此粘贴包含 UID 的文本...&#10;100000000000001&#10;100000000000002"
+                  className="w-full h-[150px] p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all resize-y font-mono text-sm shadow-inner"
+                  disabled={isChecking}
+                />
                 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">生日</label>
-                  <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
-                    <p className="text-base font-medium text-gray-900 font-mono">{info.birthday}</p>
+                {/* Controls */}
+                <div className="flex flex-col md:flex-row gap-4 items-center justify-between pt-2">
+                  <button
+                    onClick={startCheck}
+                    disabled={isChecking || !inputValue.trim()}
+                    className={`
+                      w-full md:w-auto px-8 py-3 rounded-xl font-bold text-white shadow-lg flex items-center justify-center gap-2
+                      transition-all duration-200 transform
+                      ${isChecking || !inputValue.trim() 
+                        ? 'bg-slate-400 cursor-not-allowed opacity-60' 
+                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 hover:scale-105 active:scale-95'}
+                    `}
+                  >
+                    {isChecking ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
+                    {isChecking ? '检查中...' : '开始检查'}
+                  </button>
+
+                  <div className="flex gap-2 w-full md:w-auto">
+                    {/* Progress Badge */}
+                    <div className="flex-1 md:flex-none flex flex-col items-end justify-center px-4">
+                      <span className="text-xs text-slate-500 font-medium">进度</span>
+                      <span className="text-lg font-bold text-slate-800 font-mono">
+                        {completedCount} <span className="text-slate-400 text-sm">/ {totalToCheck}</span>
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <InfoRow label="手机号 (CN)" value={info.phone} onCopy={() => copy(info.phone, "手机号")} />
-                
-                <div className="space-y-3 pt-3 border-t border-gray-100 border-dashed">
-                  <InfoRow 
-                    label="临时邮箱" 
-                    value={info.email} 
-                    onCopy={() => copy(info.email, "邮箱")} 
-                    onRefresh={refreshEmail}
-                    link={`https://yopmail.com?${info.username}`}
-                    loading={loading}
+                {/* Progress Bar */}
+                <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner border border-slate-200">
+                  <div 
+                    className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 transition-all duration-300 ease-out"
+                    style={{ width: `${progress}%` }}
                   />
-                  <div className="bg-blue-50 rounded-lg px-3 py-2.5 flex gap-3 items-start">
-                    <span className="text-blue-500 text-sm mt-0.5">💡</span>
-                    <p className="text-xs text-blue-700 leading-relaxed font-medium">
-                      点击邮箱链接可直达收件箱。建议使用 Chrome 或 Safari 外部浏览器打开。
-                    </p>
+                </div>
+              </div>
+
+              {/* Save Prompt */}
+              {showSavePrompt && (
+                <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-3xl p-6 shadow-2xl text-white animate-in zoom-in-95 duration-300">
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-white/20 rounded-full">
+                      <CheckCircle className="w-8 h-8 text-white" />
+                    </div>
+                    <div className="flex-1 space-y-3">
+                      <h3 className="text-xl font-bold">检查完成!</h3>
+                      <p className="text-emerald-50 opacity-90 text-sm">
+                        共检测 {results.length} 个账号。Live: {liveResults.length}, Die: {dieResults.length}。
+                      </p>
+                      <div className="relative">
+                        <textarea
+                          maxLength={200}
+                          value={currentCheckNote}
+                          onChange={(e) => setCurrentCheckNote(e.target.value)}
+                          placeholder="添加备注 (可选)..."
+                          className="w-full bg-white/10 border border-white/20 rounded-lg p-3 text-sm placeholder-white/50 focus:outline-none focus:bg-white/20 transition-all text-white h-20 resize-none"
+                        />
+                        <span className="absolute bottom-2 right-2 text-xs opacity-50">{currentCheckNote.length}/200</span>
+                      </div>
+                      <div className="flex gap-3 pt-2">
+                        <button 
+                          onClick={saveCurrentResultToHistory}
+                          className="flex items-center gap-2 px-4 py-2 bg-white text-emerald-700 rounded-lg font-bold text-sm hover:bg-emerald-50 transition-colors shadow-md hover:scale-105 active:scale-95 transform"
+                        >
+                          <Save className="w-4 h-4" /> 保存记录
+                        </button>
+                        <button 
+                          onClick={discardResults}
+                          className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-medium text-sm transition-colors"
+                        >
+                          不保存
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </Card>
+              )}
 
-              <TgBanner onCopy={() => copy("@fang180", "神秘代码")} />
+              {/* Results Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Live Panel */}
+                <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl overflow-hidden flex flex-col h-[450px] border border-emerald-100">
+                  <div className="p-4 border-b border-emerald-100 bg-emerald-50/50 flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]"></div>
+                      <h3 className="font-bold text-emerald-800">Live 账号</h3>
+                    </div>
+                    <span className="bg-emerald-200 text-emerald-800 text-xs font-bold px-2 py-1 rounded-full">
+                      {liveResults.length}
+                    </span>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-emerald-50/20">
+                    {liveResults.map((user, idx) => (
+                      <div key={`live-${idx}`} className="flex items-center justify-between p-2 bg-white rounded-lg border border-emerald-100 shadow-sm text-sm font-mono text-emerald-700">
+                        {user.id}
+                        <Check className="w-3 h-3 text-emerald-500" />
+                      </div>
+                    ))}
+                    {liveResults.length === 0 && <div className="text-center text-slate-400 text-sm py-10">无 Live 数据</div>}
+                  </div>
+                  <div className="p-4 bg-white border-t border-emerald-100">
+                    <button
+                      onClick={() => copyResults('Live')}
+                      disabled={liveResults.length === 0}
+                      className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all transform duration-200
+                        ${liveResults.length > 0 
+                          ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 hover:scale-105 active:scale-95' 
+                          : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
+                    >
+                      {copiedLive ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      {copiedLive ? '已复制' : '复制 Live ID'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Die Panel */}
+                <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl overflow-hidden flex flex-col h-[450px] border border-red-100">
+                  <div className="p-4 border-b border-red-100 bg-red-50/50 flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.5)]"></div>
+                      <h3 className="font-bold text-red-800">Die 账号</h3>
+                    </div>
+                    <span className="bg-red-200 text-red-800 text-xs font-bold px-2 py-1 rounded-full">
+                      {dieResults.length}
+                    </span>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-red-50/20">
+                    {dieResults.map((user, idx) => (
+                      <div key={`die-${idx}`} className="flex items-center justify-between p-2 bg-white rounded-lg border border-red-100 shadow-sm text-sm font-mono text-red-700">
+                        {user.id}
+                        <XCircle className="w-3 h-3 text-red-400" />
+                      </div>
+                    ))}
+                    {dieResults.length === 0 && <div className="text-center text-slate-400 text-sm py-10">无 Die 数据</div>}
+                  </div>
+                  <div className="p-4 bg-white border-t border-red-100">
+                    <button
+                      onClick={() => copyResults('Die')}
+                      disabled={dieResults.length === 0}
+                      className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all transform duration-200
+                        ${dieResults.length > 0 
+                          ? 'bg-red-100 text-red-700 hover:bg-red-200 hover:scale-105 active:scale-95' 
+                          : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
+                    >
+                      {copiedDie ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      {copiedDie ? '已复制' : '复制 Die ID'}
+                    </button>
+                  </div>
+                </div>
+
+              </div>
             </div>
           )}
-          
-          {!info && (
-             <div className="text-center py-10 text-gray-400">
-                <p className="text-sm">点击上方按钮开始生成</p>
-             </div>
+
+          {/* --- HISTORY TAB --- */}
+          {activeTab === 'history' && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              
+              {/* History Header */}
+              <div className="flex justify-between items-center bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-lg">
+                <div className="flex items-center gap-3">
+                  <span className="bg-indigo-100 text-indigo-700 font-bold px-3 py-1 rounded-lg text-sm">
+                    {historyRecords.length} 条记录
+                  </span>
+                  {historyRecords.length > 50 && (
+                    <span className="flex items-center gap-1 text-amber-600 text-xs font-bold bg-amber-50 px-2 py-1 rounded border border-amber-200">
+                      <AlertCircle className="w-3 h-3" /> 存储建议清理
+                    </span>
+                  )}
+                </div>
+                {historyRecords.length > 0 && (
+                   <button 
+                     onClick={clearHistory}
+                     className="text-red-500 hover:text-red-600 text-sm font-medium flex items-center gap-1 hover:bg-red-50 px-3 py-1 rounded-lg transition-colors"
+                   >
+                     <Trash2 className="w-4 h-4" /> 清空历史
+                   </button>
+                )}
+              </div>
+
+              {/* History List */}
+              <div className="space-y-4">
+                {historyRecords.length === 0 ? (
+                  <div className="text-center py-20 bg-white/50 rounded-3xl border-2 border-dashed border-white/30 text-white/70">
+                    <History className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p>暂无历史记录</p>
+                  </div>
+                ) : (
+                  historyRecords.map((record) => (
+                    <div key={record.key} className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-lg overflow-hidden transition-all hover:shadow-xl">
+                      
+                      {/* Record Header */}
+                      <div className="p-4 md:p-6 border-b border-slate-100">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded">
+                                {formatDate(record.timestamp)}
+                              </span>
+                            </div>
+                            <div className="flex gap-3 mt-2">
+                              <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
+                                <Check className="w-3 h-3" /> Live: {record.live}
+                              </span>
+                              <span className="bg-red-100 text-red-800 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
+                                <XCircle className="w-3 h-3" /> Die: {record.die}
+                              </span>
+                              <span className="bg-slate-100 text-slate-600 text-xs font-bold px-3 py-1 rounded-full">
+                                Total: {record.total}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {/* Action Buttons */}
+                          <div className="flex gap-2">
+                            <button onClick={() => recheckRecord(record)} title="重测" className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-transform hover:scale-110 active:scale-95">
+                              <RefreshCw className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => copyHistoryIds(record)} title="复制全部 ID" className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-transform hover:scale-110 active:scale-95 relative">
+                              {copiedHistoryKey === record.key ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                            </button>
+                            <button onClick={() => deleteRecord(record.key)} title="删除" className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-transform hover:scale-110 active:scale-95">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => toggleExpand(record.key)} className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-transform hover:scale-110 active:scale-95">
+                              {expandedRecords[record.key] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Note Section */}
+                        <div className="mt-4 pt-4 border-t border-slate-100">
+                          {editingNoteKey === record.key ? (
+                            <div className="flex gap-2 items-start animate-in fade-in duration-200">
+                              <textarea
+                                value={noteDraft}
+                                onChange={(e) => setNoteDraft(e.target.value)}
+                                className="w-full text-sm p-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-200 outline-none"
+                                rows={2}
+                                maxLength={200}
+                              />
+                              <div className="flex flex-col gap-1">
+                                <button onClick={() => saveNoteEdit(record.key)} className="p-1 bg-emerald-100 text-emerald-600 rounded hover:bg-emerald-200">
+                                  <Check className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => setEditingNoteKey(null)} className="p-1 bg-slate-100 text-slate-600 rounded hover:bg-slate-200">
+                                  <XCircle className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-start gap-2 group">
+                              <FileText className="w-4 h-4 text-slate-400 mt-0.5" />
+                              <p className="text-sm text-slate-600 flex-1 break-all">
+                                {record.note || <span className="italic opacity-50">无备注</span>}
+                              </p>
+                              <button onClick={() => startEditNote(record)} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-blue-500 transition-opacity">
+                                <Edit2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Expandable User List */}
+                      {expandedRecords[record.key] && (
+                        <div className="bg-slate-50 border-t border-slate-200 p-4 animate-in slide-in-from-top-2 duration-300">
+                          <div className="max-h-[240px] overflow-y-auto grid grid-cols-2 md:grid-cols-4 gap-2">
+                            {record.users.map((u, i) => (
+                              <div key={i} className={`text-xs font-mono p-1 px-2 rounded border truncate ${
+                                u.status === 'Live' 
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
+                                  : 'bg-red-50 text-red-700 border-red-100'
+                              }`}>
+                                {u.id}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           )}
         </main>
-      </div>
-      
-      {/* Styles for animation */}
-      <style>{`
-        @keyframes slideDown {
-          from { transform: translateY(-100%); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
-      
-      {/* Toast Container - Centered Top */}
-      <div className="fixed top-16 left-0 right-0 z-[60] flex flex-col items-center gap-2 pointer-events-none">
-        {toasts.map((toast) => (
-          <Toast key={toast.id} message={toast.message} type={toast.type} />
-        ))}
       </div>
     </div>
   );
