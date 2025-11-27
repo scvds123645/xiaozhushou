@@ -36,6 +36,28 @@ export default function FacebookStatusChecker() {
   const [showSavePrompt, setShowSavePrompt] = useState(false);
   const [currentCheckNote, setCurrentCheckNote] = useState('');
 
+  // Load history from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('fbCheckerHistory');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setHistoryRecords(parsed);
+      }
+    } catch (error) {
+      console.error('Failed to load history:', error);
+    }
+  }, []);
+
+  // Save history to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('fbCheckerHistory', JSON.stringify(historyRecords));
+    } catch (error) {
+      console.error('Failed to save history:', error);
+    }
+  }, [historyRecords]);
+
   const parseInputIds = (text: string): string[] => {
     const matches = text.match(/\d{14,}/g);
     return matches ? Array.from(new Set(matches)) : [];
