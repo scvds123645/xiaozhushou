@@ -1,33 +1,13 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  AlertCircle,
-  Check,
-  CheckCircle,
-  Copy,
-  Edit2,
-  Eye,
-  EyeOff,
-  History,
-  Loader2,
-  RefreshCw,
-  Save,
-  Trash2,
-  Users,
-  XCircle,
-  FileText
-} from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { AlertCircle, Check, CheckCircle, Copy, Edit2, Eye, EyeOff, History, Loader2, RefreshCw, Save, Trash2, Users, XCircle } from 'lucide-react';
 
-// --- Types ---
-
-type UserStatus = 'Live' | 'Die';
-
-interface UserResult {
+type UserResult = {
   id: string;
-  status: UserStatus;
+  status: 'Live' | 'Die';
   url: string;
-}
+};
 
-interface HistoryRecord {
+type HistoryRecord = {
   key: string;
   timestamp: number;
   total: number;
@@ -35,205 +15,141 @@ interface HistoryRecord {
   die: number;
   note: string;
   users: UserResult[];
-}
-
-// --- Constants & Config ---
-
-const STORAGE_KEY = 'fb_history_records';
-const CONCURRENT_LIMIT = 100;
-const ID_REGEX = /\d{14,}/g;
-
-// --- Helper Functions ---
-
-const copyToClipboard = async (text: string): Promise<boolean> => {
-  try {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } else {
-      // Fallback for older browsers
-      const textArea = document.createElement("textarea");
-      textArea.value = text;
-      textArea.style.position = "fixed";
-      textArea.style.left = "-9999px";
-      document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.select();
-      document.execCommand('copy');
-      textArea.remove();
-      return true;
-    }
-  } catch (err) {
-    console.error('Failed to copy', err);
-    return false;
-  }
 };
 
-const formatDate = (timestamp: number) => {
-  return new Date(timestamp).toLocaleString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  });
-};
+const STORAGE_PREFIX = 'fb_history:';
+const MAX_RECORDS_WARNING = 50;
 
-// --- Main Component ---
-
-export default function FacebookChecker() {
-  // --- State: UI & Navigation ---
+export default function FacebookStatusChecker() {
   const [activeTab, setActiveTab] = useState<'check' | 'history'>('check');
-
-  // --- State: Checker ---
   const [inputValue, setInputValue] = useState('');
   const [isChecking, setIsChecking] = useState(false);
   const [progress, setProgress] = useState(0);
   const [totalToCheck, setTotalToCheck] = useState(0);
-  const [completedCount, setCompletedCount] = useState(0);
   const [results, setResults] = useState<UserResult[]>([]);
-  
-  // --- State: Results & Save Prompt ---
-  const [showSavePrompt, setShowSavePrompt] = useState(false);
-  const [currentCheckNote, setCurrentCheckNote] = useState('');
-  const [copiedLive, setCopiedLive] = useState(false);
-  const [copiedDie, setCopiedDie] = useState(false);
-
-  // --- State: History ---
   const [historyRecords, setHistoryRecords] = useState<HistoryRecord[]>([]);
   const [expandedRecords, setExpandedRecords] = useState<Record<string, boolean>>({});
   const [editingNoteKey, setEditingNoteKey] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
   const [copiedHistoryKey, setCopiedHistoryKey] = useState<string | null>(null);
+  const [copiedLive, setCopiedLive] = useState(false);
+  const [copiedDie, setCopiedDie] = useState(false);
+  const [showSavePrompt, setShowSavePrompt] = useState(false);
+  const [currentCheckNote, setCurrentCheckNote] = useState('');
 
-  // --- Initialization ---
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        setHistoryRecords(JSON.parse(saved));
-      } catch (e) {
-        console.error("Failed to load history", e);
-      }
-    }
+    loadHistory();
   }, []);
 
-  // Update localStorage whenever history changes
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(historyRecords));
-  }, [historyRecords]);
-
-  // --- Core Logic: Status Checker ---
+  const parseInputIds = (text: string): string[] => {
+    const matches = text.match(/\d{14,}/g);
+    return matches ? Array.from(new Set(matches)) : [];
+  };
 
   const checkSingleUser = async (id: string): Promise<UserResult> => {
     try {
-      const response = await fetch(`https://graph.facebook.com/${id}/picture?redirect=false`);
+      const url = `https://graph.facebook.com/${id}/picture?redirect=false`;
+      const response = await fetch(url);
       const data = await response.json();
-      
-      // Logic: If URL contains "static" -> Die, otherwise Live
-      const url = data?.data?.url || '';
-      const isLive = url && !url.includes('static');
-
-      return {
-        id,
-        status: isLive ? 'Live' : 'Die',
-        url
-      };
+      const imageUrl = data?.data?.url || '';
+      const status = imageUrl.includes('static') ? 'Die' : 'Live';
+      return { id, status, url: imageUrl };
     } catch (error) {
-      // Network error or fetch fail counts as Die
       return { id, status: 'Die', url: '' };
     }
   };
 
-  const startCheck = async () => {
-    const ids = (inputValue.match(ID_REGEX) || []);
-    if (ids.length === 0) return;
-
+  const runCheckWithIds = async (ids: string[]) => {
     setIsChecking(true);
+    setProgress(0);
+    setTotalToCheck(ids.length);
     setResults([]);
     setShowSavePrompt(false);
-    setTotalToCheck(ids.length);
-    setCompletedCount(0);
-    setProgress(0);
-    setCurrentCheckNote('');
 
-    // Maintain order by initializing results array with nulls or placeholders, 
-    // but here we process concurrency and want to map back to original order.
-    // We will just process and then sort or map? 
-    // Requirement: "Maintain original input order in results"
-    
-    // We create a map of promises
-    const queue = [...ids];
-    const resultsMap = new Map<string, UserResult>();
-    let processed = 0;
+    const resultMap = new Map<string, UserResult>();
+    const concurrencyLimit = 100;
+    let completed = 0;
 
-    const worker = async () => {
-      while (queue.length > 0) {
-        const id = queue.shift();
-        if (!id) break;
-
-        const result = await checkSingleUser(id);
-        resultsMap.set(id, result);
-        
-        processed++;
-        setCompletedCount(processed);
-        setProgress((processed / ids.length) * 100);
-      }
+    const checkBatch = async (batch: string[]) => {
+      const promises = batch.map(id => checkSingleUser(id));
+      const batchResults = await Promise.all(promises);
+      
+      batchResults.forEach(result => {
+        resultMap.set(result.id, result);
+        completed++;
+        setProgress(completed);
+      });
     };
 
-    // Create concurrent workers
-    const workers = Array(Math.min(ids.length, CONCURRENT_LIMIT))
-      .fill(null)
-      .map(() => worker());
+    for (let i = 0; i < ids.length; i += concurrencyLimit) {
+      const batch = ids.slice(i, i + concurrencyLimit);
+      await checkBatch(batch);
+    }
 
-    await Promise.all(workers);
-
-    // Reconstruct results in original order
-    const orderedResults = ids.map(id => resultsMap.get(id)!);
+    const orderedResults = ids.map(id => resultMap.get(id)!);
     setResults(orderedResults);
     setIsChecking(false);
     setShowSavePrompt(true);
   };
 
-  // --- Actions: Results ---
+  const handleCheck = () => {
+    const ids = parseInputIds(inputValue);
+    if (ids.length === 0) return;
+    runCheckWithIds(ids);
+  };
 
-  const copyResults = async (type: 'Live' | 'Die') => {
-    const idsToCopy = results
-      .filter(r => r.status === type)
-      .map(r => r.id)
-      .join('\n');
-    
-    const success = await copyToClipboard(idsToCopy);
-    if (success) {
-      if (type === 'Live') {
-        setCopiedLive(true);
-        setTimeout(() => setCopiedLive(false), 2000);
+  const copyTextToClipboard = async (text: string, callback: () => void) => {
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
       } else {
-        setCopiedDie(true);
-        setTimeout(() => setCopiedDie(false), 2000);
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
       }
+      callback();
+      setTimeout(() => callback(), 2000);
+    } catch (error) {
+      console.error('Copy failed:', error);
     }
   };
 
-  const saveCurrentResultToHistory = () => {
-    const liveCount = results.filter(r => r.status === 'Live').length;
-    const dieCount = results.filter(r => r.status === 'Die').length;
+  const copyLiveIds = () => {
+    const liveIds = results.filter(r => r.status === 'Live').map(r => r.id).join('\n');
+    if (liveIds) {
+      setCopiedLive(true);
+      copyTextToClipboard(liveIds, () => setCopiedLive(false));
+    }
+  };
 
-    const newRecord: HistoryRecord = {
-      key: `fb_history:${Date.now()}`,
+  const copyDieIds = () => {
+    const dieIds = results.filter(r => r.status === 'Die').map(r => r.id).join('\n');
+    if (dieIds) {
+      setCopiedDie(true);
+      copyTextToClipboard(dieIds, () => setCopiedDie(false));
+    }
+  };
+
+  const saveToHistory = () => {
+    const record: HistoryRecord = {
+      key: `${STORAGE_PREFIX}${Date.now()}`,
       timestamp: Date.now(),
       total: results.length,
-      live: liveCount,
-      die: dieCount,
-      note: currentCheckNote,
+      live: results.filter(r => r.status === 'Live').length,
+      die: results.filter(r => r.status === 'Die').length,
+      note: currentCheckNote.slice(0, 200),
       users: results
     };
 
-    setHistoryRecords(prev => [newRecord, ...prev]);
+    localStorage.setItem(record.key, JSON.stringify(record));
+    loadHistory();
     setShowSavePrompt(false);
     setCurrentCheckNote('');
-    setActiveTab('history');
   };
 
   const discardResults = () => {
@@ -241,33 +157,38 @@ export default function FacebookChecker() {
     setCurrentCheckNote('');
   };
 
-  // --- Actions: History ---
-
-  const clearHistory = () => {
-    if (window.confirm("确定要清空所有历史记录吗？")) {
-      setHistoryRecords([]);
+  const loadHistory = () => {
+    const records: HistoryRecord[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(STORAGE_PREFIX)) {
+        try {
+          const data = JSON.parse(localStorage.getItem(key) || '');
+          records.push(data);
+        } catch (e) {
+          console.error('Failed to parse history record:', e);
+        }
+      }
     }
-  };
-
-  const deleteRecord = (key: string) => {
-    if (window.confirm("确定删除这条记录吗？")) {
-      setHistoryRecords(prev => prev.filter(r => r.key !== key));
-    }
+    records.sort((a, b) => b.timestamp - a.timestamp);
+    setHistoryRecords(records);
   };
 
   const recheckRecord = (record: HistoryRecord) => {
-    const ids = record.users.map(u => u.id).join('\n');
-    setInputValue(ids);
+    const ids = record.users.map(u => u.id);
+    setInputValue(ids.join('\n'));
     setActiveTab('check');
-    // Scroll to top
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => runCheckWithIds(ids), 100);
   };
 
-  const toggleExpand = (key: string) => {
-    setExpandedRecords(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
+  const toggleExpandRecord = (key: string) => {
+    setExpandedRecords(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const copyRecordIds = (record: HistoryRecord) => {
+    const ids = record.users.map(u => u.id).join('\n');
+    setCopiedHistoryKey(record.key);
+    copyTextToClipboard(ids, () => setCopiedHistoryKey(null));
   };
 
   const startEditNote = (record: HistoryRecord) => {
@@ -275,388 +196,473 @@ export default function FacebookChecker() {
     setNoteDraft(record.note);
   };
 
-  const saveNoteEdit = (key: string) => {
-    setHistoryRecords(prev => prev.map(r => 
-      r.key === key ? { ...r, note: noteDraft } : r
-    ));
-    setEditingNoteKey(null);
-  };
-
-  const copyHistoryIds = async (record: HistoryRecord) => {
-    const ids = record.users.map(u => u.id).join('\n');
-    const success = await copyToClipboard(ids);
-    if (success) {
-      setCopiedHistoryKey(record.key);
-      setTimeout(() => setCopiedHistoryKey(null), 2000);
+  const saveNote = (key: string) => {
+    try {
+      const record = JSON.parse(localStorage.getItem(key) || '');
+      record.note = noteDraft.slice(0, 200);
+      localStorage.setItem(key, JSON.stringify(record));
+      loadHistory();
+      setEditingNoteKey(null);
+      setNoteDraft('');
+    } catch (e) {
+      console.error('Failed to save note:', e);
     }
   };
 
-  // --- Render Helpers ---
-  
-  const liveResults = results.filter(r => r.status === 'Live');
-  const dieResults = results.filter(r => r.status === 'Die');
+  const cancelEditNote = () => {
+    setEditingNoteKey(null);
+    setNoteDraft('');
+  };
+
+  const deleteRecord = (key: string) => {
+    if (window.confirm('确定要删除这条记录吗？')) {
+      localStorage.removeItem(key);
+      loadHistory();
+    }
+  };
+
+  const clearAllHistory = () => {
+    if (window.confirm('确定要清空所有历史记录吗？此操作无法撤销。')) {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith(STORAGE_PREFIX)) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      loadHistory();
+    }
+  };
+
+  const liveCount = results.filter(r => r.status === 'Live').length;
+  const dieCount = results.filter(r => r.status === 'Die').length;
+  const progressPercent = totalToCheck > 0 ? Math.round((progress / totalToCheck) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-indigo-700 to-slate-900 text-slate-800 p-4 font-sans">
-      <div className="max-w-4xl mx-auto space-y-6">
-        
-        {/* Header */}
-        <header className="bg-white/10 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-white/20 flex flex-col md:flex-row justify-between items-center gap-4 text-white">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-white/20 rounded-xl">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4">
+      <div className="max-w-6xl mx-auto">
+        <div className="bg-white rounded-3xl shadow-lg overflow-hidden">
+          {/* Header */}
+          <div className="bg-blue-600 p-8">
+            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
               <Users className="w-8 h-8" />
-            </div>
-            <div>
-              <h2 className="text-sm font-medium opacity-80 tracking-wider">Facebook 工具</h2>
-              <h1 className="text-2xl font-bold tracking-tight">账号状态检查器</h1>
-            </div>
+              Facebook 账号状态检查器
+            </h1>
           </div>
-          <div className="flex items-center gap-2 bg-emerald-500/20 px-4 py-2 rounded-full border border-emerald-500/30">
-            <History className="w-4 h-4 text-emerald-300" />
-            <span className="text-sm font-semibold text-emerald-100">即时响应</span>
-          </div>
-        </header>
 
-        {/* Tab Switcher */}
-        <nav className="flex p-1 bg-slate-900/40 rounded-xl backdrop-blur-sm border border-white/10">
-          <button
-            onClick={() => setActiveTab('check')}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all duration-300 transform ${
-              activeTab === 'check'
-                ? 'bg-white text-slate-900 shadow-lg scale-100'
-                : 'text-white/80 hover:bg-white/10 hover:text-white scale-95'
-            }`}
-          >
-            <RefreshCw className={`w-4 h-4 ${activeTab === 'check' ? '' : 'opacity-50'}`} />
-            状态检查
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all duration-300 transform ${
-              activeTab === 'history'
-                ? 'bg-white text-slate-900 shadow-lg scale-100'
-                : 'text-white/80 hover:bg-white/10 hover:text-white scale-95'
-            }`}
-          >
-            <History className={`w-4 h-4 ${activeTab === 'history' ? '' : 'opacity-50'}`} />
-            历史记录
-          </button>
-        </nav>
-
-        {/* Main Content Area */}
-        <main className="transition-all duration-500 ease-in-out">
-          
-          {/* --- CHECK TAB --- */}
-          {activeTab === 'check' && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              
-              {/* Input Card */}
-              <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-6 space-y-4">
-                <div className="flex justify-between items-center mb-2">
-                  <label className="text-slate-700 font-bold flex items-center gap-2">
-                    <Edit2 className="w-4 h-4" />
-                    输入账号 ID (每行一个)
-                  </label>
-                  <span className="text-xs font-mono bg-slate-200 px-2 py-1 rounded text-slate-600">
-                    支持混合文本解析
+          {/* Tabs */}
+          <div className="flex border-b border-slate-200">
+            <button
+              onClick={() => setActiveTab('check')}
+              className={`flex-1 py-5 px-6 font-medium transition-all ${
+                activeTab === 'check'
+                  ? 'bg-white text-blue-600 border-b-3 border-blue-600'
+                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <CheckCircle className="w-6 h-6" />
+                状态检查
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`flex-1 py-5 px-6 font-medium transition-all ${
+                activeTab === 'history'
+                  ? 'bg-white text-blue-600 border-b-3 border-blue-600'
+                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <History className="w-6 h-6" />
+                历史记录
+                {historyRecords.length > 0 && (
+                  <span className="ml-1 px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
+                    {historyRecords.length}
                   </span>
-                </div>
+                )}
+              </div>
+            </button>
+          </div>
+
+          {/* Check Tab */}
+          {activeTab === 'check' && (
+            <div className="p-6 space-y-6">
+              {/* Input Area */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-3">
+                  输入 Facebook ID（每行一个，14位以上数字）
+                </label>
                 <textarea
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  placeholder="在此粘贴包含 UID 的文本...&#10;100000000000001&#10;100000000000002"
-                  className="w-full h-[150px] p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all resize-y font-mono text-sm shadow-inner"
+                  placeholder="输入或粘贴 Facebook ID...&#10;支持混合文本，系统会自动提取14位以上的数字"
+                  className="w-full h-40 px-5 py-4 border border-slate-300 rounded-2xl focus:border-blue-600 focus:ring-4 focus:ring-blue-100 transition-all resize-none text-slate-900 placeholder:text-slate-400"
                   disabled={isChecking}
                 />
-                
-                {/* Controls */}
-                <div className="flex flex-col md:flex-row gap-4 items-center justify-between pt-2">
-                  <button
-                    onClick={startCheck}
-                    disabled={isChecking || !inputValue.trim()}
-                    className={`
-                      w-full md:w-auto px-8 py-3 rounded-xl font-bold text-white shadow-lg flex items-center justify-center gap-2
-                      transition-all duration-200 transform
-                      ${isChecking || !inputValue.trim() 
-                        ? 'bg-slate-400 cursor-not-allowed opacity-60' 
-                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 hover:scale-105 active:scale-95'}
-                    `}
-                  >
-                    {isChecking ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
-                    {isChecking ? '检查中...' : '开始检查'}
-                  </button>
-
-                  <div className="flex gap-2 w-full md:w-auto">
-                    {/* Progress Badge */}
-                    <div className="flex-1 md:flex-none flex flex-col items-end justify-center px-4">
-                      <span className="text-xs text-slate-500 font-medium">进度</span>
-                      <span className="text-lg font-bold text-slate-800 font-mono">
-                        {completedCount} <span className="text-slate-400 text-sm">/ {totalToCheck}</span>
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner border border-slate-200">
-                  <div 
-                    className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 transition-all duration-300 ease-out"
-                    style={{ width: `${progress}%` }}
-                  />
+                <div className="mt-3 text-sm text-slate-600 font-medium">
+                  已识别 {parseInputIds(inputValue).length} 个有效 ID
                 </div>
               </div>
 
-              {/* Save Prompt */}
-              {showSavePrompt && (
-                <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-3xl p-6 shadow-2xl text-white animate-in zoom-in-95 duration-300">
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 bg-white/20 rounded-full">
-                      <CheckCircle className="w-8 h-8 text-white" />
-                    </div>
-                    <div className="flex-1 space-y-3">
-                      <h3 className="text-xl font-bold">检查完成!</h3>
-                      <p className="text-emerald-50 opacity-90 text-sm">
-                        共检测 {results.length} 个账号。Live: {liveResults.length}, Die: {dieResults.length}。
-                      </p>
-                      <div className="relative">
-                        <textarea
-                          maxLength={200}
-                          value={currentCheckNote}
-                          onChange={(e) => setCurrentCheckNote(e.target.value)}
-                          placeholder="添加备注 (可选)..."
-                          className="w-full bg-white/10 border border-white/20 rounded-lg p-3 text-sm placeholder-white/50 focus:outline-none focus:bg-white/20 transition-all text-white h-20 resize-none"
-                        />
-                        <span className="absolute bottom-2 right-2 text-xs opacity-50">{currentCheckNote.length}/200</span>
-                      </div>
-                      <div className="flex gap-3 pt-2">
-                        <button 
-                          onClick={saveCurrentResultToHistory}
-                          className="flex items-center gap-2 px-4 py-2 bg-white text-emerald-700 rounded-lg font-bold text-sm hover:bg-emerald-50 transition-colors shadow-md hover:scale-105 active:scale-95 transform"
-                        >
-                          <Save className="w-4 h-4" /> 保存记录
-                        </button>
-                        <button 
-                          onClick={discardResults}
-                          className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-medium text-sm transition-colors"
-                        >
-                          不保存
-                        </button>
-                      </div>
-                    </div>
+              {/* Check Button */}
+              <button
+                onClick={handleCheck}
+                disabled={isChecking || parseInputIds(inputValue).length === 0}
+                className="w-full bg-blue-600 text-white py-4 rounded-full font-semibold hover:bg-blue-700 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-3 shadow-md"
+              >
+                {isChecking ? (
+                  <>
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                    检查中...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-6 h-6" />
+                    开始检查
+                  </>
+                )}
+              </button>
+
+              {/* Progress */}
+              {isChecking && (
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm font-semibold text-slate-800">
+                    <span>检查进度</span>
+                    <span>{progress} / {totalToCheck} ({progressPercent}%)</span>
+                  </div>
+                  <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-blue-600 transition-all duration-300 rounded-full"
+                      style={{ width: `${progressPercent}%` }}
+                    />
                   </div>
                 </div>
               )}
 
-              {/* Results Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                {/* Live Panel */}
-                <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl overflow-hidden flex flex-col h-[450px] border border-emerald-100">
-                  <div className="p-4 border-b border-emerald-100 bg-emerald-50/50 flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]"></div>
-                      <h3 className="font-bold text-emerald-800">Live 账号</h3>
+              {/* Results */}
+              {results.length > 0 && (
+                <div className="space-y-4">
+                  {/* Summary */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="text-sm text-slate-600 font-semibold mb-2">总计</div>
+                      <div className="text-4xl font-bold text-slate-900">{results.length}</div>
                     </div>
-                    <span className="bg-emerald-200 text-emerald-800 text-xs font-bold px-2 py-1 rounded-full">
-                      {liveResults.length}
-                    </span>
+                    <div className="bg-white p-6 rounded-3xl border border-green-200 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="text-sm text-green-700 font-semibold mb-2">Live</div>
+                      <div className="text-4xl font-bold text-green-600">{liveCount}</div>
+                    </div>
+                    <div className="bg-white p-6 rounded-3xl border border-red-200 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="text-sm text-red-700 font-semibold mb-2">Die</div>
+                      <div className="text-4xl font-bold text-red-600">{dieCount}</div>
+                    </div>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-emerald-50/20">
-                    {liveResults.map((user, idx) => (
-                      <div key={`live-${idx}`} className="flex items-center justify-between p-2 bg-white rounded-lg border border-emerald-100 shadow-sm text-sm font-mono text-emerald-700">
-                        {user.id}
-                        <Check className="w-3 h-3 text-emerald-500" />
-                      </div>
-                    ))}
-                    {liveResults.length === 0 && <div className="text-center text-slate-400 text-sm py-10">无 Live 数据</div>}
-                  </div>
-                  <div className="p-4 bg-white border-t border-emerald-100">
+
+                  {/* Copy Buttons */}
+                  <div className="flex flex-col sm:flex-row gap-3">
                     <button
-                      onClick={() => copyResults('Live')}
-                      disabled={liveResults.length === 0}
-                      className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all transform duration-200
-                        ${liveResults.length > 0 
-                          ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 hover:scale-105 active:scale-95' 
-                          : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
+                      onClick={copyLiveIds}
+                      disabled={liveCount === 0}
+                      className="flex-1 bg-green-600 text-white py-4 rounded-full font-semibold hover:bg-green-700 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-3 shadow-md"
                     >
-                      {copiedLive ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                      {copiedLive ? '已复制' : '复制 Live ID'}
+                      {copiedLive ? (
+                        <>
+                          <Check className="w-6 h-6" />
+                          已复制 Live
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-6 h-6" />
+                          复制 Live ID
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={copyDieIds}
+                      disabled={dieCount === 0}
+                      className="flex-1 bg-red-600 text-white py-4 rounded-full font-semibold hover:bg-red-700 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-3 shadow-md"
+                    >
+                      {copiedDie ? (
+                        <>
+                          <Check className="w-6 h-6" />
+                          已复制 Die
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-6 h-6" />
+                          复制 Die ID
+                        </>
+                      )}
                     </button>
                   </div>
-                </div>
 
-                {/* Die Panel */}
-                <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl overflow-hidden flex flex-col h-[450px] border border-red-100">
-                  <div className="p-4 border-b border-red-100 bg-red-50/50 flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.5)]"></div>
-                      <h3 className="font-bold text-red-800">Die 账号</h3>
-                    </div>
-                    <span className="bg-red-200 text-red-800 text-xs font-bold px-2 py-1 rounded-full">
-                      {dieResults.length}
-                    </span>
-                  </div>
-                  <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-red-50/20">
-                    {dieResults.map((user, idx) => (
-                      <div key={`die-${idx}`} className="flex items-center justify-between p-2 bg-white rounded-lg border border-red-100 shadow-sm text-sm font-mono text-red-700">
-                        {user.id}
-                        <XCircle className="w-3 h-3 text-red-400" />
+                  {/* Results List */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Live Results */}
+                    <div className="rounded-3xl overflow-hidden shadow-md border border-transparent bg-white">
+                      <div className="bg-green-600 text-white px-5 py-4 font-semibold flex items-center gap-2">
+                        <CheckCircle className="w-6 h-6" />
+                        Live 账号 ({liveCount})
                       </div>
-                    ))}
-                    {dieResults.length === 0 && <div className="text-center text-slate-400 text-sm py-10">无 Die 数据</div>}
-                  </div>
-                  <div className="p-4 bg-white border-t border-red-100">
-                    <button
-                      onClick={() => copyResults('Die')}
-                      disabled={dieResults.length === 0}
-                      className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all transform duration-200
-                        ${dieResults.length > 0 
-                          ? 'bg-red-100 text-red-700 hover:bg-red-200 hover:scale-105 active:scale-95' 
-                          : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
-                    >
-                      {copiedDie ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                      {copiedDie ? '已复制' : '复制 Die ID'}
-                    </button>
-                  </div>
-                </div>
+                      <div className="max-h-96 overflow-y-auto p-5 space-y-2 bg-green-50">
+                        {results.filter(r => r.status === 'Live').map(result => (
+                          <div key={result.id} className="bg-white p-3 rounded-2xl shadow-sm text-sm font-mono text-slate-800">
+                            {result.id}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
 
-              </div>
+                    {/* Die Results */}
+                    <div className="rounded-3xl overflow-hidden shadow-md border border-transparent bg-white">
+                      <div className="bg-red-600 text-white px-5 py-4 font-semibold flex items-center gap-2">
+                        <XCircle className="w-6 h-6" />
+                        Die 账号 ({dieCount})
+                      </div>
+                      <div className="max-h-96 overflow-y-auto p-5 space-y-2 bg-red-50">
+                        {results.filter(r => r.status === 'Die').map(result => (
+                          <div key={result.id} className="bg-white p-3 rounded-2xl shadow-sm text-sm font-mono text-slate-800">
+                            {result.id}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Save Prompt */}
+                  {showSavePrompt && (
+                    <div className="bg-amber-50 rounded-3xl p-6 shadow-md border border-amber-200">
+                      <div className="flex items-start gap-4">
+                        <AlertCircle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-1" />
+                        <div className="flex-1 space-y-4">
+                          <p className="font-semibold text-amber-900 text-lg">检查完成！是否保存到历史记录？</p>
+                          <input
+                            type="text"
+                            value={currentCheckNote}
+                            onChange={(e) => setCurrentCheckNote(e.target.value)}
+                            placeholder="添加备注（可选，最多200字符）"
+                            maxLength={200}
+                            className="w-full px-4 py-3 border border-amber-300 rounded-2xl focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition-all"
+                          />
+                          <div className="flex flex-col sm:flex-row gap-3">
+                            <button
+                              onClick={saveToHistory}
+                              className="flex-1 bg-blue-600 text-white py-3 rounded-full font-semibold hover:bg-blue-700 hover:shadow-lg transition-all flex items-center justify-center gap-2 shadow-md"
+                            >
+                              <Save className="w-5 h-5" />
+                              保存
+                            </button>
+                            <button
+                              onClick={discardResults}
+                              className="flex-1 bg-slate-400 text-white py-3 rounded-full font-semibold hover:bg-slate-500 hover:shadow-lg transition-all shadow-md"
+                            >
+                              放弃
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
-          {/* --- HISTORY TAB --- */}
+          {/* History Tab */}
           {activeTab === 'history' && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              
-              {/* History Header */}
-              <div className="flex justify-between items-center bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-lg">
-                <div className="flex items-center gap-3">
-                  <span className="bg-indigo-100 text-indigo-700 font-bold px-3 py-1 rounded-lg text-sm">
-                    {historyRecords.length} 条记录
-                  </span>
-                  {historyRecords.length > 50 && (
-                    <span className="flex items-center gap-1 text-amber-600 text-xs font-bold bg-amber-50 px-2 py-1 rounded border border-amber-200">
-                      <AlertCircle className="w-3 h-3" /> 存储建议清理
-                    </span>
-                  )}
-                </div>
-                {historyRecords.length > 0 && (
-                   <button 
-                     onClick={clearHistory}
-                     className="text-red-500 hover:text-red-600 text-sm font-medium flex items-center gap-1 hover:bg-red-50 px-3 py-1 rounded-lg transition-colors"
-                   >
-                     <Trash2 className="w-4 h-4" /> 清空历史
-                   </button>
-                )}
-              </div>
-
-              {/* History List */}
-              <div className="space-y-4">
-                {historyRecords.length === 0 ? (
-                  <div className="text-center py-20 bg-white/50 rounded-3xl border-2 border-dashed border-white/30 text-white/70">
-                    <History className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                    <p>暂无历史记录</p>
+            <div className="p-6 space-y-4">
+              {/* Warning */}
+              {historyRecords.length > MAX_RECORDS_WARNING && (
+                <div className="bg-orange-50 rounded-3xl p-6 flex items-start gap-4 shadow-md border border-orange-200">
+                  <AlertCircle className="w-6 h-6 text-orange-600 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-orange-900 text-lg">历史记录较多</p>
+                    <p className="text-sm text-orange-700 mt-1">当前有 {historyRecords.length} 条记录，建议定期清理以优化性能。</p>
                   </div>
-                ) : (
-                  historyRecords.map((record) => (
-                    <div key={record.key} className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-lg overflow-hidden transition-all hover:shadow-xl">
-                      
+                </div>
+              )}
+
+              {/* Clear All Button */}
+              {historyRecords.length > 0 && (
+                <button
+                  onClick={clearAllHistory}
+                  className="w-full bg-red-600 text-white py-4 rounded-full font-semibold hover:bg-red-700 hover:shadow-lg transition-all flex items-center justify-center gap-3 shadow-md"
+                >
+                  <Trash2 className="w-6 h-6" />
+                  清空所有历史记录
+                </button>
+              )}
+
+              {/* Records List */}
+              {historyRecords.length === 0 ? (
+                <div className="text-center py-16 text-slate-500">
+                  <History className="w-20 h-20 mx-auto mb-4 opacity-50" />
+                  <p className="text-xl font-semibold">暂无历史记录</p>
+                  <p className="text-sm mt-2">完成检查后保存即可查看历史记录</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {historyRecords.map(record => (
+                    <div key={record.key} className="rounded-3xl overflow-hidden bg-white shadow-md border border-transparent hover:shadow-lg transition-shadow">
                       {/* Record Header */}
-                      <div className="p-4 md:p-6 border-b border-slate-100">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="bg-slate-50 p-6 space-y-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded">
-                                {formatDate(record.timestamp)}
+                            <div className="text-sm text-slate-600 mb-2">
+                              {new Date(record.timestamp).toLocaleString('zh-CN')}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-4">
+                              <span className="text-sm font-semibold text-slate-700">
+                                总计: <span className="text-blue-600 text-base">{record.total}</span>
+                              </span>
+                              <span className="text-sm font-semibold text-slate-700">
+                                Live: <span className="text-green-600 text-base">{record.live}</span>
+                              </span>
+                              <span className="text-sm font-semibold text-slate-700">
+                                Die: <span className="text-red-600 text-base">{record.die}</span>
                               </span>
                             </div>
-                            <div className="flex gap-3 mt-2">
-                              <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
-                                <Check className="w-3 h-3" /> Live: {record.live}
-                              </span>
-                              <span className="bg-red-100 text-red-800 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
-                                <XCircle className="w-3 h-3" /> Die: {record.die}
-                              </span>
-                              <span className="bg-slate-100 text-slate-600 text-xs font-bold px-3 py-1 rounded-full">
-                                Total: {record.total}
-                              </span>
-                            </div>
-                          </div>
-                          
-                          {/* Action Buttons */}
-                          <div className="flex gap-2">
-                            <button onClick={() => recheckRecord(record)} title="重测" className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-transform hover:scale-110 active:scale-95">
-                              <RefreshCw className="w-4 h-4" />
-                            </button>
-                            <button onClick={() => copyHistoryIds(record)} title="复制全部 ID" className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-transform hover:scale-110 active:scale-95 relative">
-                              {copiedHistoryKey === record.key ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                            </button>
-                            <button onClick={() => deleteRecord(record.key)} title="删除" className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-transform hover:scale-110 active:scale-95">
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                            <button onClick={() => toggleExpand(record.key)} className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-transform hover:scale-110 active:scale-95">
-                              {expandedRecords[record.key] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </button>
                           </div>
                         </div>
 
                         {/* Note Section */}
-                        <div className="mt-4 pt-4 border-t border-slate-100">
-                          {editingNoteKey === record.key ? (
-                            <div className="flex gap-2 items-start animate-in fade-in duration-200">
-                              <textarea
-                                value={noteDraft}
-                                onChange={(e) => setNoteDraft(e.target.value)}
-                                className="w-full text-sm p-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-200 outline-none"
-                                rows={2}
-                                maxLength={200}
-                              />
-                              <div className="flex flex-col gap-1">
-                                <button onClick={() => saveNoteEdit(record.key)} className="p-1 bg-emerald-100 text-emerald-600 rounded hover:bg-emerald-200">
-                                  <Check className="w-4 h-4" />
-                                </button>
-                                <button onClick={() => setEditingNoteKey(null)} className="p-1 bg-slate-100 text-slate-600 rounded hover:bg-slate-200">
-                                  <XCircle className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex items-start gap-2 group">
-                              <FileText className="w-4 h-4 text-slate-400 mt-0.5" />
-                              <p className="text-sm text-slate-600 flex-1 break-all">
-                                {record.note || <span className="italic opacity-50">无备注</span>}
-                              </p>
-                              <button onClick={() => startEditNote(record)} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-blue-500 transition-opacity">
-                                <Edit2 className="w-3 h-3" />
+                        {editingNoteKey === record.key ? (
+                          <div className="space-y-3">
+                            <input
+                              type="text"
+                              value={noteDraft}
+                              onChange={(e) => setNoteDraft(e.target.value)}
+                              maxLength={200}
+                              className="w-full px-4 py-3 border border-slate-300 rounded-2xl focus:border-blue-600 focus:ring-4 focus:ring-blue-100 transition-all"
+                              autoFocus
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => saveNote(record.key)}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-full text-sm font-semibold hover:bg-blue-700 hover:shadow-md transition-all flex items-center gap-2 shadow-sm"
+                              >
+                                <Save className="w-4 h-4" />
+                                保存
+                              </button>
+                              <button
+                                onClick={cancelEditNote}
+                                className="px-4 py-2 bg-slate-400 text-white rounded-full text-sm font-semibold hover:bg-slate-500 hover:shadow-md transition-all shadow-sm"
+                              >
+                                取消
                               </button>
                             </div>
-                          )}
+                          </div>
+                        ) : (
+                          record.note && (
+                            <div className="text-sm text-slate-700 bg-blue-50 p-4 rounded-2xl border border-blue-200">
+                              <span className="font-semibold">备注:</span> {record.note}
+                            </div>
+                          )
+                        )}
+
+                        {/* Action Buttons */}
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={() => recheckRecord(record)}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-full text-sm font-semibold hover:bg-blue-700 hover:shadow-md transition-all flex items-center gap-2 shadow-sm"
+                          >
+                            <RefreshCw className="w-4 h-4" />
+                            重检
+                          </button>
+                          <button
+                            onClick={() => toggleExpandRecord(record.key)}
+                            className="px-4 py-2 bg-slate-600 text-white rounded-full text-sm font-semibold hover:bg-slate-700 hover:shadow-md transition-all flex items-center gap-2 shadow-sm"
+                          >
+                            {expandedRecords[record.key] ? (
+                              <>
+                                <EyeOff className="w-4 h-4" />
+                                收起
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="w-4 h-4" />
+                                展开
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={() => copyRecordIds(record)}
+                            className="px-4 py-2 bg-green-600 text-white rounded-full text-sm font-semibold hover:bg-green-700 hover:shadow-md transition-all flex items-center gap-2 shadow-sm"
+                          >
+                            {copiedHistoryKey === record.key ? (
+                              <>
+                                <Check className="w-4 h-4" />
+                                已复制
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-4 h-4" />
+                                复制
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={() => startEditNote(record)}
+                            className="px-4 py-2 bg-amber-600 text-white rounded-full text-sm font-semibold hover:bg-amber-700 hover:shadow-md transition-all flex items-center gap-2 shadow-sm"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                            编辑备注
+                          </button>
+                          <button
+                            onClick={() => deleteRecord(record.key)}
+                            className="px-4 py-2 bg-red-600 text-white rounded-full text-sm font-semibold hover:bg-red-700 hover:shadow-md transition-all flex items-center gap-2 shadow-sm"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            删除
+                          </button>
                         </div>
                       </div>
 
-                      {/* Expandable User List */}
+                      {/* Expanded User List */}
                       {expandedRecords[record.key] && (
-                        <div className="bg-slate-50 border-t border-slate-200 p-4 animate-in slide-in-from-top-2 duration-300">
-                          <div className="max-h-[240px] overflow-y-auto grid grid-cols-2 md:grid-cols-4 gap-2">
-                            {record.users.map((u, i) => (
-                              <div key={i} className={`text-xs font-mono p-1 px-2 rounded border truncate ${
-                                u.status === 'Live' 
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
-                                  : 'bg-red-50 text-red-700 border-red-100'
-                              }`}>
-                                {u.id}
+                        <div className="p-6 bg-slate-50 border-t border-slate-200">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Live Users */}
+                            <div>
+                              <div className="text-sm font-semibold text-green-700 mb-3 flex items-center gap-2">
+                                <CheckCircle className="w-5 h-5" />
+                                Live ({record.live})
                               </div>
-                            ))}
+                              <div className="space-y-2 max-h-48 overflow-y-auto">
+                                {record.users.filter(u => u.status === 'Live').map(user => (
+                                  <div key={user.id} className="text-xs font-mono bg-white p-3 rounded-2xl shadow-sm border border-transparent">
+                                    {user.id}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Die Users */}
+                            <div>
+                              <div className="text-sm font-semibold text-red-700 mb-3 flex items-center gap-2">
+                                <XCircle className="w-5 h-5" />
+                                Die ({record.die})
+                              </div>
+                              <div className="space-y-2 max-h-48 overflow-y-auto">
+                                {record.users.filter(u => u.status === 'Die').map(user => (
+                                  <div key={user.id} className="text-xs font-mono bg-white p-3 rounded-2xl shadow-sm border border-transparent">
+                                    {user.id}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       )}
                     </div>
-                  ))
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
-        </main>
+        </div>
       </div>
     </div>
   );
