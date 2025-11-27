@@ -1,16 +1,28 @@
+
 import { useState, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Copy, RefreshCw, Sparkles, CheckCircle, XCircle } from "lucide-react";
 
-// ============ 数据配置 ============
-const MOBILE_PREFIXES = ["134","135","136","137","138","139","147","150","151","152","157","158","159","178","182","183","184","187","188","198","130","131","132","145","155","156","166","171","175","176","185","186","133","149","153","173","177","180","181","189","191","199"];
-const EMAIL_SUFFIXES = ["@00two.shop", "@00two.site", "@00xtwo.site", "@0cd.cn", "@123456.yopmail.com", "@15963.fr.nf", "@1nom.org", "@1xp.fr", "@20thmarvelcomics.com", "@3pati.cfd", "@41674.yopmail.com", "@713705.xyz", "@883.wishy.fr", "@aaa.veysem.pro", "@aad.veysem.pro", "@aae.veysem.pro", "@aaf.veysem.pro", "@aai.veysem.pro", "@aak.veysem.pro", "@aal.veysem.pro", "@aam.veysem.pro", "@aan.veysem.pro", "@aao.veysem.pro", "@aap.veysem.pro", "@aaq.veysem.pro", "@aar.veysem.pro", "@aas.veysem.pro", "@aat.veysem.pro", "@aau.veysem.pro", "@aav.veysem.pro", "@aaw.veysem.pro", "@aax.veysem.pro", "@aay.veysem.pro", "@aaz.veysem.pro", "@abc.yopmail.com", "@ab.kwtest.io", "@abo-free.fr.nf", "@abree.shop", "@accloud.click", "@accsell.vip", "@ac-malin.fr.nf", "@acovi.click", "@ac.sensi.cloudns.be", "@actarus.infos.st", "@adgloselche.esmtp.biz", "@adobe.digiwav.store", "@adresse.biz.st", "@adresse.infos.st", "@aekie.top", "@aerohost.fun", "@aevun.click", "@afw.fr.nf", "@aifeo.fun", "@aikeno.fun", "@ainfan.fun", "@airairb.com", "@airem.space", "@airpurifierlab.com", "@aisee.online", "@aitoolsbox.website", "@ajumi.online", "@akivi.click", "@akupulsa.com", "@a.kwtest.io", "@aledrioroots.youdontcare.com", "@ali.yopmail.com", "@alphax.fr.nf", "@altrans.fr.nf", "@alves.fr.nf", "@alyspace.cfd", "@alyxgod.rf.gd", "@alzem.xyz", "@anchrisbaton.acmetoy.com", "@anfel.online", "@angisadevelopment.yopmail.com", "@anoiz.site", "@anreb.fun", "@antispam.fr.nf", "@antispam.rf.gd", "@anvee.fun", "@anviu.fun", "@anzem.fun", "@aonoi.top", "@aorne.online", "@aoroi.click", "@aqualesb.cfd", "@arios.click", "@ariun.site", "@arkhearts.space", "@aryue.click", "@asren.site", "@assurmail.net", "@ass.veysem.pro", "@asyon.site", "@ateblanc.icu", "@autre.fr.nf", "@autumnlab.fun", "@avilive.live", "@azab.duckdns.org", "@azdea.xyz", "@azeco.fun", "@aze.kwtest.io", "@azemo.xyz", "@azeqsd.fr.nf", "@bahoo.biz.st", "@bajihouppalle.shop", "@balva.online", "@bapratique.shop", "@batuparadise.com", "@bboys.fr.nf", "@bdsmporno.org", "@beixa.top", "@belaplus.com.br", "@belfo.top", "@bibi.biz.st", "@bibie.me", "@bifle.fr.nf", "@bin-ich.com", "@binich.com", "@bin.thomas-henon.fr", "@bitbox.my.id", "@bixmo.click", "@bizre.top", "@blavi.top", "@bleu.hopto.org", "@blip.ovh", "@bolzi.fun", "@bomau.top", "@bomoo.fun", "@bonmu.fun", "@boucheny.ovh", "@bounshnetwork.com", "@brafrannajufre.shop", "@brenz.asia", "@briendille.biz.id", "@brilo.fun", "@brinz.top", "@broubeiyitreboi2586.rest", "@bunfan.top", "@byn.laurada.fr", "@cabiste.fr.nf", "@cacze.online", "@caene.asia", "@calendro.fr.nf", "@calima.asso.st", "@camoo.online", "@caowe.top", "@capcud.my.id", "@capcud.web.id", "@caramail.d3vs.net", "@careb.top", "@carioca.biz.st", "@cariri.gorgonoid.online", "@carnesa.biz.st", "@carze.online", "@catja.online", "@cattoigressagri3248.shop", "@cavee.top", "@cayoe.fun", "@cayre.fun", "@cc.these.cc", "@c-dominicfrance.com", "@cedea.top", "@cedix.xyz", "@cegetel.fr.nf", "@celfe.fun", "@celov.fun", "@cench.top", "@cende.fun", "@cenvo.click", "@c-eric.fr.nf", "@certexx.fr.nf", "@cervu.top", "@cewz.online", "@ceyone.click", "@cezem.top", "@chamedoon.cfd", "@chatlabs.it", "@chemail.us", "@chhhi.xyz", "@chiwo.online", "@choso.baby", "@christopherma.net", "@ciemo.top", "@cinoe.click", "@ciovo.top", "@circlegame.iceiy.com", "@ckmz.site", "@clavq.cfd", "@cleanandold.com", "@clickmada.xyz", "@cli.cloudns.cl", "@cloud.gaobo.org", "@cloudsign.in", "@clutunpodli.ddns.info", "@cmail.fr.nf", "@cmkc.homes", "@cmkg.beauty", "@cndlr.fun", "@coaz.site", "@cobal.infos.st", "@coizy.tech", "@colaiah.click", "@colopi.xyz", "@comau.fun", "@conmu.top", "@conoi.online", "@contact.biz.st", "@contact.braverli.com", "@contact.infos.st", "@cookie007.fr.nf", "@copitojad.com", "@coroi.fun", "@cotom.click", "@courriel.fr.nf", "@courrier.589.ca", "@covom.cfd", "@cozyborough.com", "@cpc.cx", "@creze.asia", "@ctly.site", "@cubox.biz.st", "@curef.cfd", "@cuxem.cfd", "@cydae.site", "@czennie.shop", "@dakoci.fun", "@dann.mywire.org", "@dao.pp.ua", "@daph.store", "@darty.biz.st", "@davru.top", "@dealgongmail.com", "@dealv.store", "@dede.infos.st", "@degap.fr.nf", "@deniq.shop", "@denoq.xyz", "@derok.top", "@desfrenes.fr.nf", "@dgse.infos.st", "@digitalmaster.fun", "@digiwav.store", "@digywav.store", "@dioscolwedddas.3-a.net", "@dis.hopto.org", "@dizmo.click", "@dlvr.us.to", "@dmts.fr.nf", "@doimi.click", "@doipoceiffefeu.shop", "@doktor-x.gq", "@domvi.shop", "@donemail.my.id", "@donfo.fun", "@drafi.cfd", "@drako.cfd", "@dratvo.cfd", "@draxum.cfd", "@draxu.shop", "@dreamgreen.fr.nf", "@drilq.cfd", "@dripzgaming.com", "@dromiq.cfd", "@drovex.cfd", "@drqen.cfd", "@drunz.shop", "@druva.fun", "@druxel.cfd", "@druzik.pp.ua", "@dtpt.sg", "@dulfi.shop", "@dunro.xyz", "@dystluv.online", "@eads.cc", "@ealea.fr.nf", "@eczo.site", "@eivon.click", "@eizer.site", "@ekzei.top", "@elcoz.fun", "@elkout.com", "@elmail.4pu.com", "@elmen.click", "@elzem.click", "@email.1xp.fr", "@email.a51.fr", "@emaildark.fr.nf", "@emailspot.org", "@enfen.fun", "@enkio.fun", "@enpa.rf.gd", "@ensoe.click", "@eomze.click", "@eonei.uno", "@eooo.mooo.com", "@ernou.click", "@ervis.online", "@erzeo.site", "@esdev.fun", "@esiries.cloud", "@esmia.online", "@espun.click", "@etherxl.me", "@eucan.fun", "@evyn.fun", "@exmail.fun", "@extanewsmi.zzux.com", "@ezepi.fun", "@ezmen.info", "@ezore.online", "@ezoye.cfd", "@facturecolombia.info", "@fakemail.shop", "@fandee.fun", "@fanoi.top", "@fanzu.online", "@fapet.edu.pl", "@femdomfan.net", "@femdom-here.com", "@fenart.site", "@fensv.shop", "@fenval.online", "@fenve.fun", "@feqtra.online", "@fevon.top", "@fhpfhp.fr.nf", "@findz.my.id", "@fiorellahakie.yopmail.com", "@fj.fr", "@fjisfggroup.icu", "@flaimenet.ir", "@flalular.shop", "@fleurreines.com", "@flobo.fr.nf", "@florajuju.dedyn.io", "@floru.click", "@flyawaypigeon.net", "@foica.online", "@foktr.cfd", "@fomix.shop", "@fonbi.online", "@fonoi.fun", "@fortune-gr.com", "@fr3e4ever.ddns.net", "@frakoyavopra.shop", "@frankpixel.store", "@frebix.click", "@free.exitnodes.uk", "@freemail.biz.st", "@freepromos.in", "@freepromos.info", "@frelk.shop", "@frezn.top", "@frint.top", "@fronq.click", "@frostmail.fr.nf", "@froza.click", "@fruzi.top", "@frylo.click", "@ftime.store", "@fulltv.win", "@funqer.online", "@fussionlabs.me", "@futke.shop", "@fylex.click", "@galaserv.fr", "@galaxim.fr.nf", "@galpe.shop", "@gandaiameiomart.online", "@gathelabuc.almostmy.com", "@gcaritos.top", "@gctech.top", "@gemanteres.shop", "@geniusstudio.tech", "@get.route64.de", "@get.vpn64.de", "@ggamess.42web.io", "@ggmail.biz.st", "@giantessa.net", "@gimuemoa.fr.nf", "@gladogmi.fr.nf", "@gland.xxl.st", "@globalinternet.fr.nf", "@gmaccess.space", "@gmaijoter.shop", "@gmail.yopmail.com", "@gmail.yopmail.fr", "@gmai.yopmail.com", "@gomra.top", "@gonse.online", "@good321.com", "@gous.live", "@govnoed.su", "@gralx.top", "@gratis-gratis.com", "@gratosmail.fr.nf", "@gravo.cfd", "@grazi.asia", "@grevi.top", "@guglemaul.shop", "@haben-wir.com", "@habenwir.com", "@hafabala.shop", "@halopere.shop", "@hanfe.top", "@havieee.store", "@havro.top", "@heavenofgaming.com", "@helsi.click", "@hen33.com", "@hgudovocroxoi8182.rest", "@hide.biz.st", "@himail.infos.st", "@hmmml.com", "@hotmail999.com", "@hotmaise.site", "@howbii.store", "@hrdfck.me", "@httpsblms.site", "@hunnur.com", "@hyperallergic.uk", "@iamfrank.rf.gd", "@icebi.click", "@icidroit.info", "@idrizal.site", "@iicloud.com.vn", "@imails.asso.st", "@imap.fr.nf", "@imap.yopmail.com", "@imel.nextgenop.eu.org", "@inactiona.shop", "@inc.ovh", "@inenseti.shop", "@ingrok.win", "@internaut.us.to", "@iovee.fun", "@iryue.xyz", "@isep.fr.nf", "@ismarsofi.shop", "@isren.fun", "@ist-hier.com", "@istrisahnyafelix.my.id", "@ivome.fun", "@iya.fr.nf", "@izmun.click", "@jadeuvoikeloi9422.shop", "@janecart.click", "@janecart.shop", "@janeencalaway.com", "@javee.click", "@jazya.site", "@jeardamars.shop", "@jeime.fun", "@jeme.mastur.be", "@jeodumifi.ns3.name", "@jeone.online", "@jetable.fr.nf", "@jetable.org", "@jimael.com", "@jinva.fr.nf", "@jmail.fr.nf", "@jmas.site", "@jorginaldo.shop", "@jorzo.click", "@josubby.it", "@josubby.me", "@jota7shop.com.br", "@js11.top", "@jsmail.biz.st", "@jsmail.it", "@jude.yopmail.com", "@junex.fun", "@k4g.me", "@k7g.me", "@kalpi.shop", "@kathwld.store", "@katru.shop", "@kaxze.cfd", "@kazira.sbs", "@kazor.shop", "@kebab.my.id", "@keinth.xyz", "@kejy.top", "@kelmu.top", "@keluv.fun", "@kelva.cfd", "@kelvyo.site", "@kemulastalk.https443.org", "@kenbi.click", "@kenecrehand.port25.biz", "@keran.shop", "@kexvi.click", "@keysoftmail.store", "@kezlun.click", "@kiose.site", "@kiove.online", "@kiz.rip", "@klear.click", "@klenv.shop", "@knzora.com", "@kodekuh.xyz", "@koffe.tech", "@koica.top", "@kolfe.fun", "@komau.online", "@komoo.click", "@korun.shop", "@kosre.online", "@koswe.online", "@koutranosere9419.live", "@koyco.fun", "@krevo.top", "@kumachi.site", "@kuree.online", "@kyuusei.fr.nf", "@kzmta.xyz", "@lacraffe.fr.nf", "@lakoi.fun", "@larkwater.shop", "@laurenscmdt.asia", "@lazybird.site", "@le.monchu.fr", "@lerch.ovh", "@levanh.com", "@levanh.online", "@levanh.store", "@leysatuhell.sendsmtp.com", "@likeageek.fr.nf", "@likedog.sbs", "@lindaontheweb.com", "@linuxbp.free.nf", "@liprauppeittibra5377.shop", "@livie.cfd", "@livikyn.com", "@lonoi.click", "@lophe.top", "@lorvi.shop", "@louve.cfd", "@loverlake.site", "@lovexor.me", "@lunqer.online", "@lunxen.com", "@luvae.uno", "@luvmaeve.info", "@luvmeyri.space", "@luxiosnitro.com", "@lyaws.tech", "@ma1l.duckdns.org", "@mabal.fr.nf", "@ma-boite-aux-lettres.infos.st", "@machen-wir.com", "@machica.online", "@madea.cfd", "@ma.ezua.com", "@mai.25u.com", "@mail10s.top", "@mail.1secmail.my.id", "@mailadresi.tk", "@mail.berwie.com", "@mailbox.biz.st", "@mail.chaxiraxi.ch", "@mail.gigadu.de", "@mailhubpros.com", "@mail.i-dork.com", "@mail-imap.yopmail.com", "@mail.inforoca.ovh", "@mail.mailsnails.com", "@mail-mario.fr.nf", "@mailprohub.com", "@mailsafe.fr.nf", "@mailshopee.io.vn", "@mailsnails.com", "@mailsnd.shop", "@mail.tbr.fr.nf", "@mailtranhien.com", "@mailtranhien.online", "@mail.xstyled.net", "@mail.yabes.ovh", "@mail.yopmail.com", "@mailz.com.br", "@malqin.online", "@managmaius.shop", "@manuted.co", "@marde.click", "@marksandspencer.com.vn", "@masdjan.space", "@matrippaddoiquoi.shop", "@maunilleufetrei7462.shop", "@mavri.fun", "@mavtoq.online", "@ma.zyns.com", "@mccarts.cfd", "@mcdomaine.fr.nf", "@mean.gq", "@mecix.fun", "@megamail.fr.nf", "@mekie.xyz", "@mekro.fun", "@melbo.top", "@melfe.online", "@menagoogle.shop", "@mercadine.shop", "@merfe.fun", "@mes-emails.fr.nf", "@mesemails.fr.nf", "@mess-mails.fr.nf", "@mexar.xyz", "@mexze.fun", "@meyri.site", "@mezor.top", "@mickaben.biz.st", "@mickaben.fr.nf", "@mickaben.xxl.st", "@miefo.online", "@miene.click", "@miistermail.fr", "@miloras.fr.nf", "@mimco.click", "@mimoo.fun", "@minqer.online", "@miore.fun", "@miowe.online", "@miozo.site", "@mivar.fun", "@mivlos.online", "@mivqu.shop", "@mivro.click", "@mixmo.click", "@mizka.online", "@mkmouse.top", "@mktchv.biz", "@mmmv.ru", "@mocix.shop", "@moenze.cfd", "@moice.click", "@mokze.xyz", "@molfe.online", "@moltu.shop", "@molviri.online", "@moncourriel.fr.nf", "@moncourrier.fr.nf", "@mondial.asso.st", "@monemail.fr.nf", "@monmail.fr.nf", "@monsieurbiz.wtf", "@mopri.fun", "@mormi.online", "@mornu.click", "@moroi.online", "@mortmesttesre.wikaba.com", "@motom.cfd", "@mottel.fr", "@mozzu.online", "@mr-email.fr.nf", "@mspotify.com", "@m.tartinemoi.com", "@mufex.click", "@multeq.online", "@munqa.xyz", "@murom.fun", "@musoe.fun", "@muzchuvstv.store", "@mviq.ru", "@mwuffyn.cfd", "@mxeru.xyz", "@mymailbox.xxl.st", "@mymaildo.kro.kr", "@mymail.infos.st", "@mynes.com", "@myrxxx.site", "@myself.fr.nf", "@mzemo.cfd", "@napo.web.id", "@naree.fun", "@naxze.click", "@nayaz.click", "@nedea.fun", "@nekie.fun", "@nelocrerunnu1403.shop", "@nerze.site", "@netom.fun", "@nevro.fun", "@nguwawor.web.id", "@nidokela.biz.st", "@niezy.click", "@nikora.biz.st", "@nikora.fr.nf", "@nirqa.click", "@nizon.top", "@nocan.top", "@noclue.space", "@nofan.fun", "@nofileid.com", "@noiva.click", "@nokie.click", "@nomau.click", "@nomes.fr.nf", "@nonmu.fun", "@nonzo.online", "@noreply.fr", "@nospam.fr.nf", "@noxem.click", "@noyp.fr.nf", "@nucan.top", "@nufex.shop", "@nusoe.xyz", "@ochie.online", "@ocmun.fun", "@ohayo.uno", "@oldamz.com", "@olididas.shop", "@olzem.cfd", "@omicron.token.ro", "@omruu.online", "@oos.cloudns.be", "@opuraio.work.gd", "@oryue.top", "@osvun.top", "@ounex.click", "@ovrie.online", "@oyimail.store", "@pafix.xyz", "@pamil.fr.nf", "@panahan.papamana.com", "@papki.shop", "@parleasalwebp.zyns.com", "@pecnou.click", "@pelfe.click", "@pelisservispremium.com", "@penzi.click", "@pepisonline.top", "@pereb.click", "@personaliter.shop", "@phuctdv.top", "@pigeon.vavo.be", "@pilax.xyz", "@pinepo.top", "@pitiful.pp.ua", "@pitimail.xxl.st", "@pixeelstore.store", "@pixelgagnant.net", "@pixelzon.store", "@piznu.xyz", "@playersmails.com", "@pleasehide.me", "@plixup.com", "@pliz.fr.nf", "@plorn.top", "@plowkids.com.br", "@pluvi.top", "@pochtac.ru", "@pokemons1.fr.nf", "@polfe.click", "@polloiddetike2653.shop", "@pooo.ooguy.com", "@pop3.yopmail.com", "@popol.fr.nf", "@porncomics.top", "@porsilapongo.cl", "@posvabotma.x24hr.com", "@poubelle-du.net", "@poubelle.fr.nf", "@poumo.fun", "@poy.e-paws.net", "@pozes.click", "@premthings.shop", "@present-hit.store", "@prettyshan.cfd", "@prewx.com", "@prostopochta.com", "@prucilluyitre6156.shop", "@prulo.top", "@psn-wallet.com", "@pulfex.click", "@punisher-1.one", "@punuq.xyz", "@purnix.online", "@qadru.shop", "@qandru.cfd", "@qandz.cfd", "@qarvex.cfd", "@qavix.cfd", "@qavol.shop", "@qebrix.click", "@qeltri.online", "@qelvo.click", "@qelvu.top", "@qemtu.click", "@qerla.fun", "@qerlu.top", "@qesnu.site", "@qilra.click", "@qirvo.click", "@qolmi.click", "@qoltu.top", "@qornti.site", "@qorvim.cfd", "@qqb.veysem.pro", "@qqc.veysem.pro", "@qqe.veysem.pro", "@qqi.veysem.pro", "@qqm.veysem.pro", "@qqn.veysem.pro", "@qqo.veysem.pro", "@qqp.veysem.pro", "@qqq.veysem.pro", "@qqr.veysem.pro", "@qqt.veysem.pro", "@qqu.veysem.pro", "@qqv.veysem.pro", "@qqw.veysem.pro", "@qqx.veysem.pro", "@qqy.veysem.pro", "@qqz.veysem.pro", "@quden.xyz", "@quichebedext.freetcp.com", "@quinsy.cfd", "@qybru.click", "@qynex.click", "@qztri.click", "@rabopraussoppu2694.shop", "@raiseduki.me", "@randol.infos.st", "@rapidefr.fr.nf", "@rayibreuxenne.shop", "@rdsfs.icu", "@readmail.biz.st", "@redi.fr.nf", "@reiza.click", "@relvok.site", "@reox.fun", "@repula.gecigran.at", "@retep.com.au", "@retom.xyz", "@revom.xyz", "@revun.fun", "@rexvi.top", "@rexze.xyz", "@reyco.fun", "@reyon.site", "@riex.beauty", "@rilvex.site", "@rippoiteffocroi2229.shop", "@rivno.xyz", "@rizonchik.ru", "@roina.click", "@rongrongtu.cn", "@ronpy.site", "@routrebumuppi.shop", "@rovee.top", "@rozwe.online", "@rukal.shop", "@rvcosmic.site", "@rvone.click", "@rygel.infos.st", "@rzmun.xyz", "@s0.at", "@sabrestlouis.com", "@sacoi.shop", "@safrequoppevei.shop", "@safrol.site", "@sage.yopmail.com", "@sakaephong.us", "@samiu.shop", "@sanporeta.ddns.name", "@saove.top", "@saovta41.com", "@sareb.online", "@sarme.site", "@sasori.uno", "@sausetihenne.shop", "@scat-fantasy.com", "@scat-fantasy.net", "@scat-fetish.cc", "@scatporntube.cc", "@scattoilet.cc", "@scattube.cc", "@scina.fun", "@sdj.fr.nf", "@sdollv.lat", "@seanpogii-036392.yopmail.com", "@seena.online", "@sefan.click", "@selfe.fun", "@seloci.online", "@selro.xyz", "@sendos.fr.nf", "@sendos.infos.st", "@sen.se.dns-dynamic.net", "@senvel.online", "@seoye.fun", "@serbe.online", "@seriv.top", "@serveroutsource.net", "@sevun.online", "@sibro.cfd", "@sidn.ai", "@sind-hier.com", "@sindhier.com", "@sind-wir.com", "@sindwir.com", "@sing-me.store", "@siors.online", "@sirttest.us.to", "@sitex.fun", "@sivex.top", "@sivna.xyz", "@six25.biz", "@sixxsystem.store", "@skole.click", "@skunktest.work", "@skynet.infos.st", "@slowm.it", "@smartiuati.shop", "@smtp.yopmail.fr", "@snavo.cfd", "@socra.asia", "@soeca.fun", "@softpixel.store", "@softpix.store", "@soive.online", "@sokvim.site", "@solza.asia", "@somau.fun", "@somy.asia", "@sonoi.fun", "@soobin.cloud", "@sorcu.icu", "@soref.top", "@sorfia.com.br", "@soroi.top", "@soruz.click", "@sorvi.fun", "@souma.duckdns.org", "@sovom.click", "@sozes.online", "@spacibbacmo.lflink.com", "@spam.aleh.de", "@spam.kernel42.com", "@spam.lapoutre.net", "@spam.laymain.com", "@spam.quillet.eu", "@sponsstore.com", "@spotifans.club", "@spotifyreseller.biz", "@spotifyseller.co", "@srava.site", "@sreyi.online", "@srmun.shop", "@sruni.shop", "@sryue.cfd", "@ssi-bsn.infos.st", "@stavq.cfd", "@stelu.click", "@stowbori.uno", "@stoye.click", "@studioives.space", "@sucan.shop", "@sulov.fun", "@sumen.shop", "@super.lgbt", "@suppdiwaren.ddns.me.uk", "@surner.site", "@surni.click", "@suxem.top", "@szimo.click", "@szio.fun", "@tagara.infos.st", "@takayuki.cfd", "@takemewithu.me", "@takru.xyz", "@talver.online", "@tarvox.online", "@tavqir.click", "@tavqi.top", "@technologyis.online", "@techsensew.tech", "@temp2.qwertz.me", "@tempmail.bearzi.it", "@tempmail.famee.it", "@temp.qwertz.me", "@teqol.xyz", "@terre.infos.st", "@test.actess.fr", "@tester2341.great-site.net", "@test.inclick.net", "@test-infos.fr.nf", "@tevro.click", "@tgmph.uno", "@tivo.camdvr.org", "@tivqa.xyz", "@tivro.xyz", "@tklsxxy.site", "@tmail.014.fr", "@tmp.qqu.be", "@tmp.raene.fr", "@tmp.world-of-ysera.com", "@tmp.x-lab.net", "@tonval.online", "@toolbox.ovh", "@toopitoo.com", "@torrent411.fr.nf", "@torvi.fun", "@totococo.fr.nf", "@tous-mes-mails.fr", "@tozes.top", "@tpaglucerne.dnset.com", "@tqerv.cfd", "@tqomi.xyz", "@tradingviewgiare.com", "@tragl.cfd", "@trakn.cfd", "@traodoinick.com", "@trelm.click", "@trevours.site", "@trevu.click", "@trevz.shop", "@trewo.cfd", "@trichic.com.br", "@trixieberry.shop", "@trmex.shop", "@trosmar.shop", "@trovin.click", "@trovi.top", "@troyaugoixudei.shop", "@trustenroll.com", "@tshirtsavvy.com", "@tulvi.shop", "@tuvqi.xyz", "@tweakacapun.wwwhost.biz", "@tweet.fr.nf", "@tyuublog.sbs", "@ucziak.cfd", "@ukey.ru", "@undergmail.net", "@upc.infos.st", "@urecloud.icu", "@uryue.fun", "@vakri.top", "@vamen.top", "@varaprasadh.dev", "@varzi.site", "@vaxlio.click", "@veiki.site", "@veilee.tk", "@velqon.site", "@velun.cfd", "@velvette.pro", "@vemiu.top", "@veolo.top", "@veoye.top", "@verifymail.iodomain883.wishy.fr", "@verom.top", "@ves.ink", "@vesoe.top", "@vetom.top", "@veusillodduse.shop", "@vexem.xyz", "@vexru.click", "@vexze.top", "@veysem.pro", "@vigilantkeep.net", "@vimun.top", "@vip.ep77.com", "@virek.click", "@vnkey.shop", "@voica.click", "@voine.top", "@vokva.xyz", "@vonen.fun", "@vonex.click", "@vonmu.online", "@voref.xyz", "@vorna.click", "@voroi.fun", "@voses.fun", "@votra.click", "@vouduvemmappau.shop", "@vovio.top", "@vrati.xyz", "@vraxu.cfd", "@vrens.click", "@vropin.click", "@vucan.xyz", "@vurni.top", "@vurnoq.site", "@vurns.shop", "@vuxra.xyz", "@vynoq.click", "@walopodes.shop", "@warix.shop", "@warlus.asso.st", "@waupaffugrobe9224.rest", "@wczo.online", "@webclub.infos.st", "@webstore.fr.nf", "@wermicorp.site", "@wexli.shop", "@wexni.fun", "@wexro.fun", "@whatagarbage.com", "@whattt.site", "@wirlex.site", "@wir-sind.com", "@wirten.site", "@wishy.fr", "@wixpor.site", "@wokniz.site", "@wolzed.site", "@womiu.click", "@womlez.site", "@wonfa.online", "@wonoi.asia", "@wonoi.fun", "@woofidog.fr.nf", "@woremi.site", "@woyen.fun", "@wozi.online", "@writershub.shop", "@wunqi.shop", "@wupqi.fun", "@wutri.fun", "@wwe.veysem.pro", "@wwp.veysem.pro", "@wwq.veysem.pro", "@wwr.veysem.pro", "@wwt.veysem.pro", "@www.veysem.pro", "@www.yopmail.com", "@wxcv.fr.nf", "@xalme.cfd", "@xapne.shop", "@xavru.xyz", "@xebro.fun", "@xedfocorp.site", "@xelpri.click", "@xelya.fun", "@xemlu.top", "@xeniahlly.xyz", "@xenpu.fun", "@xernq.shop", "@xevni.click", "@xevton.click", "@xevtu.top", "@xieno.click", "@xikemail.com", "@xilvor.click", "@ximra.top", "@xirvo.xyz", "@xmail.omnight.com", "@xonoi.click", "@xonpe.xyz", "@xoxoluv.site", "@xoxonics.shop", "@xrtex.top", "@xulpen.click", "@xurlo.xyz", "@xurme.xyz", "@xyeli.site", "@yahooz.xxl.st", "@yaloo.fr.nf", "@yasme.site", "@yawua.us", "@y.dldweb.info", "@yellow.org.in", "@yemtra.online", "@yibore.icu", "@y.iotf.net", "@yitruq.online", "@y.lochou.fr", "@ymail.villien.net", "@ym.cypi.fr", "@ym.digi-value.fr", "@yocan.fun", "@yohmail.com", "@yolluyexabeu.shop", "@yolme.fun", "@yolmid.site", "@yoltu.top", "@yomiu.info", "@yop.codaspot.com", "@yop.emersion.fr", "@yop.fexp.io", "@yop.kyriog.fr", "@yop.mabox.eu", "@yopmail.fr", "@yopmail.kro.kr", "@yopmail.net", "@yopmail.ozm.fr", "@yop.mc-fly.be", "@yop.milter.int.eu.org", "@yop.moolee.net", "@yop.profmusique.com", "@yop.punkapoule.fr", "@yop.smeux.com", "@yop.too.li", "@yoptruc.fr.nf", "@yop.uuii.in", "@yop.work.gd", "@yop.xn--vqq79r59m.eu.org", "@yotmail.fr.nf", "@yourmailtoday.com", "@ypmail.sehier.fr", "@yskganda.org", "@yubee.space", "@yurko.fun", "@yurpex.site", "@yuzecroicrofei2636.live", "@yvrak.xyz", "@ywzmb.top", "@zadrun.cfd", "@zamoo.top", "@zanqir.cfd", "@zarte.shop", "@zavmi.click", "@zawen.click", "@zebee.fun", "@zedea.click", "@zeden.click", "@zee5.news", "@zeivoe.click", "@zekro.click", "@zelfe.fun", "@zelfe.top", "@zelmi.click", "@zemen.fun", "@zemix.click", "@zenbri.online", "@zenko.top", "@zer02.cfd", "@zeref.fun", "@zerev.fun", "@zesco.click", "@zevun.top", "@zexem.fun", "@zeyra.site", "@zheraxynxie.cfd", "@ziche.online", "@zidre.xyz", "@zihugahebre1749.shop", "@zikio.top", "@zilop.xyz", "@zimeq.click", "@zimok.shop", "@zinfighkildo.ftpserver.biz", "@zione.click", "@zipio.top", "@ziufan.online", "@zmac.site", "@zmah.store", "@zmku.biz.id", "@zocen.fun", "@zocer.site", "@zodru.shop", "@zoica.fun", "@zokie.cfd", "@zoldan.cfd", "@zolfe.top", "@zoliv.xyz", "@zolmi.click", "@zonde.asia", "@zonlu.click", "@zonmu.click", "@zoore.xyz", "@zorg.fr.nf", "@zosoe.cfd", "@zouz.fr.nf", "@zovori.click", "@zovtem.online", "@zqeli.click", "@zqorn.click", "@zresa.online", "@zucan.click", "@zunet.xyz", "@zunra.top", "@zunvi.top", "@zurniu.site", "@zx81.ovh", "@zxcc.lol"
+// ============ 数据配置 / Data Configuration ============
+const MOBILE_PREFIXES = [
+  "134", "135", "136", "137", "138", "139", "147", "150", "151", "152", 
+  "157", "158", "159", "178", "182", "183", "184", "187", "188", "198", 
+  "130", "131", "132", "145", "155", "156", "166", "171", "175", "176", 
+  "185", "186", "133", "149", "153", "173", "177", "180", "181", "189", 
+  "191", "199"
 ];
 
-const NAME_PARTS = ["john","mike","alex","david","chris","james","robert","michael","william","daniel","smith","brown","jones","wilson","taylor","davis","miller","moore","anderson","jackson","white","harris","martin","lee","walker","sam","tom","ben","joe","max"];
+const EMAIL_SUFFIXES = ["@00two.shop", "@00two.site"];
 
-// ============ 工具函数 ============
+const NAME_PARTS = [
+  "john", "mike", "alex", "david", "chris", "james", "robert", "michael", 
+  "william", "daniel", "smith", "brown", "jones", "wilson", "taylor", 
+  "davis", "miller", "moore", "anderson", "jackson", "white", "harris", 
+  "martin", "lee", "walker", "sam", "tom", "ben", "joe", "max"
+];
+
+// ============ 工具函数 / Utility Functions ============
 const random = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 const pad = (n, len = 2) => String(n).padStart(len, "0");
@@ -18,7 +30,7 @@ const pad = (n, len = 2) => String(n).padStart(len, "0");
 const genName = (vowelStart) => {
   const v = "aeiou", c = "bcdfghjklmnpqrstvwxyz";
   let name = "";
-  for (let i = 0; i < 15; i++) {
+  for (let i = 0; i < 15; i++) { // Note: This creates very long names (15 chars)
     const useVowel = vowelStart ? i % 2 === 0 : i % 2 !== 0;
     name += random([...(useVowel ? v : c)]);
   }
@@ -27,6 +39,7 @@ const genName = (vowelStart) => {
 
 const genEmail = () => {
   let username = Array.from({ length: randomInt(2, 3) }, () => random(NAME_PARTS)).join("");
+  // Ensure username isn't too short but cap at 20
   while (username.length < 20) {
     username += Math.random() > 0.5 && (20 - username.length) >= 3
       ? pad(randomInt(0, 999), 3)
@@ -43,14 +56,13 @@ const genBirthday = () => {
   return `${year}年${pad(randomInt(1, 12))}月${pad(randomInt(1, 28))}日`;
 };
 
-// ============ Toast 组件 ============
-const Toast = memo(({ message, type, onClose }) => (
+// ============ Toast Component ============
+const Toast = memo(({ message, type }) => (
   <div 
-    className="fixed top-4 right-4 flex items-center gap-2 bg-white rounded-lg shadow-lg px-4 py-3 min-w-[200px]"
+    className="fixed flex items-center gap-2 bg-white rounded-lg shadow-lg px-4 py-3 min-w-[200px] border border-gray-100"
     style={{
       boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
       animation: 'slideIn 0.3s ease-out',
-      zIndex: 9999,
       pointerEvents: 'auto'
     }}
   >
@@ -59,13 +71,12 @@ const Toast = memo(({ message, type, onClose }) => (
     ) : (
       <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
     )}
-    <span className="text-sm text-gray-900 flex-1">{message}</span>
+    <span className="text-sm text-gray-900 flex-1 font-medium">{message}</span>
   </div>
 ));
-
 Toast.displayName = 'Toast';
 
-// ============ 子组件 ============
+// ============ InfoRow Component ============
 const InfoRow = memo(({ label, value, onCopy, onRefresh, link, loading }) => (
   <div className="space-y-1.5">
     <div className="flex items-center justify-between">
@@ -75,20 +86,22 @@ const InfoRow = memo(({ label, value, onCopy, onRefresh, link, loading }) => (
           <button
             onClick={onRefresh}
             disabled={loading}
-            className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-gray-200 disabled:opacity-50 transition-colors"
+            className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-gray-100 disabled:opacity-50 transition-colors"
+            title="刷新"
           >
             <RefreshCw className={`h-4 w-4 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
           </button>
         )}
         <button
           onClick={onCopy}
-          className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-gray-200 transition-colors"
+          className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-gray-100 transition-colors"
+          title="复制"
         >
           <Copy className="h-4 w-4 text-gray-600" />
         </button>
       </div>
     </div>
-    <div className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3">
+    <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 hover:bg-gray-100 transition-colors">
       {link ? (
         <a 
           href={link} 
@@ -99,18 +112,18 @@ const InfoRow = memo(({ label, value, onCopy, onRefresh, link, loading }) => (
           {value}
         </a>
       ) : (
-        <p className="text-sm font-normal text-gray-900 break-all">{value}</p>
+        <p className="text-sm font-normal text-gray-900 break-all select-all">{value}</p>
       )}
     </div>
   </div>
 ));
-
 InfoRow.displayName = 'InfoRow';
 
+// ============ Telegram Banner Component ============
 const TgBanner = memo(({ onCopy }) => (
-  <Card className="p-4 rounded-lg bg-white border border-gray-300">
+  <Card className="p-4 rounded-lg bg-white border border-gray-200 shadow-sm">
     <div className="flex items-center gap-3 mb-3">
-      <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+      <div className="flex-shrink-0 w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center">
         <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
           <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295-.002 0-.003 0-.005 0l.213-3.054 5.56-5.022c.24-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.832.941z"/>
         </svg>
@@ -122,17 +135,17 @@ const TgBanner = memo(({ onCopy }) => (
     </div>
     <Button 
       onClick={onCopy} 
-      className="w-full bg-gray-200 text-gray-700 hover:bg-gray-300 font-semibold rounded-md h-9 transition-colors"
+      variant="secondary"
+      className="w-full bg-gray-100 text-gray-700 hover:bg-gray-200 font-semibold rounded-md h-9 transition-colors"
     >
       复制神秘代码
     </Button>
   </Card>
 ));
-
 TgBanner.displayName = 'TgBanner';
 
-// ============ 主组件 ============
-export default function Index() {
+// ============ Main Component ============
+export default function AccountGenerator() {
   const [info, setInfo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [bgLoaded, setBgLoaded] = useState(false);
@@ -143,13 +156,14 @@ export default function Index() {
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
-    }, 1500);
+    }, 2000); // Increased duration slightly
   }, []);
 
   const copy = useCallback(async (text, label) => {
+    if (!text) return;
     try {
       await navigator.clipboard.writeText(text);
-      showToast("已复制" + label, 'success');
+      showToast(`已复制${label}`, 'success');
     } catch {
       showToast("复制失败，请手动复制", 'error');
     }
@@ -165,22 +179,22 @@ export default function Index() {
       username: emailData.username,
       birthday: genBirthday(),
     });
-    showToast("创号成功(没有180天🥰)", 'success');
+    showToast("信息已生成", 'success');
   }, [showToast]);
 
   const refreshEmail = useCallback(async () => {
     if (!info) return;
     setLoading(true);
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise(r => setTimeout(r, 500)); // Simulated delay
     const emailData = genEmail();
-    setInfo((prev) => ({ ...prev, ...emailData, email: emailData.email, username: emailData.username }));
+    setInfo((prev) => ({ ...prev, ...emailData }));
     showToast("邮箱已更新", 'success');
     setLoading(false);
   }, [info, showToast]);
 
   return (
     <div 
-      className="min-h-screen"
+      className="min-h-screen relative overflow-hidden"
       style={{
         backgroundColor: '#e3f2fd',
         backgroundImage: bgLoaded ? 'url(https://www.584136.xyz/%E5%A4%B4%E5%83%8F/%E8%83%8C%E6%99%AF89.jpg)' : 'none',
@@ -190,108 +204,93 @@ export default function Index() {
         backgroundAttachment: 'scroll'
       }}
     >
-      {/* 预加载背景图片 */}
+      {/* Background Preload */}
       <img 
         src="https://www.584136.xyz/%E5%A4%B4%E5%83%8F/%E8%83%8C%E6%99%AF89.jpg" 
         alt="" 
-        style={{ display: 'none' }}
+        className="hidden"
         onLoad={() => setBgLoaded(true)}
-        loading="lazy"
       />
 
-      {/* 纯色半透明遮罩层 */}
-      <div className="min-h-screen" style={{ backgroundColor: 'rgba(255, 255, 255, 0.75)' }}>
-        {/* Facebook风格顶部导航栏 */}
-        <div className="bg-white border-b border-gray-300 sticky top-0 z-50" style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
-          <div className="max-w-5xl mx-auto px-4 h-14 flex items-center">
+      {/* Overlay */}
+      <div className="min-h-screen w-full absolute inset-0 bg-white/75 backdrop-blur-[2px] overflow-y-auto">
+        {/* Header */}
+        <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
+          <div className="max-w-md mx-auto px-4 h-14 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <svg className="w-10 h-10 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+              <svg className="w-8 h-8 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
               </svg>
-              <span className="text-xl font-bold text-blue-600">创号小助手</span>
+              <h1 className="text-lg font-bold text-blue-600">创号小助手</h1>
             </div>
+            <div className="text-xs text-gray-500 font-mono">v2.0</div>
           </div>
-        </div>
+        </header>
 
-        <div className="max-w-md mx-auto px-4 py-6 space-y-4">
-          {/* 生成按钮 */}
+        {/* Content */}
+        <main className="max-w-md mx-auto px-4 py-6 space-y-5 pb-20">
           <Button
             onClick={generate}
-            className="w-full h-11 text-base font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-            style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
+            size="lg"
+            className="w-full h-12 text-base font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-md transition-all active:scale-95"
           >
-            <Sparkles className="w-4 h-4 mr-2" />
-            开始创号
+            <Sparkles className="w-5 h-5 mr-2" />
+            一键生成信息
           </Button>
 
-          {/* 信息卡片 */}
           {info && (
-            <Card 
-              className="p-4 space-y-4 rounded-lg bg-white border border-gray-300"
-              style={{ boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}
-            >
-              <InfoRow label="姓氏" value={info.lastName} onCopy={() => copy(info.lastName, "姓氏")} />
-              <InfoRow label="名字" value={info.firstName} onCopy={() => copy(info.firstName, "名字")} />
+            <Card className="p-5 space-y-4 bg-white/90 shadow-md border-0 ring-1 ring-gray-200">
+              <div className="grid grid-cols-2 gap-4">
+                <InfoRow label="姓氏" value={info.lastName} onCopy={() => copy(info.lastName, "姓氏")} />
+                <InfoRow label="名字" value={info.firstName} onCopy={() => copy(info.firstName, "名字")} />
+              </div>
               
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">生日</label>
-                <div className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3">
-                  <p className="text-sm font-normal text-gray-900">{info.birthday}</p>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
+                  <p className="text-sm font-medium text-gray-900">{info.birthday}</p>
                 </div>
               </div>
 
-              <InfoRow label="手机号" value={info.phone} onCopy={() => copy(info.phone, "手机号")} />
+              <InfoRow label="手机号 (CN)" value={info.phone} onCopy={() => copy(info.phone, "手机号")} />
               
-              <div className="space-y-2">
+              <div className="space-y-2 pt-2 border-t border-gray-100">
                 <InfoRow 
-                  label="邮箱" 
+                  label="临时邮箱" 
                   value={info.email} 
                   onCopy={() => copy(info.email, "邮箱")} 
                   onRefresh={refreshEmail}
                   link={`https://yopmail.com?${info.username}`}
                   loading={loading}
                 />
-                <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
-                  <p className="text-xs text-blue-900">
-                    💡 点击邮箱跳转查收验证码(不要在TG打开)
+                <div className="bg-blue-50/80 border border-blue-100 rounded-lg px-3 py-2 flex gap-2 items-start">
+                  <span className="text-blue-500 mt-0.5">ℹ️</span>
+                  <p className="text-xs text-blue-800 leading-tight">
+                    点击邮箱链接可直接跳转收信箱。请勿在TG内直接打开，建议使用外部浏览器。
                   </p>
                 </div>
               </div>
             </Card>
           )}
 
-          {/* Telegram横幅 */}
           <TgBanner onCopy={() => copy("@fang180", "神秘代码")} />
-        </div>
+        </main>
       </div>
       
+      {/* Styles for animation */}
       <style>{`
         @keyframes slideIn {
-          from {
-            transform: translateY(-20px);
-            opacity: 0;
-          }
-          to {
-            transform: translateY(0);
-            opacity: 1;
-          }
+          from { transform: translateY(-20px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
         }
       `}</style>
       
-      {/* Toast 提示队列 */}
-      {toasts.map((toast, index) => (
-        <div 
-          key={toast.id}
-          style={{
-            position: 'fixed',
-            top: `${16 + index * 60}px`,
-            right: '16px',
-            zIndex: 9999 + index
-          }}
-        >
-          <Toast message={toast.message} type={toast.type} />
-        </div>
-      ))}
+      {/* Toast Container */}
+      <div className="fixed top-20 right-4 z-50 flex flex-col gap-2 pointer-events-none">
+        {toasts.map((toast) => (
+          <Toast key={toast.id} message={toast.message} type={toast.type} />
+        ))}
+      </div>
     </div>
   );
 }
