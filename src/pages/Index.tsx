@@ -17,7 +17,6 @@ type HistoryRecord = {
   users: UserResult[];
 };
 
-const STORAGE_PREFIX = 'fb_history:';
 const MAX_RECORDS_WARNING = 50;
 
 export default function FacebookStatusChecker() {
@@ -36,10 +35,6 @@ export default function FacebookStatusChecker() {
   const [copiedDie, setCopiedDie] = useState(false);
   const [showSavePrompt, setShowSavePrompt] = useState(false);
   const [currentCheckNote, setCurrentCheckNote] = useState('');
-
-  useEffect(() => {
-    loadHistory();
-  }, []);
 
   const parseInputIds = (text: string): string[] => {
     const matches = text.match(/\d{14,}/g);
@@ -137,7 +132,7 @@ export default function FacebookStatusChecker() {
 
   const saveToHistory = () => {
     const record: HistoryRecord = {
-      key: `${STORAGE_PREFIX}${Date.now()}`,
+      key: `history_${Date.now()}`,
       timestamp: Date.now(),
       total: results.length,
       live: results.filter(r => r.status === 'Live').length,
@@ -146,8 +141,7 @@ export default function FacebookStatusChecker() {
       users: results
     };
 
-    localStorage.setItem(record.key, JSON.stringify(record));
-    loadHistory();
+    setHistoryRecords(prev => [record, ...prev]);
     setShowSavePrompt(false);
     setCurrentCheckNote('');
   };
@@ -155,23 +149,6 @@ export default function FacebookStatusChecker() {
   const discardResults = () => {
     setShowSavePrompt(false);
     setCurrentCheckNote('');
-  };
-
-  const loadHistory = () => {
-    const records: HistoryRecord[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key?.startsWith(STORAGE_PREFIX)) {
-        try {
-          const data = JSON.parse(localStorage.getItem(key) || '');
-          records.push(data);
-        } catch (e) {
-          console.error('Failed to parse history record:', e);
-        }
-      }
-    }
-    records.sort((a, b) => b.timestamp - a.timestamp);
-    setHistoryRecords(records);
   };
 
   const recheckRecord = (record: HistoryRecord) => {
@@ -197,16 +174,11 @@ export default function FacebookStatusChecker() {
   };
 
   const saveNote = (key: string) => {
-    try {
-      const record = JSON.parse(localStorage.getItem(key) || '');
-      record.note = noteDraft.slice(0, 200);
-      localStorage.setItem(key, JSON.stringify(record));
-      loadHistory();
-      setEditingNoteKey(null);
-      setNoteDraft('');
-    } catch (e) {
-      console.error('Failed to save note:', e);
-    }
+    setHistoryRecords(prev => prev.map(r => 
+      r.key === key ? { ...r, note: noteDraft.slice(0, 200) } : r
+    ));
+    setEditingNoteKey(null);
+    setNoteDraft('');
   };
 
   const cancelEditNote = () => {
@@ -216,22 +188,13 @@ export default function FacebookStatusChecker() {
 
   const deleteRecord = (key: string) => {
     if (window.confirm('确定要删除这条记录吗？')) {
-      localStorage.removeItem(key);
-      loadHistory();
+      setHistoryRecords(prev => prev.filter(r => r.key !== key));
     }
   };
 
   const clearAllHistory = () => {
     if (window.confirm('确定要清空所有历史记录吗？此操作无法撤销。')) {
-      const keysToRemove: string[] = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key?.startsWith(STORAGE_PREFIX)) {
-          keysToRemove.push(key);
-        }
-      }
-      keysToRemove.forEach(key => localStorage.removeItem(key));
-      loadHistory();
+      setHistoryRecords([]);
     }
   };
 
