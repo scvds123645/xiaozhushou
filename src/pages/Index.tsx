@@ -51,7 +51,7 @@ type CheckAction =
 const HISTORY_KEY_PREFIX = 'fb_history:';
 // 优化：将并发限制从 200 提升至 500 以加快检测速度。
 // 注意：过高的并发可能导致网络拥堵或API速率限制，可根据实际情况调整。
-const CONCURRENCY_LIMIT = 500;
+const CONCURRENCY_LIMIT = 150;
 const UI_UPDATE_INTERVAL = 500;
 const VIRTUAL_ITEM_HEIGHT = 48;
 const VIRTUAL_BUFFER = 5;
