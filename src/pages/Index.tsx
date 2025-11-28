@@ -15,11 +15,11 @@ import {
   Users,
   XCircle,
   Zap,
-  Menu, // 新增图标
-  X     // 新增图标
+  Menu,
+  X
 } from 'lucide-react';
 
-// --- 类型定义 (保持不变) ---
+// --- 类型定义 ---
 
 type UserResult = {
   id: string;
@@ -58,10 +58,10 @@ type CheckAction =
 const HISTORY_KEY_PREFIX = 'fb_history:';
 const CONCURRENCY_LIMIT = 200; 
 const UI_UPDATE_INTERVAL = 500; 
-const VIRTUAL_ITEM_HEIGHT = 48; // 移动端稍微调高一点点高度，方便阅读
+const VIRTUAL_ITEM_HEIGHT = 48;
 const VIRTUAL_BUFFER = 5;
 
-// --- Reducer (保持不变) ---
+// --- Reducer ---
 
 const checkReducer = (state: CheckState, action: CheckAction): CheckState => {
   switch (action.type) {
@@ -82,7 +82,7 @@ const checkReducer = (state: CheckState, action: CheckAction): CheckState => {
   }
 };
 
-// --- 虚拟列表组件 (无需改动) ---
+// --- 虚拟列表组件 ---
 
 const VirtualList = memo<{
   items: UserResult[];
@@ -92,8 +92,10 @@ const VirtualList = memo<{
 }>(({ items, height, itemHeight, renderItem }) => {
   const [scrollTop, setScrollTop] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+
   const visibleStart = Math.max(0, Math.floor(scrollTop / itemHeight) - VIRTUAL_BUFFER);
   const visibleEnd = Math.min(items.length, Math.ceil((scrollTop + height) / itemHeight) + VIRTUAL_BUFFER);
+
   const visibleItems = items.slice(visibleStart, visibleEnd);
   const totalHeight = items.length * itemHeight;
   const offsetY = visibleStart * itemHeight;
@@ -106,7 +108,7 @@ const VirtualList = memo<{
     <div
       ref={containerRef}
       onScroll={handleScroll}
-      className="overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent touch-pan-y" // touch-pan-y 优化滚动
+      className="overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent touch-pan-y"
       style={{ height: `${height}px` }}
     >
       <div style={{ height: `${totalHeight}px`, position: 'relative' }}>
@@ -121,7 +123,7 @@ const VirtualList = memo<{
 });
 VirtualList.displayName = 'VirtualList';
 
-// --- 结果单项组件 (移动端微调) ---
+// --- 结果单项组件 ---
 
 const ResultItem = memo<{ user: UserResult; type: 'live' | 'die' }>(({ user, type }) => {
   const isLive = type === 'live';
@@ -190,6 +192,7 @@ const App: React.FC = () => {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // --- 历史记录加载 ---
+
   const loadHistory = useCallback(() => {
     if (typeof window === 'undefined') return;
     const stored: HistoryRecord[] = [];
@@ -220,6 +223,7 @@ const App: React.FC = () => {
   useEffect(() => { loadHistory(); }, [loadHistory]);
 
   // --- 核心逻辑 ---
+
   const checkSingleUser = useCallback(async (id: string, signal: AbortSignal): Promise<UserResult> => {
     const url = `https://graph.facebook.com/${id}/picture?redirect=false`;
     try {
@@ -238,6 +242,7 @@ const App: React.FC = () => {
       if (ids.length === 0) return;
       abortControllerRef.current = new AbortController();
       const { signal } = abortControllerRef.current;
+
       dispatch({ type: 'START_CHECK', total: ids.length });
       setShowSavePrompt(false);
       setItemsPerSecond(0);
@@ -269,6 +274,7 @@ const App: React.FC = () => {
             }
             activePromises.delete(task);
           });
+          
           activePromises.add(task);
           if (activePromises.size >= CONCURRENCY_LIMIT) await Promise.race(activePromises);
         }
@@ -286,6 +292,7 @@ const App: React.FC = () => {
     }, [checkSingleUser, state.isPaused]);
 
   // --- Handlers ---
+
   const handleStartCheck = useCallback(() => {
     const ids = parseInputIds(inputValue);
     if (ids.length === 0) { alert('未识别到有效 ID'); return; }
@@ -317,6 +324,7 @@ const App: React.FC = () => {
       users: state.results,
     };
     const historyKey = `${HISTORY_KEY_PREFIX}${timestamp}`;
+
     try {
         localStorage.setItem(historyKey, JSON.stringify(historyValue));
         setHistoryRecords((prev) => [{ key: historyKey, ...historyValue }, ...prev]);
@@ -331,7 +339,6 @@ const App: React.FC = () => {
     setActiveTab('check');
     setInputValue(ids.join('\n'));
     runCheckWithIds(ids);
-    // 移动端自动滚动到顶部
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [runCheckWithIds]);
 
@@ -341,16 +348,16 @@ const App: React.FC = () => {
   }, []);
 
   // --- UI Vars ---
+
   const liveResults = state.results.filter((item) => item.status === 'Live');
   const dieResults = state.results.filter((item) => item.status === 'Die');
   const progressPercentage = state.totalToCheck === 0 ? 0 : Math.min(100, Math.round((state.progress / state.totalToCheck) * 100));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white font-sans pb-24 selection:bg-blue-500/30">
-      {/* 调整内边距：移动端更窄 */}
       <div className="mx-auto flex max-w-7xl flex-col gap-4 px-3 py-4 sm:gap-6 sm:px-6 sm:py-12">
         
-        {/* Header: 移动端堆叠布局 */}
+        {/* Header */}
         <header className="rounded-3xl bg-white/5 p-4 sm:p-6 shadow-2xl backdrop-blur-md border border-white/10">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center justify-between">
@@ -364,7 +371,6 @@ const App: React.FC = () => {
                 </div>
               </div>
               
-              {/* 移动端右上角显示速度 */}
               {state.isChecking && itemsPerSecond > 0 && (
                  <div className="flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 text-xs text-emerald-400 animate-pulse sm:hidden">
                   <Zap className="h-3 w-3" />
@@ -374,14 +380,12 @@ const App: React.FC = () => {
             </div>
             
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              {/* 桌面端显示速度 */}
               {state.isChecking && itemsPerSecond > 0 && (
                 <div className="hidden sm:flex items-center gap-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-4 py-1.5 text-sm text-emerald-400 animate-pulse">
                   <Zap className="h-4 w-4" />
                   <span className="font-mono font-bold">{itemsPerSecond}</span> ID/s
                 </div>
               )}
-              {/* 移动端 Tab 按钮全宽 */}
               <div className="grid grid-cols-2 gap-1 rounded-xl bg-slate-800/50 p-1 border border-white/10">
                 {(['check', 'history'] as const).map((tab) => (
                   <button
@@ -419,7 +423,6 @@ const App: React.FC = () => {
                   disabled={state.isChecking}
                 />
                 
-                {/* 操作按钮：移动端加大点击区域 */}
                 <div className="mt-4 grid grid-cols-2 gap-3">
                     {!state.isChecking ? (
                         <button
@@ -446,7 +449,6 @@ const App: React.FC = () => {
                         </>
                     )}
                 </div>
-
                 {state.totalToCheck > 0 && (
                     <div className="mt-5 space-y-2">
                         <div className="flex justify-between text-xs text-slate-400">
@@ -463,7 +465,7 @@ const App: React.FC = () => {
                 )}
             </section>
 
-            {/* 结果区域：移动端垂直堆叠 */}
+            {/* 结果区域 */}
             <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
                 {/* Live Panel */}
                 <div className="flex flex-col rounded-3xl bg-white/5 border border-emerald-500/20 overflow-hidden">
@@ -484,7 +486,6 @@ const App: React.FC = () => {
                             <VirtualList items={liveResults} height={350} itemHeight={VIRTUAL_ITEM_HEIGHT} renderItem={item => <ResultItem user={item} type="live" />} />
                     </div>
                 </div>
-
                 {/* Die Panel */}
                 <div className="flex flex-col rounded-3xl bg-white/5 border border-red-500/20 overflow-hidden">
                     <div className="p-3 sm:p-4 bg-red-500/10 border-b border-red-500/10 flex items-center justify-between">
@@ -507,7 +508,7 @@ const App: React.FC = () => {
             </div>
           </main>
         ) : (
-          /* 历史记录 (移动端优化) */
+          /* 历史记录 */
           <main className="space-y-4 sm:space-y-6">
              <div className="flex items-center justify-between px-1">
                 <h2 className="text-lg sm:text-xl font-bold">历史记录 ({historyRecords.length})</h2>
@@ -525,7 +526,6 @@ const App: React.FC = () => {
                 {historyRecords.map(record => (
                     <div key={record.key} className="rounded-2xl bg-white/5 border border-white/10 p-4 active:border-blue-500/50 transition-colors">
                         <div className="flex flex-col gap-3">
-                            {/* 第一行：时间和状态 */}
                             <div className="flex justify-between items-start">
                                 <div>
                                     <div className="text-xs text-slate-400 mb-1">
@@ -549,7 +549,6 @@ const App: React.FC = () => {
                                 </div>
                             </div>
                             
-                            {/* 第二行：备注 */}
                             {editingNoteKey === record.key ? (
                                 <div className="flex gap-2">
                                     <input 
@@ -572,7 +571,6 @@ const App: React.FC = () => {
                                 </div>
                             )}
                             
-                            {/* 展开详情 */}
                              {expandedRecords[record.key] && (
                                 <div className="mt-2 pt-2 border-t border-white/10 grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
                                     {record.users.slice(0, 50).map(u => (
@@ -590,7 +588,7 @@ const App: React.FC = () => {
           </main>
         )}
 
-        {/* 保存提示 (移动端底部悬浮) */}
+        {/* 保存提示 */}
         {showSavePrompt && state.results.length > 0 && (
             <div className="fixed bottom-0 left-0 right-0 p-4 z-50 bg-gradient-to-t from-slate-900 to-slate-900/90 backdrop-blur-lg border-t border-white/10">
                 <div className="mx-auto max-w-7xl flex flex-col gap-3">
@@ -607,7 +605,12 @@ const App: React.FC = () => {
                             className="flex-1 bg-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none border border-transparent focus:border-white/30"
                         />
                         <button onClick={handleSaveToHistory} className="bg-white text-slate-900 px-4 rounded-lg text-sm font-bold">保存</button>
-                        <button onClick={() => { setShowSavePrompt(false); dispatch({type:'RESET'}); }} className="text-white/60 px-2 text-sm">放弃</button>
+                        <button 
+                            onClick={() => { setShowSavePrompt(false); /* 删除了 RESET 操作 */ }} 
+                            className="text-white/60 px-2 text-sm"
+                        >
+                            放弃
+                        </button>
                     </div>
                 </div>
             </div>
