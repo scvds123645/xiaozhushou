@@ -51,7 +51,7 @@ type CheckAction =
   | { type: 'RESET' };
 
 const HISTORY_KEY_PREFIX = 'fb_history:';
-const BATCH_SIZE = 25; // 每批处理25个账号
+const BATCH_SIZE = 9999; // 每批处理25个账号
 const UPDATE_THROTTLE = 100;
 const VIRTUAL_ITEM_HEIGHT = 44;
 const VIRTUAL_BUFFER = 5;
