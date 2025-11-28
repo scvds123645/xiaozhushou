@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useReducer, useRef, useState, memo } from 'react';
+
 import {
   Check,
   CheckCircle,
@@ -7,19 +8,14 @@ import {
   Eye,
   EyeOff,
   Loader2,
-  // Pause,  // 移除
-  // Play,   // Play 用于“开始”按钮
   RefreshCw,
   Save,
   Trash2,
   Users,
   XCircle,
   Zap,
-  // Menu,   // 未使用
-  // X       // 移除
   Play,
 } from 'lucide-react';
-
 
 // --- 类型定义 ---
 type UserResult = {
@@ -53,10 +49,13 @@ type CheckAction =
 
 // --- 常量配置 ---
 const HISTORY_KEY_PREFIX = 'fb_history:';
-const CONCURRENCY_LIMIT = 200; 
-const UI_UPDATE_INTERVAL = 500; 
+// 优化：将并发限制从 200 提升至 500 以加快检测速度。
+// 注意：过高的并发可能导致网络拥堵或API速率限制，可根据实际情况调整。
+const CONCURRENCY_LIMIT = 500;
+const UI_UPDATE_INTERVAL = 500;
 const VIRTUAL_ITEM_HEIGHT = 48;
 const VIRTUAL_BUFFER = 5;
+
 
 // --- Reducer ---
 const checkReducer = (state: CheckState, action: CheckAction): CheckState => {
@@ -114,6 +113,7 @@ const VirtualList = memo<{
 });
 VirtualList.displayName = 'VirtualList';
 
+
 // --- 结果单项组件 ---
 const ResultItem = memo<{ user: UserResult; type: 'live' | 'die' }>(({ user, type }) => {
   const isLive = type === 'live';
@@ -131,6 +131,7 @@ const ResultItem = memo<{ user: UserResult; type: 'live' | 'die' }>(({ user, typ
   );
 });
 ResultItem.displayName = 'ResultItem';
+
 
 // --- 工具函数 ---
 const copyTextToClipboard = async (text: string) => {
@@ -156,7 +157,7 @@ const copyTextToClipboard = async (text: string) => {
 };
 
 const parseInputIds = (raw: string) => {
-  const matches = raw.match(/\d{14}/g) ?? [];
+  const matches = raw.match(/\d{14,}/g) ?? [];
   return Array.from(new Set(matches));
 };
 
@@ -209,18 +210,35 @@ const App: React.FC = () => {
   useEffect(() => { loadHistory(); }, [loadHistory]);
 
   // --- 核心逻辑 ---
-  const checkSingleUser = useCallback(async (id: string): Promise<UserResult> => {
+  // 优化：添加了重试机制以提高在高并发下的可靠性
+  const checkSingleUser = useCallback(async (id: string, maxRetries = 2): Promise<UserResult> => {
     const url = `https://graph.facebook.com/${id}/picture?redirect=false`;
-    try {
-      const res = await fetch(url, { keepalive: true } as any);
-      if (!res.ok) throw new Error('Err');
-      const data = await res.json();
-      const urlField = data?.data?.url ?? '';
-      const status: UserResult['status'] = urlField.includes('static') ? 'Die' : 'Live';
-      return { id, status, url: urlField };
-    } catch {
-      return { id, status: 'Die', url: '' };
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const res = await fetch(url, { keepalive: true } as any);
+        // 客户端错误 (如 404) 是明确的 'Die'，无需重试
+        if (res.status >= 400 && res.status < 500) {
+          return { id, status: 'Die', url: '' };
+        }
+        // 其他错误 (如服务器错误、网络问题) 则抛出以触发重试
+        if (!res.ok) {
+          throw new Error('Temporary fetch error');
+        }
+        const data = await res.json();
+        const urlField = data?.data?.url ?? '';
+        const status: UserResult['status'] = urlField.includes('static') ? 'Die' : 'Live';
+        return { id, status, url: urlField }; // 成功
+      } catch (error) {
+        if (attempt === maxRetries) {
+          // 如果所有重试都失败，则标记为 Die
+          return { id, status: 'Die', url: '' };
+        }
+        // 在下次重试前等待一小段时间
+        await new Promise(res => setTimeout(res, 300 * attempt));
+      }
     }
+    // 此处理论上不会到达
+    return { id, status: 'Die', url: '' };
   }, []);
 
   const runCheckWithIds = useCallback(async (ids: string[]) => {
@@ -233,7 +251,7 @@ const App: React.FC = () => {
       const resultsRef = { current: [] as UserResult[] };
       let completedCount = 0;
       const startTime = Date.now();
-
+      
       const uiTimer = setInterval(() => {
         if (resultsRef.current.length > 0) {
           const elapsed = (Date.now() - startTime) / 1000;
@@ -244,9 +262,10 @@ const App: React.FC = () => {
 
       const activePromises = new Set<Promise<void>>();
       const idsIterator = ids.values();
-
+      
       try {
         for (const id of idsIterator) {
+          // .then() 中的代码会在 promise 解决后执行，这会从 activePromises 中移除任务
           const task = checkSingleUser(id).then(result => {
               resultsRef.current.push(result);
               completedCount++;
@@ -254,11 +273,19 @@ const App: React.FC = () => {
           });
           
           activePromises.add(task);
-          if (activePromises.size >= CONCURRENCY_LIMIT) await Promise.race(activePromises);
+          
+          // 如果活动的 promise 数量达到限制，等待其中最快的一个完成
+          if (activePromises.size >= CONCURRENCY_LIMIT) {
+            await Promise.race(activePromises);
+          }
         }
+        // 等待所有剩余的任务完成
         await Promise.all(activePromises);
-      } catch (e) { console.error(e); } finally {
+      } catch (e) { 
+        console.error("An error occurred during the check process:", e);
+      } finally {
         clearInterval(uiTimer);
+        // 确保最终的 state 是最新的
         dispatch({ type: 'BATCH_UPDATE', results: resultsRef.current, progress: ids.length });
         dispatch({ type: 'FINISH_CHECK' });
         setShowSavePrompt(true);
@@ -366,7 +393,7 @@ const App: React.FC = () => {
             </div>
           </div>
         </header>
-
+        
         {activeTab === 'check' ? (
           <main className="flex flex-col gap-6">
             {/* 输入区域 */}
