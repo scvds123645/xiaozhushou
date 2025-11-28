@@ -7,17 +7,21 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  // Pause,  // 移除
+  // Play,   // Play 用于“开始”按钮
   RefreshCw,
   Save,
   Trash2,
   Users,
   XCircle,
   Zap,
+  // Menu,   // 未使用
+  // X       // 移除
   Play,
 } from 'lucide-react';
 
-// --- Type Definitions ---
-// (Keep your existing type definitions: UserResult, HistoryRecord, CheckState, CheckAction)
+
+// --- 类型定义 ---
 type UserResult = {
   id: string;
   status: 'Live' | 'Die';
@@ -39,74 +43,38 @@ type CheckState = {
   progress: number;
   totalToCheck: number;
   isChecking: boolean;
-  itemsPerSecond: number;
 };
 
 type CheckAction =
   | { type: 'START_CHECK'; total: number }
-  | { type: 'WORKER_UPDATE'; payload: { results: UserResult[], progress: number, itemsPerSecond: number } }
+  | { type: 'BATCH_UPDATE'; results: UserResult[]; progress: number }
   | { type: 'FINISH_CHECK' }
   | { type: 'RESET' };
 
-
-// --- Constants ---
+// --- 常量配置 ---
 const HISTORY_KEY_PREFIX = 'fb_history:';
+const CONCURRENCY_LIMIT = 200; 
+const UI_UPDATE_INTERVAL = 500; 
 const VIRTUAL_ITEM_HEIGHT = 48;
 const VIRTUAL_BUFFER = 5;
-
 
 // --- Reducer ---
 const checkReducer = (state: CheckState, action: CheckAction): CheckState => {
   switch (action.type) {
     case 'START_CHECK':
-      return { ...state, isChecking: true, totalToCheck: action.total, progress: 0, results: [], itemsPerSecond: 0 };
-    case 'WORKER_UPDATE':
-      return { ...state, ...action.payload };
+      return { ...state, isChecking: true, totalToCheck: action.total, progress: 0, results: [] };
+    case 'BATCH_UPDATE':
+      return { ...state, results: action.results, progress: action.progress };
     case 'FINISH_CHECK':
-      return { ...state, isChecking: false, itemsPerSecond: 0 };
+      return { ...state, isChecking: false };
     case 'RESET':
-      return { results: [], progress: 0, totalToCheck: 0, isChecking: false, itemsPerSecond: 0 };
+      return { results: [], progress: 0, totalToCheck: 0, isChecking: false };
     default:
       return state;
   }
 };
 
-// --- Custom Hook for Worker Logic ---
-const useCheckWorker = (dispatch: React.Dispatch<CheckAction>) => {
-  const workerRef = useRef<Worker>();
-
-  useEffect(() => {
-    // Initialize the worker
-    workerRef.current = new Worker(new URL('./checker.worker.js', import.meta.url));
-
-    // Handle messages from the worker
-    workerRef.current.onmessage = (event: MessageEvent) => {
-      const { type, payload } = event.data;
-      if (type === 'update') {
-        dispatch({ type: 'WORKER_UPDATE', payload });
-      } else if (type === 'finish') {
-        dispatch({ type: 'FINISH_CHECK' });
-      }
-    };
-
-    // Cleanup
-    return () => {
-      workerRef.current?.terminate();
-    };
-  }, [dispatch]);
-
-  const runCheckWithIds = useCallback((ids: string[]) => {
-    if (ids.length === 0) return;
-    dispatch({ type: 'START_CHECK', total: ids.length });
-    workerRef.current?.postMessage({ type: 'start', ids });
-  }, []);
-
-  return { runCheckWithIds };
-};
-
-
-// --- VirtualList and ResultItem Components ---
-// (No changes needed for VirtualList and ResultItem, you can keep your existing components)
+// --- 虚拟列表组件 ---
 const VirtualList = memo<{
   items: UserResult[];
   height: number;
@@ -118,8 +86,8 @@ const VirtualList = memo<{
 
   const visibleStart = Math.max(0, Math.floor(scrollTop / itemHeight) - VIRTUAL_BUFFER);
   const visibleEnd = Math.min(items.length, Math.ceil((scrollTop + height) / itemHeight) + VIRTUAL_BUFFER);
-  const visibleItems = items.slice(visibleStart, visibleEnd);
 
+  const visibleItems = items.slice(visibleStart, visibleEnd);
   const totalHeight = items.length * itemHeight;
   const offsetY = visibleStart * itemHeight;
 
@@ -146,7 +114,7 @@ const VirtualList = memo<{
 });
 VirtualList.displayName = 'VirtualList';
 
-
+// --- 结果单项组件 ---
 const ResultItem = memo<{ user: UserResult; type: 'live' | 'die' }>(({ user, type }) => {
   const isLive = type === 'live';
   return (
@@ -164,9 +132,7 @@ const ResultItem = memo<{ user: UserResult; type: 'live' | 'die' }>(({ user, typ
 });
 ResultItem.displayName = 'ResultItem';
 
-
-// --- Utility Functions ---
-// (Keep your existing copyTextToClipboard and parseInputIds functions)
+// --- 工具函数 ---
 const copyTextToClipboard = async (text: string) => {
   if (!text) return false;
   try {
@@ -190,18 +156,16 @@ const copyTextToClipboard = async (text: string) => {
 };
 
 const parseInputIds = (raw: string) => {
-  const matches = raw.match(/\d{14,}/g) ?? [];
+  const matches = raw.match(/\d{14}/g) ?? [];
   return Array.from(new Set(matches));
 };
 
-
-// --- Main App Component ---
+// --- 主应用 ---
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'check' | 'history'>('check');
   const [inputValue, setInputValue] = useState<string>('');
-  const [state, dispatch] = useReducer(checkReducer, { results: [], progress: 0, totalToCheck: 0, isChecking: false, itemsPerSecond: 0 });
-  const { runCheckWithIds } = useCheckWorker(dispatch);
-
+  const [state, dispatch] = useReducer(checkReducer, { results: [], progress: 0, totalToCheck: 0, isChecking: false });
+  
   const [historyRecords, setHistoryRecords] = useState<HistoryRecord[]>([]);
   const [expandedRecords, setExpandedRecords] = useState<Record<string, boolean>>({});
   const [editingNoteKey, setEditingNoteKey] = useState<string | null>(null);
@@ -212,51 +176,126 @@ const App: React.FC = () => {
   const [copiedDie, setCopiedDie] = useState(false);
   const [showSavePrompt, setShowSavePrompt] = useState(false);
   const [currentCheckNote, setCurrentCheckNote] = useState('');
+  const [itemsPerSecond, setItemsPerSecond] = useState(0);
 
-  // --- History Logic ---
+  // --- 历史记录加载 ---
   const loadHistory = useCallback(() => {
-    // ... (Your existing loadHistory logic remains the same)
+    if (typeof window === 'undefined') return;
+    const stored: HistoryRecord[] = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(HISTORY_KEY_PREFIX)) {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.users)) {
+            stored.push({
+              key,
+              timestamp: parsed.timestamp,
+              total: parsed.total,
+              live: parsed.live ?? 0,
+              die: parsed.die ?? 0,
+              note: parsed.note ?? '',
+              users: parsed.users,
+            });
+          }
+        } catch { }
+      }
+    }
+    setHistoryRecords(stored.sort((a, b) => b.timestamp - a.timestamp));
   }, []);
 
   useEffect(() => { loadHistory(); }, [loadHistory]);
+
+  // --- 核心逻辑 ---
+  const checkSingleUser = useCallback(async (id: string): Promise<UserResult> => {
+    const url = `https://graph.facebook.com/${id}/picture?redirect=false`;
+    try {
+      const res = await fetch(url, { keepalive: true } as any);
+      if (!res.ok) throw new Error('Err');
+      const data = await res.json();
+      const urlField = data?.data?.url ?? '';
+      const status: UserResult['status'] = urlField.includes('static') ? 'Die' : 'Live';
+      return { id, status, url: urlField };
+    } catch {
+      return { id, status: 'Die', url: '' };
+    }
+  }, []);
+
+  const runCheckWithIds = useCallback(async (ids: string[]) => {
+      if (ids.length === 0) return;
+      
+      dispatch({ type: 'START_CHECK', total: ids.length });
+      setShowSavePrompt(false);
+      setItemsPerSecond(0);
+      
+      const resultsRef = { current: [] as UserResult[] };
+      let completedCount = 0;
+      const startTime = Date.now();
+
+      const uiTimer = setInterval(() => {
+        if (resultsRef.current.length > 0) {
+          const elapsed = (Date.now() - startTime) / 1000;
+          setItemsPerSecond(Math.round(elapsed > 0 ? completedCount / elapsed : 0));
+          dispatch({ type: 'BATCH_UPDATE', results: [...resultsRef.current], progress: completedCount });
+        }
+      }, UI_UPDATE_INTERVAL);
+
+      const activePromises = new Set<Promise<void>>();
+      const idsIterator = ids.values();
+
+      try {
+        for (const id of idsIterator) {
+          const task = checkSingleUser(id).then(result => {
+              resultsRef.current.push(result);
+              completedCount++;
+              activePromises.delete(task);
+          });
+          
+          activePromises.add(task);
+          if (activePromises.size >= CONCURRENCY_LIMIT) await Promise.race(activePromises);
+        }
+        await Promise.all(activePromises);
+      } catch (e) { console.error(e); } finally {
+        clearInterval(uiTimer);
+        dispatch({ type: 'BATCH_UPDATE', results: resultsRef.current, progress: ids.length });
+        dispatch({ type: 'FINISH_CHECK' });
+        setShowSavePrompt(true);
+        setCurrentCheckNote('');
+        setItemsPerSecond(0);
+      }
+    }, [checkSingleUser]);
+
 
   // --- Handlers ---
   const handleStartCheck = useCallback(() => {
     const ids = parseInputIds(inputValue);
     if (ids.length === 0) { alert('未识别到有效 ID'); return; }
     runCheckWithIds(ids);
-    setShowSavePrompt(false);
   }, [inputValue, runCheckWithIds]);
 
   const handleSaveToHistory = useCallback(() => {
-      if (state.results.length === 0) return;
-      const liveCount = state.results.filter((item) => item.status === 'Live').length;
-      const timestamp = Date.now();
-      const historyValue = {
-        timestamp,
-        total: state.results.length,
-        live: liveCount,
-        die: state.results.length - liveCount,
-        note: currentCheckNote.slice(0, 200),
-        users: state.results,
-      };
-      const historyKey = `${HISTORY_KEY_PREFIX}${timestamp}`;
-      try {
-          localStorage.setItem(historyKey, JSON.stringify(historyValue));
-          setHistoryRecords((prev) => [{ key: historyKey, ...historyValue }, ...prev]);
-          setShowSavePrompt(false);
-          setCurrentCheckNote('');
-          setActiveTab('history');
-      } catch (e) { alert('保存失败，空间不足'); }
+    if (state.results.length === 0) return;
+    const liveCount = state.results.filter((item) => item.status === 'Live').length;
+    const timestamp = Date.now();
+    const historyValue = {
+      timestamp,
+      total: state.results.length,
+      live: liveCount,
+      die: state.results.length - liveCount,
+      note: currentCheckNote.slice(0, 200),
+      users: state.results,
+    };
+    const historyKey = `${HISTORY_KEY_PREFIX}${timestamp}`;
+    try {
+        localStorage.setItem(historyKey, JSON.stringify(historyValue));
+        setHistoryRecords((prev) => [{ key: historyKey, ...historyValue }, ...prev]);
+        setShowSavePrompt(false);
+        setCurrentCheckNote('');
+        setActiveTab('history');
+    } catch (e) { alert('保存失败，空间不足'); }
   }, [state.results, currentCheckNote]);
-  
-  useEffect(() => {
-    if (!state.isChecking && state.totalToCheck > 0) {
-      setShowSavePrompt(true);
-      setCurrentCheckNote('');
-    }
-  }, [state.isChecking, state.totalToCheck]);
-
 
   const handleRecheckHistory = useCallback((record: HistoryRecord) => {
     const ids = record.users.map((user) => user.id);
@@ -270,19 +309,13 @@ const App: React.FC = () => {
     const success = await copyTextToClipboard(text);
     if (success) onSuccess();
   }, []);
-  
+
   // --- UI Vars ---
   const liveResults = state.results.filter((item) => item.status === 'Live');
   const dieResults = state.results.filter((item) => item.status === 'Die');
   const progressPercentage = state.totalToCheck === 0 ? 0 : Math.min(100, Math.round((state.progress / state.totalToCheck) * 100));
 
-  // --- JSX ---
-  // (Your existing JSX for rendering the UI remains largely the same)
-  // Just make sure to use `state.itemsPerSecond` where you previously used the local `itemsPerSecond` state.
-  // Example change:
-  // <span className="font-mono font-bold">{state.itemsPerSecond}</span>
-  
-    return (
+  return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white font-sans pb-24 selection:bg-blue-500/30">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 px-3 py-4 sm:gap-6 sm:px-6 sm:py-12">
         
@@ -300,19 +333,19 @@ const App: React.FC = () => {
                 </div>
               </div>
               
-              {state.isChecking && state.itemsPerSecond > 0 && (
+              {state.isChecking && itemsPerSecond > 0 && (
                  <div className="flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 text-xs text-emerald-400 animate-pulse sm:hidden">
                   <Zap className="h-3 w-3" />
-                  <span className="font-mono font-bold">{state.itemsPerSecond}</span>/s
+                  <span className="font-mono font-bold">{itemsPerSecond}</span>/s
                 </div>
               )}
             </div>
             
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              {state.isChecking && state.itemsPerSecond > 0 && (
+              {state.isChecking && itemsPerSecond > 0 && (
                 <div className="hidden sm:flex items-center gap-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-4 py-1.5 text-sm text-emerald-400 animate-pulse">
                   <Zap className="h-4 w-4" />
-                  <span className="font-mono font-bold">{state.itemsPerSecond}</span> ID/s
+                  <span className="font-mono font-bold">{itemsPerSecond}</span> ID/s
                 </div>
               )}
               <div className="grid grid-cols-2 gap-1 rounded-xl bg-slate-800/50 p-1 border border-white/10">
@@ -336,7 +369,7 @@ const App: React.FC = () => {
 
         {activeTab === 'check' ? (
           <main className="flex flex-col gap-6">
-            {/* Input Area */}
+            {/* 输入区域 */}
             <section className="rounded-3xl bg-white/5 p-4 sm:p-6 border border-white/10 backdrop-blur-md">
                 <div className="mb-3">
                     <h2 className="text-base sm:text-lg font-semibold text-white flex items-center gap-2">
@@ -379,7 +412,7 @@ const App: React.FC = () => {
                 )}
             </section>
             
-            {/* Result Area */}
+            {/* 结果区域 */}
             <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
                 {/* Live Panel */}
                 <div className="flex flex-col rounded-3xl bg-white/5 border border-emerald-500/20 overflow-hidden">
@@ -420,10 +453,10 @@ const App: React.FC = () => {
                     </div>
                 </div>
             </div>
-
           </main>
         ) : (
-           <main className="space-y-4 sm:space-y-6">
+          /* 历史记录 */
+          <main className="space-y-4 sm:space-y-6">
              <div className="flex items-center justify-between px-1">
                 <h2 className="text-lg sm:text-xl font-bold">历史记录 ({historyRecords.length})</h2>
                 {historyRecords.length > 0 && (
@@ -502,7 +535,7 @@ const App: React.FC = () => {
           </main>
         )}
         
-        {/* Save Prompt */}
+        {/* 保存提示 */}
         {showSavePrompt && state.results.length > 0 && (
             <div className="fixed bottom-0 left-0 right-0 p-4 z-50 bg-gradient-to-t from-slate-900 to-slate-900/90 backdrop-blur-lg border-t border-white/10">
                 <div className="mx-auto max-w-7xl flex flex-col gap-3">
@@ -532,7 +565,6 @@ const App: React.FC = () => {
       </div>
     </div>
   );
-
 };
 
 export default App;
