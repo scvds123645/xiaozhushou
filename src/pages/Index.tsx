@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useReducer, useRef, useState, memo } from 'react';
 import {
   AlertCircle,
   Check,
@@ -7,9 +7,10 @@ import {
   Edit2,
   Eye,
   EyeOff,
-  HardDrive,
   History,
   Loader2,
+  Pause,
+  Play,
   RefreshCw,
   Save,
   Trash2,
@@ -33,9 +34,138 @@ type HistoryRecord = {
   users: UserResult[];
 };
 
-const HISTORY_KEY_PREFIX = 'fb_history:';
-const MAX_USERS_PER_RECORD = 2500;
+type CheckState = {
+  results: UserResult[];
+  progress: number;
+  totalToCheck: number;
+  isChecking: boolean;
+  isPaused: boolean;
+};
 
+type CheckAction =
+  | { type: 'START_CHECK'; total: number }
+  | { type: 'BATCH_UPDATE'; results: UserResult[]; progress: number }
+  | { type: 'FINISH_CHECK' }
+  | { type: 'PAUSE_CHECK' }
+  | { type: 'RESUME_CHECK' }
+  | { type: 'RESET' };
+
+const HISTORY_KEY_PREFIX = 'fb_history:';
+const BATCH_SIZE = 100;
+const INITIAL_CONCURRENCY = 50;
+const UPDATE_THROTTLE = 100;
+const VIRTUAL_ITEM_HEIGHT = 44;
+const VIRTUAL_BUFFER = 5;
+
+// State Reducer
+const checkReducer = (state: CheckState, action: CheckAction): CheckState => {
+  switch (action.type) {
+    case 'START_CHECK':
+      return {
+        ...state,
+        isChecking: true,
+        isPaused: false,
+        totalToCheck: action.total,
+        progress: 0,
+        results: [],
+      };
+    case 'BATCH_UPDATE':
+      return {
+        ...state,
+        results: action.results,
+        progress: action.progress,
+      };
+    case 'FINISH_CHECK':
+      return { ...state, isChecking: false, isPaused: false };
+    case 'PAUSE_CHECK':
+      return { ...state, isPaused: true };
+    case 'RESUME_CHECK':
+      return { ...state, isPaused: false };
+    case 'RESET':
+      return {
+        results: [],
+        progress: 0,
+        totalToCheck: 0,
+        isChecking: false,
+        isPaused: false,
+      };
+    default:
+      return state;
+  }
+};
+
+// Virtual List Component
+const VirtualList = memo<{
+  items: UserResult[];
+  height: number;
+  itemHeight: number;
+  renderItem: (item: UserResult, index: number) => React.ReactNode;
+}>(({ items, height, itemHeight, renderItem }) => {
+  const [scrollTop, setScrollTop] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const visibleStart = Math.max(0, Math.floor(scrollTop / itemHeight) - VIRTUAL_BUFFER);
+  const visibleEnd = Math.min(
+    items.length,
+    Math.ceil((scrollTop + height) / itemHeight) + VIRTUAL_BUFFER
+  );
+
+  const visibleItems = items.slice(visibleStart, visibleEnd);
+  const totalHeight = items.length * itemHeight;
+  const offsetY = visibleStart * itemHeight;
+
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    setScrollTop(e.currentTarget.scrollTop);
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      onScroll={handleScroll}
+      className="overflow-y-auto pr-1"
+      style={{ height: `${height}px` }}
+    >
+      <div style={{ height: `${totalHeight}px`, position: 'relative' }}>
+        <div style={{ transform: `translateY(${offsetY}px)` }}>
+          {visibleItems.map((item, idx) => (
+            <div key={`${item.id}-${visibleStart + idx}`}>
+              {renderItem(item, visibleStart + idx)}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+VirtualList.displayName = 'VirtualList';
+
+// Result Item Component
+const ResultItem = memo<{ user: UserResult; type: 'live' | 'die' }>(({ user, type }) => {
+  const isLive = type === 'live';
+  return (
+    <div
+      className="flex items-center justify-between gap-3 rounded-2xl bg-white/5 px-3 py-2 text-xs font-medium text-white mb-1"
+      style={{ minHeight: `${VIRTUAL_ITEM_HEIGHT}px` }}
+    >
+      <div className="flex items-center gap-2">
+        <span
+          className={`h-2 w-2 rounded-full ${isLive ? 'bg-emerald-400' : 'bg-red-400'}`}
+        />
+        <span className="font-mono">{user.id}</span>
+      </div>
+      {isLive ? (
+        <CheckCircle className="h-4 w-4 text-emerald-400" />
+      ) : (
+        <XCircle className="h-4 w-4 text-red-400" />
+      )}
+    </div>
+  );
+});
+
+ResultItem.displayName = 'ResultItem';
+
+// Utility Functions
 const copyTextToClipboard = async (text: string) => {
   if (!text) return false;
   try {
@@ -58,34 +188,22 @@ const copyTextToClipboard = async (text: string) => {
   }
 };
 
-const getLocalStorageSize = () => {
-  if (typeof window === 'undefined') return 0;
-  let total = 0;
-  for (let i = 0; i < localStorage.length; i += 1) {
-    const key = localStorage.key(i);
-    if (key) {
-      const value = localStorage.getItem(key);
-      if (value) {
-        total += key.length + value.length;
-      }
-    }
-  }
-  return total;
-};
-
-const formatBytes = (bytes: number) => {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+const parseInputIds = (raw: string) => {
+  const matches = raw.match(/\d{14,}/g) ?? [];
+  return Array.from(new Set(matches));
 };
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'check' | 'history'>('check');
   const [inputValue, setInputValue] = useState<string>('');
-  const [isChecking, setIsChecking] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [totalToCheck, setTotalToCheck] = useState(0);
-  const [results, setResults] = useState<UserResult[]>([]);
+  const [state, dispatch] = useReducer(checkReducer, {
+    results: [],
+    progress: 0,
+    totalToCheck: 0,
+    isChecking: false,
+    isPaused: false,
+  });
+
   const [historyRecords, setHistoryRecords] = useState<HistoryRecord[]>([]);
   const [expandedRecords, setExpandedRecords] = useState<Record<string, boolean>>({});
   const [editingNoteKey, setEditingNoteKey] = useState<string | null>(null);
@@ -95,22 +213,53 @@ const App: React.FC = () => {
   const [copiedDie, setCopiedDie] = useState(false);
   const [showSavePrompt, setShowSavePrompt] = useState(false);
   const [currentCheckNote, setCurrentCheckNote] = useState('');
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [storageSize, setStorageSize] = useState(0);
-  const [compressMode, setCompressMode] = useState(true);
+  const [fps, setFps] = useState(60);
+  const [memoryUsage, setMemoryUsage] = useState(0);
+
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const tempResultsRef = useRef<UserResult[]>([]);
+  const lastUpdateTimeRef = useRef(0);
+  const fpsFramesRef = useRef<number[]>([]);
+
+  // FPS Monitor
+  useEffect(() => {
+    let frameId: number;
+    let lastTime = performance.now();
+
+    const measureFps = () => {
+      const now = performance.now();
+      const delta = now - lastTime;
+      lastTime = now;
+
+      fpsFramesRef.current.push(1000 / delta);
+      if (fpsFramesRef.current.length > 60) {
+        fpsFramesRef.current.shift();
+      }
+
+      const avgFps = Math.round(
+        fpsFramesRef.current.reduce((a, b) => a + b, 0) / fpsFramesRef.current.length
+      );
+      setFps(avgFps);
+
+      // Memory usage (if available)
+      if ('memory' in performance) {
+        const memory = (performance as any).memory;
+        setMemoryUsage(Math.round(memory.usedJSHeapSize / 1048576));
+      }
+
+      frameId = requestAnimationFrame(measureFps);
+    };
+
+    frameId = requestAnimationFrame(measureFps);
+    return () => cancelAnimationFrame(frameId);
+  }, []);
 
   useEffect(() => {
     setCopiedLive(false);
     setCopiedDie(false);
-  }, [results]);
+  }, [state.results]);
 
-  const parseInputIds = (raw: string) => {
-    const matches = raw.match(/\d{14,}/g) ?? [];
-    const unique = Array.from(new Set(matches));
-    return unique;
-  };
-
-  const loadHistory = () => {
+  const loadHistory = useCallback(() => {
     if (typeof window === 'undefined') return;
     const stored: HistoryRecord[] = [];
     for (let i = 0; i < localStorage.length; i += 1) {
@@ -137,257 +286,271 @@ const App: React.FC = () => {
             });
           }
         } catch {
-          // ignore invalid entry
+          // ignore
         }
       }
     }
     const sorted = stored.sort((a, b) => b.timestamp - a.timestamp);
     setHistoryRecords(sorted);
-    setStorageSize(getLocalStorageSize());
-  };
+  }, []);
 
   useEffect(() => {
     loadHistory();
+  }, [loadHistory]);
+
+  const liveResults = state.results.filter((item) => item.status === 'Live');
+  const dieResults = state.results.filter((item) => item.status === 'Die');
+
+  const checkSingleUser = useCallback(
+    async (id: string, signal: AbortSignal): Promise<UserResult> => {
+      const url = `https://graph.facebook.com/${id}/picture?redirect=false`;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+        const res = await fetch(url, {
+          signal: signal.aborted ? signal : controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        if (!res.ok) throw new Error('网络错误');
+        const data = await res.json();
+        const urlField = data?.data?.url ?? '';
+        const status: UserResult['status'] = urlField.includes('static') ? 'Die' : 'Live';
+        return { id, status, url: urlField };
+      } catch {
+        return { id, status: 'Die', url: '' };
+      }
+    },
+    []
+  );
+
+  const throttledUpdate = useCallback((results: UserResult[], progress: number) => {
+    const now = Date.now();
+    if (now - lastUpdateTimeRef.current < UPDATE_THROTTLE) {
+      return;
+    }
+    lastUpdateTimeRef.current = now;
+    requestAnimationFrame(() => {
+      dispatch({ type: 'BATCH_UPDATE', results, progress });
+    });
   }, []);
 
-  const liveResults = useMemo(() => results.filter((item) => item.status === 'Live'), [results]);
-  const dieResults = useMemo(() => results.filter((item) => item.status === 'Die'), [results]);
+  const runCheckWithIds = useCallback(
+    async (ids: string[]) => {
+      if (ids.length === 0) return;
 
-  const checkSingleUser = async (id: string): Promise<UserResult> => {
-    const url = `https://graph.facebook.com/${id}/picture?redirect=false`;
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('网络错误');
-      const data = await res.json();
-      const urlField = data?.data?.url ?? '';
-      const status: UserResult['status'] = urlField.includes('static') ? 'Die' : 'Live';
-      return {
-        id,
-        status,
-        url: urlField,
+      abortControllerRef.current = new AbortController();
+      const { signal } = abortControllerRef.current;
+
+      dispatch({ type: 'START_CHECK', total: ids.length });
+      setShowSavePrompt(false);
+      tempResultsRef.current = [];
+
+      const idsWithIndex = ids.map((id, index) => ({ id, index }));
+      const tempResults: Array<UserResult | null> = Array(ids.length).fill(null);
+
+      let completed = 0;
+      const queue = [...idsWithIndex];
+
+      const updateResults = () => {
+        const orderedResults = tempResults.filter((item): item is UserResult => item !== null);
+        return orderedResults;
       };
-    } catch {
-      return {
-        id,
-        status: 'Die',
-        url: '',
+
+      const worker = async () => {
+        while (queue.length > 0 && !signal.aborted) {
+          while (state.isPaused && !signal.aborted) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          }
+
+          const entry = queue.shift();
+          if (!entry) break;
+
+          const result = await checkSingleUser(entry.id, signal);
+          tempResults[entry.index] = result;
+          completed += 1;
+
+          if (completed % BATCH_SIZE === 0 || completed === ids.length) {
+            const currentResults = updateResults();
+            tempResultsRef.current = currentResults;
+            throttledUpdate(currentResults, completed);
+          }
+        }
       };
-    }
-  };
 
-  const runCheckWithIds = async (ids: string[]) => {
-    if (ids.length === 0) return;
-    setIsChecking(true);
-    setTotalToCheck(ids.length);
-    setProgress(0);
-    setResults([]);
-    setShowSavePrompt(false);
-    setSaveError(null);
+      const getConcurrency = () => {
+        const percent = completed / ids.length;
+        if (percent < 0.3) return INITIAL_CONCURRENCY;
+        if (percent < 0.7) return 30;
+        return 20;
+      };
 
-    const idsWithIndex = ids.map((id, index) => ({ id, index }));
-    const tempResults: Array<UserResult | null> = Array(ids.length).fill(null);
-    const buildOrderedResults = () =>
-      tempResults.filter((item): item is UserResult => item !== null);
+      const workerBatch = async () => {
+        const concurrency = getConcurrency();
+        await Promise.all(Array.from({ length: concurrency }, () => worker()));
+      };
 
-    const queue = [...idsWithIndex];
-    const concurrency = Math.min(100, ids.length);
+      await workerBatch();
 
-    const worker = async () => {
-      while (queue.length > 0) {
-        const entry = queue.shift();
-        if (!entry) break;
-        const result = await checkSingleUser(entry.id);
-        tempResults[entry.index] = result;
-        setResults(buildOrderedResults());
-        setProgress((prev) => prev + 1);
+      if (!signal.aborted) {
+        const finalResults = updateResults();
+        dispatch({ type: 'BATCH_UPDATE', results: finalResults, progress: ids.length });
+        dispatch({ type: 'FINISH_CHECK' });
+        setShowSavePrompt(true);
+        setCurrentCheckNote('');
       }
-    };
+    },
+    [checkSingleUser, state.isPaused, throttledUpdate]
+  );
 
-    await Promise.all(Array.from({ length: concurrency }, () => worker()));
-
-    const finalResults = buildOrderedResults();
-    setIsChecking(false);
-    setResults(finalResults);
-    setShowSavePrompt(true);
-    setCurrentCheckNote('');
-  };
-
-  const handleStartCheck = () => {
+  const handleStartCheck = useCallback(() => {
     const ids = parseInputIds(inputValue);
     if (ids.length === 0) return;
     runCheckWithIds(ids);
-  };
+  }, [inputValue, runCheckWithIds]);
 
-  const handleSaveToHistory = () => {
-    if (results.length === 0) return;
-    
-    setSaveError(null);
-    const liveCount = results.filter((item) => item.status === 'Live').length;
-    const dieCount = results.length - liveCount;
-    const baseTimestamp = Date.now();
-    const trimmedNote = currentCheckNote.slice(0, 200);
-
-    const shouldSplit = results.length > MAX_USERS_PER_RECORD;
-    const chunks: UserResult[][] = [];
-
-    if (shouldSplit) {
-      for (let i = 0; i < results.length; i += MAX_USERS_PER_RECORD) {
-        chunks.push(results.slice(i, i + MAX_USERS_PER_RECORD));
-      }
+  const handlePauseResume = useCallback(() => {
+    if (state.isPaused) {
+      dispatch({ type: 'RESUME_CHECK' });
     } else {
-      chunks.push(results);
+      dispatch({ type: 'PAUSE_CHECK' });
     }
+  }, [state.isPaused]);
 
-    const savedRecords: HistoryRecord[] = [];
-
-    try {
-      chunks.forEach((chunk, index) => {
-        const usersToSave = compressMode
-          ? chunk.map(({ id, status }) => ({ id, status, url: '' }))
-          : chunk;
-
-        const chunkLive = chunk.filter((item) => item.status === 'Live').length;
-        const chunkDie = chunk.length - chunkLive;
-
-        const partLabel = shouldSplit ? ` (${index + 1}/${chunks.length})` : '';
-        const historyValue = {
-          timestamp: baseTimestamp + index,
-          total: chunk.length,
-          live: chunkLive,
-          die: chunkDie,
-          note: trimmedNote + partLabel,
-          users: usersToSave,
-        };
-
-        const historyKey = `${HISTORY_KEY_PREFIX}${baseTimestamp + index}`;
-        
-        try {
-          localStorage.setItem(historyKey, JSON.stringify(historyValue));
-          savedRecords.push({ key: historyKey, ...historyValue });
-        } catch (error) {
-          throw new Error('存储空间不足');
-        }
-      });
-
-      setHistoryRecords((prev) => [...savedRecords.reverse(), ...prev]);
-      setShowSavePrompt(false);
-      setCurrentCheckNote('');
-      setStorageSize(getLocalStorageSize());
-      setActiveTab('history');
-
-      if (shouldSplit) {
-        alert(`结果已分割为 ${chunks.length} 条记录保存（每条最多 ${MAX_USERS_PER_RECORD} 个账号）`);
-      }
-    } catch (error) {
-      savedRecords.forEach((record) => localStorage.removeItem(record.key));
-      
-      if (error instanceof Error && error.message === '存储空间不足') {
-        setSaveError(
-          '保存失败：浏览器存储空间已满。请清理部分历史记录后重试，或开启压缩模式节省空间。'
-        );
-      } else {
-        setSaveError('保存失败：发生未知错误，请稍后重试。');
-      }
+  const handleStopCheck = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
-  };
+    dispatch({ type: 'RESET' });
+    setShowSavePrompt(false);
+  }, []);
 
-  const handleDiscardResults = () => {
+  const handleSaveToHistory = useCallback(() => {
+    if (state.results.length === 0) return;
+
+    const liveCount = state.results.filter((item) => item.status === 'Live').length;
+    const dieCount = state.results.length - liveCount;
+    const timestamp = Date.now();
+    const historyValue = {
+      timestamp,
+      total: state.results.length,
+      live: liveCount,
+      die: dieCount,
+      note: currentCheckNote.slice(0, 200),
+      users: state.results,
+    };
+    const historyKey = `${HISTORY_KEY_PREFIX}${timestamp}`;
+
+    requestIdleCallback(() => {
+      localStorage.setItem(historyKey, JSON.stringify(historyValue));
+      setHistoryRecords((prev) => [{ key: historyKey, ...historyValue }, ...prev]);
+    });
+
+    setShowSavePrompt(false);
+    setCurrentCheckNote('');
+    setActiveTab('history');
+  }, [state.results, currentCheckNote]);
+
+  const handleDiscardResults = useCallback(() => {
     const confirmed = window.confirm('确定要放弃当前检查结果？');
     if (!confirmed) return;
     setShowSavePrompt(false);
-    setResults([]);
+    dispatch({ type: 'RESET' });
     setCurrentCheckNote('');
-    setSaveError(null);
-  };
+  }, []);
 
-  const handleRecheckHistory = (record: HistoryRecord) => {
-    const ids = record.users.map((user) => user.id);
-    setActiveTab('check');
-    setInputValue(ids.join('\n'));
-    runCheckWithIds(ids);
-  };
+  const handleRecheckHistory = useCallback(
+    (record: HistoryRecord) => {
+      const ids = record.users.map((user) => user.id);
+      setActiveTab('check');
+      setInputValue(ids.join('\n'));
+      runCheckWithIds(ids);
+    },
+    [runCheckWithIds]
+  );
 
-  const handleCopyLiveResults = async () => {
+  const handleCopyLiveResults = useCallback(async () => {
     if (liveResults.length === 0) return;
     const payload = liveResults.map((user) => user.id).join('\n');
     const success = await copyTextToClipboard(payload);
     if (!success) return;
     setCopiedLive(true);
     setTimeout(() => setCopiedLive(false), 2000);
-  };
+  }, [liveResults]);
 
-  const handleCopyDieResults = async () => {
+  const handleCopyDieResults = useCallback(async () => {
     if (dieResults.length === 0) return;
     const payload = dieResults.map((user) => user.id).join('\n');
     const success = await copyTextToClipboard(payload);
     if (!success) return;
     setCopiedDie(true);
     setTimeout(() => setCopiedDie(false), 2000);
-  };
+  }, [dieResults]);
 
-  const handleCopyHistoryList = async (record: HistoryRecord) => {
+  const handleCopyHistoryList = useCallback(async (record: HistoryRecord) => {
     const payload = record.users.map((user) => user.id).join('\n');
     const success = await copyTextToClipboard(payload);
     if (!success) return;
     setCopiedHistoryKey(record.key);
-    setTimeout(() => {
-      setCopiedHistoryKey(null);
-    }, 2000);
-  };
+    setTimeout(() => setCopiedHistoryKey(null), 2000);
+  }, []);
 
-  const toggleExpand = (key: string) => {
+  const toggleExpand = useCallback((key: string) => {
     setExpandedRecords((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
+  }, []);
 
-  const startEditingNote = (record: HistoryRecord) => {
+  const startEditingNote = useCallback((record: HistoryRecord) => {
     setEditingNoteKey(record.key);
     setNoteDraft(record.note ?? '');
-  };
+  }, []);
 
-  const saveNote = (record: HistoryRecord) => {
+  const saveNote = useCallback((record: HistoryRecord) => {
     const trimmed = noteDraft.slice(0, 200);
     const updatedRecord = { ...record, note: trimmed };
     const { key, ...payload } = updatedRecord;
-    
-    try {
-      localStorage.setItem(key, JSON.stringify(payload));
-      setHistoryRecords((prev) =>
-        prev.map((item) => (item.key === key ? { ...item, note: trimmed } : item))
-      );
-      setEditingNoteKey(null);
-      setNoteDraft('');
-      setStorageSize(getLocalStorageSize());
-    } catch {
-      alert('保存备注失败：存储空间不足');
-    }
-  };
-
-  const cancelEditing = () => {
+    localStorage.setItem(key, JSON.stringify(payload));
+    setHistoryRecords((prev) =>
+      prev.map((item) => (item.key === key ? { ...item, note: trimmed } : item))
+    );
     setEditingNoteKey(null);
     setNoteDraft('');
-  };
+  }, [noteDraft]);
 
-  const deleteHistoryRecord = (record: HistoryRecord) => {
+  const cancelEditing = useCallback(() => {
+    setEditingNoteKey(null);
+    setNoteDraft('');
+  }, []);
+
+  const deleteHistoryRecord = useCallback((record: HistoryRecord) => {
     const confirmed = window.confirm('确定要删除此条历史记录？此操作无法恢复。');
     if (!confirmed) return;
     localStorage.removeItem(record.key);
     setHistoryRecords((prev) => prev.filter((item) => item.key !== record.key));
-    setStorageSize(getLocalStorageSize());
-  };
+  }, []);
 
-  const clearHistory = () => {
+  const clearHistory = useCallback(() => {
     if (historyRecords.length === 0) return;
     const confirmed = window.confirm('确定要清空所有历史记录？此操作无法恢复。');
     if (!confirmed) return;
     historyRecords.forEach((record) => localStorage.removeItem(record.key));
     setHistoryRecords([]);
-    setStorageSize(getLocalStorageSize());
-  };
+  }, [historyRecords]);
 
   const progressPercentage =
-    totalToCheck === 0 ? 0 : Math.min(100, Math.round((progress / totalToCheck) * 100));
+    state.totalToCheck === 0
+      ? 0
+      : Math.min(100, Math.round((state.progress / state.totalToCheck) * 100));
 
-  const storageWarning = storageSize > 4 * 1024 * 1024;
+  const renderLiveItem = useCallback(
+    (item: UserResult) => <ResultItem user={item} type="live" />,
+    []
+  );
+
+  const renderDieItem = useCallback(
+    (item: UserResult) => <ResultItem user={item} type="die" />,
+    []
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 via-indigo-700 to-slate-900 text-white">
@@ -402,21 +565,16 @@ const App: React.FC = () => {
                   <h1 className="text-2xl font-bold text-white md:text-3xl">账号状态检查器</h1>
                 </div>
               </div>
-              <div className="flex flex-col items-end gap-1">
+              <div className="flex items-center gap-2">
                 <div className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-sm">
                   <History className="h-4 w-4" />
-                  <span className="text-xs uppercase tracking-[0.3em]">即时</span>
+                  <span className="text-xs">FPS: {fps}</span>
                 </div>
-                <div
-                  className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${
-                    storageWarning
-                      ? 'bg-red-500/20 text-red-200'
-                      : 'bg-white/10 text-white/70'
-                  }`}
-                >
-                  <HardDrive className="h-3 w-3" />
-                  <span>{formatBytes(storageSize)}</span>
-                </div>
+                {memoryUsage > 0 && (
+                  <div className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-sm">
+                    <span className="text-xs">内存: {memoryUsage}MB</span>
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-white/20 p-2">
@@ -458,19 +616,46 @@ const App: React.FC = () => {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 placeholder={`示例：\n12345678901234\n不规则文字 145678901234567\n请输入每行 14 位以上数字 ID`}
-                disabled={isChecking}
+                disabled={state.isChecking}
               />
               <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-                  <button
-                    type="button"
-                    onClick={handleStartCheck}
-                    disabled={isChecking}
-                    className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-lg font-semibold text-white transition-transform hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 sm:px-5"
-                  >
-                    {isChecking && <Loader2 className="h-5 w-5 animate-spin" />}
-                    <span>{isChecking ? '检查进行中...' : '开始检查'}</span>
-                  </button>
+                  {!state.isChecking ? (
+                    <button
+                      type="button"
+                      onClick={handleStartCheck}
+                      className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-lg font-semibold text-white transition-transform hover:scale-105 active:scale-95 sm:px-5"
+                    >
+                      <span>开始检查</span>
+                    </button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handlePauseResume}
+                        className="flex items-center justify-center gap-2 rounded-2xl bg-yellow-600 px-4 py-3 text-lg font-semibold text-white transition-transform hover:scale-105 active:scale-95"
+                      >
+                        {state.isPaused ? (
+                          <>
+                            <Play className="h-5 w-5" />
+                            <span>继续</span>
+                          </>
+                        ) : (
+                          <>
+                            <Pause className="h-5 w-5" />
+                            <span>暂停</span>
+                          </>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleStopCheck}
+                        className="flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-4 py-3 text-lg font-semibold text-white transition-transform hover:scale-105 active:scale-95"
+                      >
+                        <span>停止</span>
+                      </button>
+                    </div>
+                  )}
                   <div className="flex w-full flex-wrap gap-2 sm:w-auto">
                     <button
                       type="button"
@@ -512,11 +697,12 @@ const App: React.FC = () => {
                 </div>
                 <div className="flex flex-col gap-1 text-xs text-slate-500 md:text-sm">
                   <p className="break-words">
-                    总共 {totalToCheck} 条 · 已完成 {progress}/{totalToCheck}
+                    总共 {state.totalToCheck} 条 · 已完成 {state.progress}/{state.totalToCheck}
+                    {state.isPaused && ' (已暂停)'}
                   </p>
                   <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500"
+                      className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-300"
                       style={{ width: `${progressPercentage}%` }}
                     />
                   </div>
@@ -524,44 +710,16 @@ const App: React.FC = () => {
               </div>
             </section>
 
-            {showSavePrompt && results.length > 0 && (
+            {showSavePrompt && state.results.length > 0 && (
               <section className="rounded-3xl bg-gradient-to-r from-emerald-500 to-teal-600 p-6 shadow-2xl">
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center gap-3">
                     <Save className="h-6 w-6 text-white" />
                     <div>
                       <h3 className="text-xl font-bold text-white">保存检查结果</h3>
-                      <p className="text-sm text-white/80">
-                        检查完成，是否保存到历史记录？
-                        {results.length > MAX_USERS_PER_RECORD &&
-                          ` (将自动分割为 ${Math.ceil(results.length / MAX_USERS_PER_RECORD)} 条记录)`}
-                      </p>
+                      <p className="text-sm text-white/80">检查完成，是否保存到历史记录？</p>
                     </div>
                   </div>
-
-                  {saveError && (
-                    <div className="flex items-start gap-2 rounded-2xl bg-red-500/20 border border-red-300 p-4 text-sm text-white">
-                      <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="font-semibold">保存失败</p>
-                        <p className="mt-1 text-white/90">{saveError}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      id="compressMode"
-                      checked={compressMode}
-                      onChange={(e) => setCompressMode(e.target.checked)}
-                      className="h-4 w-4 rounded border-white/30 bg-white/20 text-teal-600 focus:ring-2 focus:ring-white/50"
-                    />
-                    <label htmlFor="compressMode" className="text-sm text-white cursor-pointer">
-                      压缩模式（仅保存 ID 和状态，不保存 URL，可节省约 60% 空间）
-                    </label>
-                  </div>
-
                   <textarea
                     value={currentCheckNote}
                     onChange={(e) => setCurrentCheckNote(e.target.value.slice(0, 200))}
@@ -599,23 +757,16 @@ const App: React.FC = () => {
                   </div>
                   <Users className="h-6 w-6 text-emerald-400" />
                 </div>
-                <div className="mt-3 max-h-96 w-full space-y-1 overflow-y-auto pr-1">
+                <div className="mt-3 w-full">
                   {liveResults.length === 0 ? (
                     <p className="text-xs text-slate-400">尚未取得 Live 结果</p>
                   ) : (
-                    liveResults.map((user) => (
-                      <div
-                        key={`live-${user.id}`}
-                        className="flex items-center justify-between gap-3 rounded-2xl bg-white/5 px-3 py-2 text-xs font-medium text-white"
-                        style={{ minHeight: '40px' }}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                          <span className="font-mono">{user.id}</span>
-                        </div>
-                        <CheckCircle className="h-4 w-4 text-emerald-400" />
-                      </div>
-                    ))
+                    <VirtualList
+                      items={liveResults}
+                      height={384}
+                      itemHeight={VIRTUAL_ITEM_HEIGHT}
+                      renderItem={renderLiveItem}
+                    />
                   )}
                 </div>
               </div>
@@ -627,23 +778,16 @@ const App: React.FC = () => {
                   </div>
                   <XCircle className="h-6 w-6 text-red-400" />
                 </div>
-                <div className="mt-3 max-h-96 w-full space-y-1 overflow-y-auto pr-1">
+                <div className="mt-3 w-full">
                   {dieResults.length === 0 ? (
                     <p className="text-xs text-slate-400">尚未取得 Die 结果</p>
                   ) : (
-                    dieResults.map((user) => (
-                      <div
-                        key={`die-${user.id}`}
-                        className="flex items-center justify-between gap-3 rounded-2xl bg-white/5 px-3 py-2 text-xs font-medium text-white"
-                        style={{ minHeight: '40px' }}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="h-2 w-2 rounded-full bg-red-400" />
-                          <span className="font-mono">{user.id}</span>
-                        </div>
-                        <XCircle className="h-4 w-4 text-red-400" />
-                      </div>
-                    ))
+                    <VirtualList
+                      items={dieResults}
+                      height={384}
+                      itemHeight={VIRTUAL_ITEM_HEIGHT}
+                      renderItem={renderDieItem}
+                    />
                   )}
                 </div>
               </div>
@@ -671,12 +815,6 @@ const App: React.FC = () => {
                 <p className="text-sm text-slate-500">
                   手动保存每次检查结果，可快速重新检查亦可加入备注。
                 </p>
-                {storageWarning && (
-                  <div className="flex items-center gap-2 rounded-2xl bg-orange-100/80 px-4 py-3 text-sm text-orange-700">
-                    <AlertCircle className="h-4 w-4" />
-                    存储空间使用较多（{formatBytes(storageSize)}），建议清理部分历史记录以避免保存失败。
-                  </div>
-                )}
                 {historyRecords.length > 50 && (
                   <div className="flex items-center gap-2 rounded-2xl bg-red-100/80 px-4 py-3 text-sm text-red-600">
                     <AlertCircle className="h-4 w-4" />
