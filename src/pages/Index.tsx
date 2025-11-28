@@ -53,7 +53,7 @@ type CheckAction =
 
 // --- 常量配置 ---
 const HISTORY_KEY_PREFIX = 'fb_history:';
-const CONCURRENCY_LIMIT = 2000; 
+const CONCURRENCY_LIMIT = 500; 
 const UI_UPDATE_INTERVAL = 500; 
 const VIRTUAL_ITEM_HEIGHT = 48;
 const VIRTUAL_BUFFER = 5;
