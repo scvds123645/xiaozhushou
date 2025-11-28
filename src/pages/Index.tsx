@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useReducer, useRef, useState, memo } from 'react';
+
 import {
   Check,
   CheckCircle,
@@ -20,7 +21,6 @@ import {
 } from 'lucide-react';
 
 // --- 类型定义 ---
-
 type UserResult = {
   id: string;
   status: 'Live' | 'Die';
@@ -54,7 +54,6 @@ type CheckAction =
   | { type: 'RESET' };
 
 // --- 常量配置 ---
-
 const HISTORY_KEY_PREFIX = 'fb_history:';
 const CONCURRENCY_LIMIT = 200; 
 const UI_UPDATE_INTERVAL = 500; 
@@ -62,7 +61,6 @@ const VIRTUAL_ITEM_HEIGHT = 48;
 const VIRTUAL_BUFFER = 5;
 
 // --- Reducer ---
-
 const checkReducer = (state: CheckState, action: CheckAction): CheckState => {
   switch (action.type) {
     case 'START_CHECK':
@@ -83,7 +81,6 @@ const checkReducer = (state: CheckState, action: CheckAction): CheckState => {
 };
 
 // --- 虚拟列表组件 ---
-
 const VirtualList = memo<{
   items: UserResult[];
   height: number;
@@ -95,8 +92,8 @@ const VirtualList = memo<{
 
   const visibleStart = Math.max(0, Math.floor(scrollTop / itemHeight) - VIRTUAL_BUFFER);
   const visibleEnd = Math.min(items.length, Math.ceil((scrollTop + height) / itemHeight) + VIRTUAL_BUFFER);
-
   const visibleItems = items.slice(visibleStart, visibleEnd);
+
   const totalHeight = items.length * itemHeight;
   const offsetY = visibleStart * itemHeight;
 
@@ -121,10 +118,10 @@ const VirtualList = memo<{
     </div>
   );
 });
+
 VirtualList.displayName = 'VirtualList';
 
 // --- 结果单项组件 ---
-
 const ResultItem = memo<{ user: UserResult; type: 'live' | 'die' }>(({ user, type }) => {
   const isLive = type === 'live';
   return (
@@ -140,10 +137,10 @@ const ResultItem = memo<{ user: UserResult; type: 'live' | 'die' }>(({ user, typ
     </div>
   );
 });
+
 ResultItem.displayName = 'ResultItem';
 
 // --- 工具函数 ---
-
 const copyTextToClipboard = async (text: string) => {
   if (!text) return false;
   try {
@@ -167,12 +164,12 @@ const copyTextToClipboard = async (text: string) => {
 };
 
 const parseInputIds = (raw: string) => {
-  const matches = raw.match(/\d{5,}/g) ?? [];
+  // Changed regex to match exactly 14 digits
+  const matches = raw.match(/\d{14}/g) ?? [];
   return Array.from(new Set(matches));
 };
 
 // --- 主应用 ---
-
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'check' | 'history'>('check');
   const [inputValue, setInputValue] = useState<string>('');
@@ -192,7 +189,6 @@ const App: React.FC = () => {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // --- 历史记录加载 ---
-
   const loadHistory = useCallback(() => {
     if (typeof window === 'undefined') return;
     const stored: HistoryRecord[] = [];
@@ -223,7 +219,6 @@ const App: React.FC = () => {
   useEffect(() => { loadHistory(); }, [loadHistory]);
 
   // --- 核心逻辑 ---
-
   const checkSingleUser = useCallback(async (id: string, signal: AbortSignal): Promise<UserResult> => {
     const url = `https://graph.facebook.com/${id}/picture?redirect=false`;
     try {
@@ -242,7 +237,6 @@ const App: React.FC = () => {
       if (ids.length === 0) return;
       abortControllerRef.current = new AbortController();
       const { signal } = abortControllerRef.current;
-
       dispatch({ type: 'START_CHECK', total: ids.length });
       setShowSavePrompt(false);
       setItemsPerSecond(0);
@@ -292,7 +286,6 @@ const App: React.FC = () => {
     }, [checkSingleUser, state.isPaused]);
 
   // --- Handlers ---
-
   const handleStartCheck = useCallback(() => {
     const ids = parseInputIds(inputValue);
     if (ids.length === 0) { alert('未识别到有效 ID'); return; }
@@ -324,7 +317,6 @@ const App: React.FC = () => {
       users: state.results,
     };
     const historyKey = `${HISTORY_KEY_PREFIX}${timestamp}`;
-
     try {
         localStorage.setItem(historyKey, JSON.stringify(historyValue));
         setHistoryRecords((prev) => [{ key: historyKey, ...historyValue }, ...prev]);
@@ -348,7 +340,6 @@ const App: React.FC = () => {
   }, []);
 
   // --- UI Vars ---
-
   const liveResults = state.results.filter((item) => item.status === 'Live');
   const dieResults = state.results.filter((item) => item.status === 'Die');
   const progressPercentage = state.totalToCheck === 0 ? 0 : Math.min(100, Math.round((state.progress / state.totalToCheck) * 100));
@@ -486,6 +477,7 @@ const App: React.FC = () => {
                             <VirtualList items={liveResults} height={350} itemHeight={VIRTUAL_ITEM_HEIGHT} renderItem={item => <ResultItem user={item} type="live" />} />
                     </div>
                 </div>
+
                 {/* Die Panel */}
                 <div className="flex flex-col rounded-3xl bg-white/5 border border-red-500/20 overflow-hidden">
                     <div className="p-3 sm:p-4 bg-red-500/10 border-b border-red-500/10 flex items-center justify-between">
@@ -587,7 +579,6 @@ const App: React.FC = () => {
             </div>
           </main>
         )}
-
         {/* 保存提示 */}
         {showSavePrompt && state.results.length > 0 && (
             <div className="fixed bottom-0 left-0 right-0 p-4 z-50 bg-gradient-to-t from-slate-900 to-slate-900/90 backdrop-blur-lg border-t border-white/10">
