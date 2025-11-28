@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useReducer, useRef, useState, memo } from 'react';
-
 import {
   Check,
   CheckCircle,
@@ -8,17 +7,19 @@ import {
   Eye,
   EyeOff,
   Loader2,
-  Pause,
-  Play,
+  // Pause,  // 移除
+  // Play,   // Play 用于“开始”按钮
   RefreshCw,
   Save,
   Trash2,
   Users,
   XCircle,
   Zap,
-  Menu,
-  X
+  // Menu,   // 未使用
+  // X       // 移除
+  Play,
 } from 'lucide-react';
+
 
 // --- 类型定义 ---
 type UserResult = {
@@ -42,15 +43,12 @@ type CheckState = {
   progress: number;
   totalToCheck: number;
   isChecking: boolean;
-  isPaused: boolean;
 };
 
 type CheckAction =
   | { type: 'START_CHECK'; total: number }
   | { type: 'BATCH_UPDATE'; results: UserResult[]; progress: number }
   | { type: 'FINISH_CHECK' }
-  | { type: 'PAUSE_CHECK' }
-  | { type: 'RESUME_CHECK' }
   | { type: 'RESET' };
 
 // --- 常量配置 ---
@@ -64,17 +62,13 @@ const VIRTUAL_BUFFER = 5;
 const checkReducer = (state: CheckState, action: CheckAction): CheckState => {
   switch (action.type) {
     case 'START_CHECK':
-      return { ...state, isChecking: true, isPaused: false, totalToCheck: action.total, progress: 0, results: [] };
+      return { ...state, isChecking: true, totalToCheck: action.total, progress: 0, results: [] };
     case 'BATCH_UPDATE':
       return { ...state, results: action.results, progress: action.progress };
     case 'FINISH_CHECK':
-      return { ...state, isChecking: false, isPaused: false };
-    case 'PAUSE_CHECK':
-      return { ...state, isPaused: true };
-    case 'RESUME_CHECK':
-      return { ...state, isPaused: false };
+      return { ...state, isChecking: false };
     case 'RESET':
-      return { results: [], progress: 0, totalToCheck: 0, isChecking: false, isPaused: false };
+      return { results: [], progress: 0, totalToCheck: 0, isChecking: false };
     default:
       return state;
   }
@@ -92,8 +86,8 @@ const VirtualList = memo<{
 
   const visibleStart = Math.max(0, Math.floor(scrollTop / itemHeight) - VIRTUAL_BUFFER);
   const visibleEnd = Math.min(items.length, Math.ceil((scrollTop + height) / itemHeight) + VIRTUAL_BUFFER);
-  const visibleItems = items.slice(visibleStart, visibleEnd);
 
+  const visibleItems = items.slice(visibleStart, visibleEnd);
   const totalHeight = items.length * itemHeight;
   const offsetY = visibleStart * itemHeight;
 
@@ -118,7 +112,6 @@ const VirtualList = memo<{
     </div>
   );
 });
-
 VirtualList.displayName = 'VirtualList';
 
 // --- 结果单项组件 ---
@@ -137,7 +130,6 @@ const ResultItem = memo<{ user: UserResult; type: 'live' | 'die' }>(({ user, typ
     </div>
   );
 });
-
 ResultItem.displayName = 'ResultItem';
 
 // --- 工具函数 ---
@@ -164,7 +156,6 @@ const copyTextToClipboard = async (text: string) => {
 };
 
 const parseInputIds = (raw: string) => {
-  // Changed regex to match exactly 14 digits
   const matches = raw.match(/\d{14}/g) ?? [];
   return Array.from(new Set(matches));
 };
@@ -173,7 +164,7 @@ const parseInputIds = (raw: string) => {
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'check' | 'history'>('check');
   const [inputValue, setInputValue] = useState<string>('');
-  const [state, dispatch] = useReducer(checkReducer, { results: [], progress: 0, totalToCheck: 0, isChecking: false, isPaused: false });
+  const [state, dispatch] = useReducer(checkReducer, { results: [], progress: 0, totalToCheck: 0, isChecking: false });
   
   const [historyRecords, setHistoryRecords] = useState<HistoryRecord[]>([]);
   const [expandedRecords, setExpandedRecords] = useState<Record<string, boolean>>({});
@@ -186,7 +177,6 @@ const App: React.FC = () => {
   const [showSavePrompt, setShowSavePrompt] = useState(false);
   const [currentCheckNote, setCurrentCheckNote] = useState('');
   const [itemsPerSecond, setItemsPerSecond] = useState(0);
-  const abortControllerRef = useRef<AbortController | null>(null);
 
   // --- 历史记录加载 ---
   const loadHistory = useCallback(() => {
@@ -219,10 +209,10 @@ const App: React.FC = () => {
   useEffect(() => { loadHistory(); }, [loadHistory]);
 
   // --- 核心逻辑 ---
-  const checkSingleUser = useCallback(async (id: string, signal: AbortSignal): Promise<UserResult> => {
+  const checkSingleUser = useCallback(async (id: string): Promise<UserResult> => {
     const url = `https://graph.facebook.com/${id}/picture?redirect=false`;
     try {
-      const res = await fetch(url, { signal, keepalive: true } as any);
+      const res = await fetch(url, { keepalive: true } as any);
       if (!res.ok) throw new Error('Err');
       const data = await res.json();
       const urlField = data?.data?.url ?? '';
@@ -235,12 +225,11 @@ const App: React.FC = () => {
 
   const runCheckWithIds = useCallback(async (ids: string[]) => {
       if (ids.length === 0) return;
-      abortControllerRef.current = new AbortController();
-      const { signal } = abortControllerRef.current;
+      
       dispatch({ type: 'START_CHECK', total: ids.length });
       setShowSavePrompt(false);
       setItemsPerSecond(0);
-
+      
       const resultsRef = { current: [] as UserResult[] };
       let completedCount = 0;
       const startTime = Date.now();
@@ -258,15 +247,10 @@ const App: React.FC = () => {
 
       try {
         for (const id of idsIterator) {
-          if (signal.aborted) break;
-          while (state.isPaused && !signal.aborted) await new Promise(resolve => setTimeout(resolve, 100));
-          
-          const task = checkSingleUser(id, signal).then(result => {
-            if (!signal.aborted) {
+          const task = checkSingleUser(id).then(result => {
               resultsRef.current.push(result);
               completedCount++;
-            }
-            activePromises.delete(task);
+              activePromises.delete(task);
           });
           
           activePromises.add(task);
@@ -275,15 +259,14 @@ const App: React.FC = () => {
         await Promise.all(activePromises);
       } catch (e) { console.error(e); } finally {
         clearInterval(uiTimer);
-        if (!signal.aborted) {
-          dispatch({ type: 'BATCH_UPDATE', results: resultsRef.current, progress: ids.length });
-          dispatch({ type: 'FINISH_CHECK' });
-          setShowSavePrompt(true);
-          setCurrentCheckNote('');
-          setItemsPerSecond(0);
-        }
+        dispatch({ type: 'BATCH_UPDATE', results: resultsRef.current, progress: ids.length });
+        dispatch({ type: 'FINISH_CHECK' });
+        setShowSavePrompt(true);
+        setCurrentCheckNote('');
+        setItemsPerSecond(0);
       }
-    }, [checkSingleUser, state.isPaused]);
+    }, [checkSingleUser]);
+
 
   // --- Handlers ---
   const handleStartCheck = useCallback(() => {
@@ -291,18 +274,6 @@ const App: React.FC = () => {
     if (ids.length === 0) { alert('未识别到有效 ID'); return; }
     runCheckWithIds(ids);
   }, [inputValue, runCheckWithIds]);
-
-  const handlePauseResume = useCallback(() => {
-    if (state.isPaused) dispatch({ type: 'RESUME_CHECK' });
-    else dispatch({ type: 'PAUSE_CHECK' });
-  }, [state.isPaused]);
-
-  const handleStopCheck = useCallback(() => {
-    abortControllerRef.current?.abort();
-    dispatch({ type: 'RESET' });
-    setShowSavePrompt(false);
-    setItemsPerSecond(0);
-  }, []);
 
   const handleSaveToHistory = useCallback(() => {
     if (state.results.length === 0) return;
@@ -414,48 +385,33 @@ const App: React.FC = () => {
                   disabled={state.isChecking}
                 />
                 
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                    {!state.isChecking ? (
-                        <button
-                            onClick={handleStartCheck}
-                            className="col-span-2 flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 text-base font-bold text-white shadow-lg shadow-blue-600/20 active:scale-[0.98] transition-transform"
-                        >
-                            <Play className="h-5 w-5 fill-current" /> 开始检查
-                        </button>
-                    ) : (
-                        <>
-                            <button
-                                onClick={handlePauseResume}
-                                className="flex items-center justify-center gap-2 rounded-xl bg-amber-500 py-3.5 text-base font-bold text-white active:scale-[0.98] transition-transform"
-                            >
-                                {state.isPaused ? <Play className="h-5 w-5 fill-current"/> : <Pause className="h-5 w-5 fill-current"/>}
-                                {state.isPaused ? '继续' : '暂停'}
-                            </button>
-                            <button
-                                onClick={handleStopCheck}
-                                className="flex items-center justify-center gap-2 rounded-xl bg-red-500 py-3.5 text-base font-bold text-white active:scale-[0.98] transition-transform"
-                            >
-                                <X className="h-5 w-5"/> 停止
-                            </button>
-                        </>
-                    )}
+                <div className="mt-4 grid grid-cols-1">
+                    <button
+                        onClick={handleStartCheck}
+                        disabled={state.isChecking}
+                        className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 text-base font-bold text-white shadow-lg shadow-blue-600/20 active:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {state.isChecking ? <Loader2 className="h-5 w-5 animate-spin"/> : <Play className="h-5 w-5 fill-current" />}
+                        {state.isChecking ? '检查中...' : '开始检查'}
+                    </button>
                 </div>
+                
                 {state.totalToCheck > 0 && (
                     <div className="mt-5 space-y-2">
                         <div className="flex justify-between text-xs text-slate-400">
-                            <span>进度 {Math.round((state.progress / state.totalToCheck) * 100)}%</span>
+                            <span>进度 {progressPercentage}%</span>
                             <span>{state.progress} / {state.totalToCheck}</span>
                         </div>
                         <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
                             <div
-                                className={`h-full transition-all duration-300 ${state.isPaused ? 'bg-amber-500' : 'bg-blue-500'}`}
+                                className="h-full bg-blue-500 transition-all duration-300"
                                 style={{ width: `${progressPercentage}%` }}
                             />
                         </div>
                     </div>
                 )}
             </section>
-
+            
             {/* 结果区域 */}
             <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
                 {/* Live Panel */}
@@ -477,7 +433,6 @@ const App: React.FC = () => {
                             <VirtualList items={liveResults} height={350} itemHeight={VIRTUAL_ITEM_HEIGHT} renderItem={item => <ResultItem user={item} type="live" />} />
                     </div>
                 </div>
-
                 {/* Die Panel */}
                 <div className="flex flex-col rounded-3xl bg-white/5 border border-red-500/20 overflow-hidden">
                     <div className="p-3 sm:p-4 bg-red-500/10 border-b border-red-500/10 flex items-center justify-between">
@@ -579,6 +534,7 @@ const App: React.FC = () => {
             </div>
           </main>
         )}
+        
         {/* 保存提示 */}
         {showSavePrompt && state.results.length > 0 && (
             <div className="fixed bottom-0 left-0 right-0 p-4 z-50 bg-gradient-to-t from-slate-900 to-slate-900/90 backdrop-blur-lg border-t border-white/10">
@@ -597,7 +553,7 @@ const App: React.FC = () => {
                         />
                         <button onClick={handleSaveToHistory} className="bg-white text-slate-900 px-4 rounded-lg text-sm font-bold">保存</button>
                         <button 
-                            onClick={() => { setShowSavePrompt(false); /* 删除了 RESET 操作 */ }} 
+                            onClick={() => { setShowSavePrompt(false); }} 
                             className="text-white/60 px-2 text-sm"
                         >
                             放弃
