@@ -1,0 +1,1017 @@
+// ==UserScript==
+// @name         Facebook Cookie 注入器
+// @namespace    http://tampermonkey.net/
+// @version      2.0.0
+// @description  Facebook专用Cookie注入、备份、导入、删除工具
+// @author       You
+// @match        *://*.facebook.com/*
+// @match        *://*.fb.com/*
+// @grant        none
+// @run-at       document-end
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    const ICONS = {
+        cookie: `<svg height="24px" width="24px" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 416.991 416.991" xml:space="preserve" fill="#FFFFFF"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <g> <path style="fill:#D4B783;" d="M381.114,225.079c-14.766-3.154-27.751-11.758-36.427-24.102 c-7.866,3.647-16.438,5.543-25.258,5.544c-10.471,0.001-20.822-2.78-29.936-8.042c-17.015-9.824-27.983-27.382-29.744-46.57 c-19.289-1.763-36.796-12.823-46.567-29.748c-9.821-17.011-10.544-37.695-2.48-55.19c-12.344-8.672-20.95-21.655-24.107-36.418 c-32.697,1.049-63.311,10.475-89.779,26.183C50.256,91.091,20,146.326,20,208.496c0,103.937,84.559,188.496,188.496,188.496 c34.945,0,67.698-9.56,95.784-26.199C349.368,337.576,379.198,284.794,381.114,225.079z M120.4,184.892 c-0.727,2.708-2.463,4.971-4.891,6.373c-1.604,0.923-3.415,1.407-5.25,1.407h-0.001c-3.745-0.001-7.232-2.017-9.1-5.262 c-2.886-4.997-1.166-11.429,3.841-14.327c1.612-0.928,3.423-1.412,5.258-1.412c3.739,0,7.223,2.011,9.093,5.249 C120.754,179.35,121.126,182.181,120.4,184.892z M136.574,290.904c-5.79,0-10.5-4.711-10.5-10.5c0-5.79,4.711-10.5,10.5-10.5 c5.79,0,10.5,4.71,10.5,10.5C147.074,286.194,142.364,290.904,136.574,290.904z M191.271,115.503 c-1.877,3.25-5.362,5.262-9.101,5.262c-1.835,0-3.646-0.484-5.238-1.4c-5.019-2.899-6.746-9.328-3.862-14.338 c1.877-3.25,5.361-5.262,9.101-5.262c1.835,0,3.646,0.484,5.238,1.4C192.428,104.064,194.155,110.493,191.271,115.503z M243.904,311.968c-1.887,3.255-5.368,5.262-9.101,5.262c-1.847,0-3.668-0.49-5.266-1.416c-4.991-2.883-6.718-9.312-3.834-14.322 c1.893-3.259,5.372-5.262,9.101-5.262c1.847,0,3.668,0.49,5.267,1.417c2.403,1.383,4.145,3.647,4.873,6.358 C245.672,306.71,245.302,309.539,243.904,311.968z M316.862,237.531c-0.724,2.712-2.462,4.98-4.893,6.384 c-1.604,0.923-3.415,1.407-5.251,1.407c-3.745,0-7.232-2.017-9.1-5.262c-1.393-2.403-1.77-5.234-1.045-7.947 c0.724-2.713,2.462-4.98,4.894-6.384c1.604-0.923,3.415-1.407,5.251-1.407c3.745,0,7.231,2.016,9.1,5.262 C317.21,231.987,317.587,234.819,316.862,237.531z"></path> <g> <path d="M187.409,101.165c-1.591-0.916-3.402-1.4-5.238-1.4c-3.739,0-7.223,2.011-9.101,5.262 c-2.884,5.011-1.157,11.439,3.862,14.338c1.591,0.916,3.402,1.4,5.238,1.4c3.739,0,7.224-2.011,9.101-5.262 C194.155,110.493,192.428,104.064,187.409,101.165z"></path> <path d="M110.257,171.672c-1.835,0-3.646,0.484-5.258,1.412c-5.007,2.898-6.727,9.33-3.841,14.327 c1.868,3.245,5.355,5.261,9.1,5.262h0.001c1.835,0,3.646-0.484,5.25-1.407c2.428-1.402,4.164-3.665,4.891-6.373 c0.727-2.71,0.354-5.542-1.049-7.971C117.48,173.683,113.996,171.672,110.257,171.672z"></path> <path d="M136.574,269.904c-5.79,0-10.5,4.71-10.5,10.5c0,5.789,4.711,10.5,10.5,10.5c5.79,0,10.5-4.711,10.5-10.5 C147.074,274.615,142.364,269.904,136.574,269.904z"></path> <path d="M240.071,297.647c-1.599-0.927-3.42-1.417-5.267-1.417c-3.729,0-7.208,2.003-9.101,5.262 c-2.884,5.01-1.157,11.439,3.834,14.322c1.598,0.926,3.419,1.416,5.266,1.416c3.732,0,7.214-2.006,9.101-5.262 c1.398-2.429,1.768-5.257,1.04-7.963C244.216,301.293,242.474,299.03,240.071,297.647z"></path> <path d="M306.718,224.323c-1.836,0-3.647,0.484-5.251,1.407c-2.432,1.404-4.17,3.672-4.894,6.384 c-0.725,2.712-0.348,5.544,1.045,7.947c1.868,3.245,5.355,5.261,9.1,5.262c1.836,0,3.647-0.484,5.251-1.407 c2.432-1.404,4.17-3.672,4.893-6.384c0.725-2.712,0.348-5.544-1.045-7.947C313.949,226.339,310.463,224.323,306.718,224.323z"></path> <path d="M416.97,206.596l-0.013-0.831c-0.064-5.279-4.222-9.598-9.494-9.864c-14.875-0.751-28.007-9.639-34.27-23.193 c-1.245-2.694-3.623-4.696-6.489-5.465c-2.867-0.769-5.926-0.224-8.353,1.487c-6.706,4.73-14.927,7.335-23.146,7.336 c-6.964,0-13.858-1.854-19.935-5.363c-13.458-7.77-21.242-22.804-19.83-38.299c0.269-2.956-0.789-5.879-2.888-7.977 c-2.099-2.099-5.032-3.152-7.977-2.889c-1.195,0.109-2.411,0.164-3.614,0.164c-14.271,0-27.561-7.662-34.683-19.996 c-7.77-13.458-6.994-30.369,1.976-43.084c1.711-2.425,2.257-5.485,1.488-8.352c-0.768-2.867-2.77-5.245-5.464-6.49 c-13.548-6.262-22.434-19.387-23.188-34.254c-0.268-5.269-4.583-9.424-9.858-9.492l-0.816-0.013C209.777,0.01,209.138,0,208.496,0 C93.531,0,0,93.531,0,208.496s93.531,208.496,208.496,208.496s208.495-93.531,208.495-208.496 C416.991,207.861,416.981,207.229,416.97,206.596z M304.28,370.792c-28.087,16.639-60.839,26.199-95.784,26.199 C104.559,396.991,20,312.433,20,208.496c0-62.17,30.255-117.404,76.814-151.759c29.744-21.948,66.142-35.374,105.558-36.639 c3.158,14.763,11.764,27.746,24.107,36.418c-8.063,17.495-7.341,38.179,2.48,55.19c9.771,16.925,27.278,27.985,46.567,29.748 c1.761,19.188,12.729,36.746,29.744,46.57c9.114,5.262,19.466,8.043,29.936,8.042c8.82-0.001,17.392-1.897,25.258-5.544 c8.676,12.343,21.661,20.947,36.427,24.102C394.761,281.057,358.085,338.917,304.28,370.792z"></path> </g> </g> </g></svg>`,
+        account_circle: `<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm0 14c-2.03 0-4.43-.82-6.14-2.88C7.55 15.8 9.68 15 12 15s4.45.8 6.14 2.12C16.43 19.18 14.03 20 12 20z"/></svg>`,
+        warning: `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>`,
+        check: `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>`,
+        info: `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>`
+    };
+
+    const SELECTORS = {
+        FAB: '#cookie-manager-fab',
+        BOTTOM_SHEET: '#cookie-manager-bottom-sheet',
+        SCRIM: '#cookie-manager-scrim',
+        TEXT_FIELD: '#cookie-input',
+        BTN_INJECT: '#btn-inject',
+        BTN_BACKUP: '#btn-backup',
+        BTN_IMPORT: '#btn-import',
+        INPUT_FILE: '#cookie-file-input',
+        BTN_DELETE: '#btn-delete',
+        BTN_CLOSE: '#btn-close',
+        WATERMARK: '#cookie-manager-watermark',
+        TIME_DISPLAY: '#cookie-manager-time',
+        DATE_DISPLAY: '#cookie-manager-date',
+        DIALOG: '#cookie-manager-dialog',
+    };
+
+    const COOKIE_NAMES = { FB_C_USER: 'c_user', FB_XS: 'xs' };
+
+    // 检测设备类型
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
+
+    const DialogManager = (function() {
+        function showDialog({ type = 'info', title, message, confirmText = '确定', cancelText = '取消', onConfirm, showCancel = false, countdown = 0, allowDismiss = true }) {
+            const existingDialog = document.querySelector(SELECTORS.DIALOG);
+            if (existingDialog) existingDialog.remove();
+
+            const existingScrim = document.querySelectorAll(`${SELECTORS.SCRIM}`);
+            existingScrim.forEach(s => {
+                if (s.style.zIndex === '2999') s.remove();
+            });
+
+            const dialogScrim = document.createElement('div');
+            dialogScrim.id = SELECTORS.SCRIM.substring(1);
+            dialogScrim.classList.add('show');
+            dialogScrim.style.zIndex = '2999';
+
+            const iconMap = {
+                info: ICONS.info,
+                warning: ICONS.warning,
+                error: ICONS.warning,
+                success: ICONS.check
+            };
+
+            const dialog = document.createElement('div');
+            dialog.id = SELECTORS.DIALOG.substring(1);
+            dialog.className = 'cookie-manager-base';
+            dialog.innerHTML = `
+                <div class="dialog-header">
+                    <span class="dialog-icon dialog-icon-${type}">${iconMap[type] || ICONS.info}</span>
+                    <h3 class="dialog-title">${title}</h3>
+                </div>
+                <p class="dialog-content">${message}</p>
+                <div class="dialog-actions">
+                    ${showCancel ? `<button class="btn btn-text" id="dialog-btn-cancel">${cancelText}</button>` : ''}
+                    <button class="btn btn-text" id="dialog-btn-confirm">${confirmText}</button>
+                </div>
+            `;
+
+            document.body.append(dialogScrim, dialog);
+
+            const confirmBtn = dialog.querySelector('#dialog-btn-confirm');
+            const cancelBtn = dialog.querySelector('#dialog-btn-cancel');
+
+            if (countdown > 0) {
+                confirmBtn.disabled = true;
+                confirmBtn.style.opacity = '0.6';
+                confirmBtn.style.cursor = 'not-allowed';
+                let count = countdown;
+                confirmBtn.textContent = `${confirmText} (${count})`;
+                const interval = setInterval(() => {
+                    count--;
+                    if (count > 0) {
+                        confirmBtn.textContent = `${confirmText} (${count})`;
+                    } else {
+                        clearInterval(interval);
+                        confirmBtn.disabled = false;
+                        confirmBtn.textContent = confirmText;
+                        confirmBtn.style.opacity = '1';
+                        confirmBtn.style.cursor = 'pointer';
+                    }
+                }, 1000);
+            }
+
+            setTimeout(() => dialog.classList.add('show'), 10);
+
+            const close = (confirmed = false) => {
+                dialog.classList.remove('show');
+                dialogScrim.classList.remove('show');
+                setTimeout(() => {
+                    dialog.remove();
+                    dialogScrim.remove();
+                    if (confirmed && onConfirm) onConfirm();
+                }, 200);
+            };
+
+            confirmBtn.addEventListener('click', () => close(true));
+            if (cancelBtn) cancelBtn.addEventListener('click', () => close(false));
+            
+            if (allowDismiss && !showCancel) {
+                dialogScrim.addEventListener('click', () => close(false));
+            }
+
+            return { close };
+        }
+
+        return { showDialog };
+    })();
+
+    const UIManager = (function() {
+        let bottomSheet, scrim, fab;
+
+        function appendStyles() {
+            const style = document.createElement('style');
+            style.textContent = `
+                :root {
+                    --md-sys-color-primary: #0B57D0;
+                    --md-sys-color-on-primary: #FFFFFF;
+                    --md-sys-color-primary-container: #D3E4FF;
+                    --md-sys-color-on-primary-container: #001D36;
+                    --md-sys-color-error: #B3261E;
+                    --md-sys-color-on-error: #FFFFFF;
+                    --md-sys-color-success: #1E8E3E;
+                    --md-sys-color-surface-container-low: #F7F2FA;
+                    --md-sys-color-outline: #74777F;
+                    --md-sys-color-scrim: #000000;
+                    --md-sys-color-on-surface: #1C1B1F;
+                    --md-sys-color-on-surface-variant: #44474E;
+                    --md-sys-color-surface-container-highest: #E6E0E9;
+                }
+
+                .cookie-manager-base, .cookie-manager-base * {
+                    font-family: 'Roboto', 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                    box-sizing: border-box;
+                    -webkit-tap-highlight-color: transparent;
+                }
+
+                ${SELECTORS.FAB} {
+                    position: fixed;
+                    bottom: ${isMobile ? '70px' : '80px'};
+                    right: ${isMobile ? '16px' : '20px'};
+                    width: ${isMobile ? '48px' : '56px'};
+                    height: ${isMobile ? '48px' : '56px'};
+                    background-color: var(--md-sys-color-primary-container);
+                    color: var(--md-sys-color-on-primary-container);
+                    border: none;
+                    border-radius: ${isMobile ? '12px' : '16px'};
+                    box-shadow: 0 4px 8px 3px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.3);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                    z-index: 1000;
+                    transition: box-shadow 0.2s ease-out, transform 0.2s ease;
+                    user-select: none;
+                    touch-action: none;
+                }
+
+                ${SELECTORS.FAB}:active {
+                    box-shadow: 0 6px 10px 4px rgba(0,0,0,0.15), 0 2px 3px rgba(0,0,0,0.3);
+                    transform: scale(0.95);
+                }
+
+                @media (hover: hover) {
+                    ${SELECTORS.FAB}:hover {
+                        box-shadow: 0 6px 10px 4px rgba(0,0,0,0.15), 0 2px 3px rgba(0,0,0,0.3);
+                        transform: scale(1.05);
+                    }
+                }
+
+                ${SELECTORS.FAB} svg {
+                    fill: var(--md-sys-color-on-primary-container);
+                    width: ${isMobile ? '20px' : '24px'};
+                    height: ${isMobile ? '20px' : '24px'};
+                }
+
+                ${SELECTORS.BOTTOM_SHEET} {
+                    position: fixed;
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                    background-color: var(--md-sys-color-surface-container-low);
+                    color: var(--md-sys-color-on-surface);
+                    border-top-left-radius: 28px;
+                    border-top-right-radius: 28px;
+                    padding: ${isMobile ? '4px 16px 24px 16px' : '4px 24px 24px 24px'};
+                    z-index: 2000;
+                    box-shadow: 0 1px 3px 1px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.3);
+                    max-height: 85vh;
+                    overflow-y: auto;
+                    transform: translateY(100%);
+                    transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+                    display: flex;
+                    flex-direction: column;
+                    gap: ${isMobile ? '12px' : '16px'};
+                    overscroll-behavior: contain;
+                }
+
+                ${SELECTORS.BOTTOM_SHEET}.show {
+                    transform: translateY(0);
+                }
+
+                .drag-handle {
+                    width: ${isMobile ? '40px' : '32px'};
+                    height: ${isMobile ? '5px' : '4px'};
+                    background-color: var(--md-sys-color-outline);
+                    border-radius: ${isMobile ? '2.5px' : '2px'};
+                    margin: ${isMobile ? '12px auto' : '8px auto'};
+                    cursor: grab;
+                    touch-action: none;
+                }
+
+                .drag-handle:active {
+                    cursor: grabbing;
+                }
+
+                .bottom-sheet-title {
+                    font-size: ${isMobile ? '20px' : '24px'};
+                    font-weight: 400;
+                    text-align: center;
+                    margin: ${isMobile ? '4px 0' : '8px 0'};
+                }
+
+                ${SELECTORS.SCRIM} {
+                    position: fixed;
+                    inset: 0;
+                    background-color: var(--md-sys-color-scrim);
+                    opacity: 0;
+                    z-index: 1999;
+                    pointer-events: none;
+                    transition: opacity 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+                }
+
+                ${SELECTORS.SCRIM}.show {
+                    opacity: 0.4;
+                    pointer-events: auto;
+                }
+
+                .text-field-container {
+                    position: relative;
+                    margin: 8px 0;
+                }
+
+                ${SELECTORS.TEXT_FIELD} {
+                    width: 100%;
+                    height: ${isMobile ? '80px' : '100px'};
+                    padding: ${isMobile ? '12px' : '16px'};
+                    border-radius: 4px;
+                    border: 1px solid var(--md-sys-color-outline);
+                    background-color: transparent;
+                    font-size: 16px;
+                    resize: none;
+                    color: var(--md-sys-color-on-surface);
+                    transition: outline 0.2s ease, border-color 0.2s ease;
+                    touch-action: manipulation;
+                    overflow-y: auto;
+                    -webkit-appearance: none;
+                }
+
+                ${SELECTORS.TEXT_FIELD}:focus {
+                    outline: 2px solid var(--md-sys-color-primary);
+                    border-color: transparent;
+                    font-size: 16px;
+                }
+
+                .text-field-label {
+                    position: absolute;
+                    top: ${isMobile ? '12px' : '16px'};
+                    left: ${isMobile ? '12px' : '16px'};
+                    font-size: 16px;
+                    color: var(--md-sys-color-on-surface-variant);
+                    pointer-events: none;
+                    transition: all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
+                }
+
+                ${SELECTORS.TEXT_FIELD}:focus + .text-field-label,
+                ${SELECTORS.TEXT_FIELD}:not(:placeholder-shown) + .text-field-label {
+                    top: -8px;
+                    left: 12px;
+                    font-size: 12px;
+                    color: var(--md-sys-color-primary);
+                    background-color: var(--md-sys-color-surface-container-low);
+                    padding: 0 4px;
+                }
+
+                .helper-text {
+                    font-size: ${isMobile ? '11px' : '12px'};
+                    color: var(--md-sys-color-on-surface-variant);
+                    padding: 4px ${isMobile ? '12px' : '16px'} 0;
+                }
+
+                .btn {
+                    height: ${isMobile ? '44px' : '40px'};
+                    min-height: 44px;
+                    border: none;
+                    border-radius: ${isMobile ? '22px' : '20px'};
+                    font-size: ${isMobile ? '15px' : '14px'};
+                    font-weight: 500;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+                    padding: 0 ${isMobile ? '20px' : '24px'};
+                    white-space: nowrap;
+                    touch-action: manipulation;
+                }
+
+                .btn:active {
+                    transform: scale(0.97);
+                }
+
+                .btn-filled {
+                    background-color: var(--md-sys-color-primary);
+                    color: var(--md-sys-color-on-primary);
+                }
+
+                .btn-filled:active {
+                    box-shadow: 0 1px 3px 1px rgba(0,0,0,0.15);
+                }
+
+                @media (hover: hover) {
+                    .btn-filled:hover {
+                        box-shadow: 0 1px 3px 1px rgba(0,0,0,0.15);
+                    }
+                }
+
+                .btn-outlined {
+                    background-color: transparent;
+                    color: var(--md-sys-color-primary);
+                    border: 1px solid var(--md-sys-color-outline);
+                }
+
+                .btn-outlined:active {
+                    background-color: rgba(11, 87, 208, 0.12);
+                }
+
+                @media (hover: hover) {
+                    .btn-outlined:hover {
+                        background-color: rgba(11, 87, 208, 0.08);
+                    }
+                }
+
+                .btn-text {
+                    background-color: transparent;
+                    color: var(--md-sys-color-primary);
+                }
+
+                .btn-text:active {
+                    background-color: rgba(11, 87, 208, 0.12);
+                }
+
+                @media (hover: hover) {
+                    .btn-text:hover {
+                        background-color: rgba(11, 87, 208, 0.08);
+                    }
+                }
+
+                .btn-text.error {
+                    color: var(--md-sys-color-error);
+                }
+
+                .btn-text.error:active {
+                    background-color: rgba(179, 38, 30, 0.12);
+                }
+
+                @media (hover: hover) {
+                    .btn-text.error:hover {
+                        background-color: rgba(179, 38, 30, 0.08);
+                    }
+                }
+
+                .button-row {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: ${isMobile ? '8px' : '12px'};
+                }
+
+                .button-group {
+                    display: flex;
+                    flex-direction: column;
+                    gap: ${isMobile ? '8px' : '12px'};
+                    margin-top: 8px;
+                }
+
+                ${SELECTORS.WATERMARK} {
+                    position: fixed;
+                    top: ${isMobile ? '12px' : '20px'};
+                    left: ${isMobile ? '12px' : '20px'};
+                    height: ${isMobile ? '36px' : '40px'};
+                    background-color: var(--md-sys-color-surface-container-highest);
+                    color: var(--md-sys-color-on-surface-variant);
+                    border-radius: ${isMobile ? '18px' : '20px'};
+                    padding: 0 ${isMobile ? '12px' : '16px'} 0 ${isMobile ? '8px' : '12px'};
+                    font-size: ${isMobile ? '12px' : '14px'};
+                    z-index: 999;
+                    cursor: grab;
+                    user-select: none;
+                    display: flex;
+                    align-items: center;
+                    gap: ${isMobile ? '6px' : '8px'};
+                    box-shadow: 0 1px 2px 0 rgba(0,0,0,0.3), 0 1px 3px 1px rgba(0,0,0,0.15);
+                    touch-action: none;
+                    max-width: ${isMobile ? 'calc(100vw - 80px)' : 'none'};
+                    transition: background-color 0.2s ease, transform 0.1s ease;
+                }
+
+                ${SELECTORS.WATERMARK}:active {
+                    cursor: grabbing;
+                }
+
+                ${SELECTORS.WATERMARK} svg {
+                    fill: currentColor;
+                    width: ${isMobile ? '16px' : '20px'};
+                    height: ${isMobile ? '16px' : '20px'};
+                    flex-shrink: 0;
+                }
+
+                ${SELECTORS.WATERMARK} span {
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+
+                ${isMobile ? `
+                    ${SELECTORS.DATE_DISPLAY}, 
+                    ${SELECTORS.TIME_DISPLAY} {
+                        display: none;
+                    }
+                ` : ''}
+
+                ${SELECTORS.DIALOG} {
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%) scale(0.95);
+                    background-color: var(--md-sys-color-surface-container-low);
+                    color: var(--md-sys-color-on-surface);
+                    border-radius: ${isMobile ? '24px' : '28px'};
+                    width: calc(100vw - ${isMobile ? '32px' : '48px'});
+                    max-width: ${isMobile ? '360px' : '400px'};
+                    padding: ${isMobile ? '20px' : '24px'};
+                    z-index: 3000;
+                    box-shadow: 0 8px 10px 1px rgba(0,0,0,0.14), 0 3px 14px 2px rgba(0,0,0,0.12), 0 5px 5px -3px rgba(0,0,0,0.2);
+                    display: flex;
+                    flex-direction: column;
+                    gap: ${isMobile ? '12px' : '16px'};
+                    opacity: 0;
+                    transition: opacity 0.2s ease, transform 0.2s ease;
+                }
+
+                ${SELECTORS.DIALOG}.show {
+                    opacity: 1;
+                    transform: translate(-50%, -50%) scale(1);
+                }
+
+                .dialog-header {
+                    display: flex;
+                    align-items: center;
+                    gap: ${isMobile ? '12px' : '16px'};
+                }
+
+                .dialog-icon {
+                    display: flex;
+                    align-items: center;
+                    flex-shrink: 0;
+                }
+
+                .dialog-icon svg {
+                    width: ${isMobile ? '22px' : '24px'};
+                    height: ${isMobile ? '22px' : '24px'};
+                }
+
+                .dialog-icon-warning {
+                    color: var(--md-sys-color-error);
+                }
+
+                .dialog-icon-error {
+                    color: var(--md-sys-color-error);
+                }
+
+                .dialog-icon-success {
+                    color: var(--md-sys-color-success);
+                }
+
+                .dialog-icon-info {
+                    color: var(--md-sys-color-primary);
+                }
+
+                .dialog-title {
+                    font-size: ${isMobile ? '20px' : '24px'};
+                    font-weight: 400;
+                    margin: 0;
+                    line-height: 1.2;
+                }
+
+                .dialog-content {
+                    font-size: ${isMobile ? '13px' : '14px'};
+                    line-height: ${isMobile ? '18px' : '20px'};
+                    color: var(--md-sys-color-on-surface-variant);
+                    margin: 0;
+                    white-space: pre-line;
+                }
+
+                .dialog-actions {
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 8px;
+                    margin-top: 8px;
+                }
+
+                .file-input {
+                    display: none;
+                }
+
+                ${isMobile ? `
+                    ${SELECTORS.BOTTOM_SHEET}::-webkit-scrollbar {
+                        width: 4px;
+                    }
+                    ${SELECTORS.BOTTOM_SHEET}::-webkit-scrollbar-thumb {
+                        background-color: rgba(0, 0, 0, 0.2);
+                        border-radius: 2px;
+                    }
+                    ${SELECTORS.TEXT_FIELD}::-webkit-scrollbar {
+                        width: 4px;
+                    }
+                    ${SELECTORS.TEXT_FIELD}::-webkit-scrollbar-thumb {
+                        background-color: rgba(0, 0, 0, 0.2);
+                        border-radius: 2px;
+                    }
+                ` : ''}
+
+                ${isMobile ? `
+                    .btn, ${SELECTORS.FAB}, ${SELECTORS.WATERMARK} {
+                        touch-action: manipulation;
+                    }
+                ` : ''}
+            `;
+            document.head.appendChild(style);
+        }
+
+        function createElements() {
+            const container = document.createElement('div');
+            container.classList.add('cookie-manager-base');
+
+            fab = document.createElement('button');
+            fab.id = SELECTORS.FAB.substring(1);
+            fab.innerHTML = ICONS.cookie;
+            fab.setAttribute('aria-label', 'Open Cookie Manager');
+
+            scrim = document.createElement('div');
+            scrim.id = SELECTORS.SCRIM.substring(1);
+
+            bottomSheet = document.createElement('div');
+            bottomSheet.id = SELECTORS.BOTTOM_SHEET.substring(1);
+            bottomSheet.innerHTML = `
+                <div class="drag-handle"></div>
+                <h2 class="bottom-sheet-title">Cookie 注入器</h2>
+                <div class="text-field-container">
+                    <textarea id="${SELECTORS.TEXT_FIELD.substring(1)}" class="cookie-manager-base" placeholder=" "></textarea>
+                    <label for="${SELECTORS.TEXT_FIELD.substring(1)}" class="text-field-label">粘贴 Cookie 字符串</label>
+                </div>
+                <div class="helper-text">自动识别 c_user 和 xs 字段</div>
+                <div class="button-group">
+                    <button class="btn btn-filled" id="${SELECTORS.BTN_INJECT.substring(1)}">注入并刷新</button>
+                    <div class="button-row">
+                        <button class="btn btn-outlined" id="${SELECTORS.BTN_BACKUP.substring(1)}">备份</button>
+                        <button class="btn btn-outlined" id="${SELECTORS.BTN_IMPORT.substring(1)}">导入</button>
+                    </div>
+                    <div class="button-row">
+                        <button class="btn btn-text error" id="${SELECTORS.BTN_DELETE.substring(1)}">删除全部</button>
+                        <button class="btn btn-text" id="${SELECTORS.BTN_CLOSE.substring(1)}">关闭</button>
+                    </div>
+                </div>
+                <input type="file" id="${SELECTORS.INPUT_FILE.substring(1)}" class="file-input" accept=".txt">
+            `;
+
+            container.append(fab, scrim, bottomSheet);
+            document.body.appendChild(container);
+
+            if (isMobile) {
+                setupDragToClose();
+            }
+        }
+
+        function setupDragToClose() {
+            const dragHandle = bottomSheet.querySelector('.drag-handle');
+            let startY = 0;
+            let currentY = 0;
+            let isDragging = false;
+
+            const handleStart = (e) => {
+                const touch = e.type === 'touchstart' ? e.touches[0] : e;
+                startY = touch.clientY;
+                isDragging = true;
+                bottomSheet.style.transition = 'none';
+            };
+
+            const handleMove = (e) => {
+                if (!isDragging) return;
+                const touch = e.type === 'touchmove' ? e.touches[0] : e;
+                currentY = touch.clientY - startY;
+                if (currentY > 0) {
+                    bottomSheet.style.transform = `translateY(${currentY}px)`;
+                }
+            };
+
+            const handleEnd = () => {
+                if (!isDragging) return;
+                isDragging = false;
+                bottomSheet.style.transition = '';
+                
+                if (currentY > 100) {
+                    togglePanel(false);
+                } else {
+                    bottomSheet.style.transform = 'translateY(0)';
+                }
+                currentY = 0;
+            };
+
+            dragHandle.addEventListener('touchstart', handleStart, { passive: true });
+            dragHandle.addEventListener('mousedown', handleStart);
+            document.addEventListener('touchmove', handleMove, { passive: true });
+            document.addEventListener('mousemove', handleMove);
+            document.addEventListener('touchend', handleEnd);
+            document.addEventListener('mouseup', handleEnd);
+        }
+
+        function togglePanel(visible) {
+            const show = typeof visible === 'boolean' ? visible : !bottomSheet.classList.contains('show');
+            bottomSheet.classList.toggle('show', show);
+            scrim.classList.toggle('show', show);
+            
+            if (isMobile) {
+                document.body.style.overflow = show ? 'hidden' : '';
+            }
+        }
+
+        return {
+            init: function() {
+                appendStyles();
+                createElements();
+            },
+            togglePanel,
+            getCookieInput: () => document.querySelector(SELECTORS.TEXT_FIELD).value,
+            setCookieInput: (value) => {
+                document.querySelector(SELECTORS.TEXT_FIELD).value = value;
+                document.querySelector(SELECTORS.TEXT_FIELD).dispatchEvent(new Event('input'));
+            },
+            getFileInputElement: () => document.querySelector(SELECTORS.INPUT_FILE),
+            getFab: () => document.querySelector(SELECTORS.FAB),
+            getScrim: () => document.querySelector(SELECTORS.SCRIM),
+            getButton: (selector) => document.querySelector(selector)
+        };
+    })();
+
+    const CookieService = (function() {
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+
+        function setCookie(name, value, days = 365) {
+            const expires = new Date();
+            expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+            const domain = `.${window.location.hostname.split('.').slice(-2).join('.')}`;
+            document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;domain=${domain}`;
+        }
+
+        function extractFacebookCookies(cookieStr) {
+            const cUserMatch = cookieStr.match(/c_user=([^;]+)/);
+            const xsMatch = cookieStr.match(/xs=([^;]+)/);
+            return {
+                c_user: cUserMatch ? cUserMatch[1] : null,
+                xs: xsMatch ? xsMatch[1] : null
+            };
+        }
+
+        function injectAndReload() {
+            const input = UIManager.getCookieInput();
+            if (!input) {
+                DialogManager.showDialog({
+                    type: 'warning',
+                    title: '输入为空',
+                    message: '请先粘贴 Cookie 字符串!'
+                });
+                return;
+            }
+
+            const { c_user, xs } = extractFacebookCookies(input);
+            if (!c_user || !xs) {
+                DialogManager.showDialog({
+                    type: 'error',
+                    title: 'Cookie 无效',
+                    message: '未能从输入中提取到 c_user 和 xs 字段。\n\n请确保粘贴的是完整的 Cookie 字符串。'
+                });
+                return;
+            }
+
+            setCookie(COOKIE_NAMES.FB_C_USER, c_user);
+            setCookie(COOKIE_NAMES.FB_XS, xs);
+
+            DialogManager.showDialog({
+                type: 'success',
+                title: '注入成功',
+                message: `账号 ID: ${c_user}\n\n页面将在 2 秒后跳转到首页...`,
+                onConfirm: () => {
+                    setTimeout(() => window.location.href = 'https://m.facebook.com/', 500);
+                }
+            });
+            setTimeout(() => window.location.href = 'https://m.facebook.com/', 2000);
+        }
+
+        function backupCookies() {
+            const cUser = getCookie(COOKIE_NAMES.FB_C_USER);
+            const xs = getCookie(COOKIE_NAMES.FB_XS);
+
+            if (!cUser || !xs) {
+                DialogManager.showDialog({
+                    type: 'error',
+                    title: '备份失败',
+                    message: '未找到有效的 Cookie 数据。\n\n请先登录或注入 Cookie。'
+                });
+                return;
+            }
+
+            const cookieStr = `c_user=${cUser}; xs=${xs};`;
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            const filename = `fb_cookies_${cUser}_${timestamp}.txt`;
+
+            const blob = new Blob([cookieStr], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            DialogManager.showDialog({
+                type: 'success',
+                title: '备份成功',
+                message: `文件名: ${filename}\n\n已开始下载备份文件。`
+            });
+        }
+
+        function importFromFile(fileInput) {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                UIManager.setCookieInput(e.target.result);
+                DialogManager.showDialog({
+                    type: 'success',
+                    title: '导入成功',
+                    message: '文件内容已导入到输入框。\n\n请点击"注入并刷新"按钮完成操作。'
+                });
+            };
+            reader.readAsText(file);
+            fileInput.value = '';
+        }
+
+        function deleteAllCookies() {
+            DialogManager.showDialog({
+                type: 'warning',
+                title: '确认删除',
+                message: '此操作将删除所有 Facebook Cookie,\n您将会退出登录。\n\n确定要继续吗?',
+                confirmText: '删除',
+                cancelText: '取消',
+                showCancel: true,
+                onConfirm: () => {
+                    const cookies = document.cookie.split(';');
+                    const domain = `.${window.location.hostname.split('.').slice(-2).join('.')}`;
+                    cookies.forEach(cookie => {
+                        const name = cookie.split('=')[0].trim();
+                        if (name) {
+                            document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${domain}`;
+                        }
+                    });
+
+                    DialogManager.showDialog({
+                        type: 'success',
+                        title: '删除完成',
+                        message: '所有 Cookie 已删除。\n\n页面将在 2 秒后跳转到首页...',
+                        onConfirm: () => {
+                            setTimeout(() => window.location.href = 'https://m.facebook.com/', 500);
+                        }
+                    });
+                    setTimeout(() => window.location.href = 'https://m.facebook.com/', 2000);
+                }
+            });
+        }
+
+        return {
+            getCookie,
+            injectAndReload,
+            backupCookies,
+            importFromFile,
+            deleteAllCookies
+        };
+    })();
+
+    const FacebookFeatures = (function() {
+        let warningShown = false;
+
+        function createWatermark() {
+            const cUser = CookieService.getCookie(COOKIE_NAMES.FB_C_USER);
+            if (!cUser) return;
+
+            const maskedId = cUser.length > 10 ? `${cUser.substring(0, 5)}···${cUser.slice(-5)}` : cUser;
+
+            const watermark = document.createElement('div');
+            watermark.id = SELECTORS.WATERMARK.substring(1);
+            watermark.className = 'cookie-manager-base';
+            watermark.innerHTML = `
+                ${ICONS.account_circle}
+                <span>${maskedId}</span>
+                ${!isMobile ? `<span id="${SELECTORS.DATE_DISPLAY.substring(1)}" style="margin-left: 8px;">${new Date().toLocaleDateString()}</span>` : ''}
+                ${!isMobile ? `<span id="${SELECTORS.TIME_DISPLAY.substring(1)}" style="margin-left: 8px;">${new Date().toLocaleTimeString()}</span>` : ''}
+            `;
+            document.body.appendChild(watermark);
+
+            if (!isMobile) {
+                setInterval(() => {
+                    const timeEl = document.getElementById(SELECTORS.TIME_DISPLAY.substring(1));
+                    if (timeEl) timeEl.textContent = new Date().toLocaleTimeString();
+
+                    const dateEl = document.getElementById(SELECTORS.DATE_DISPLAY.substring(1));
+                    if (dateEl) dateEl.textContent = new Date().toLocaleDateString();
+                }, 1000);
+            }
+
+            let isDragging = false;
+            let offset = { x: 0, y: 0 };
+
+            const dragStart = (e) => {
+                isDragging = true;
+                watermark.style.transition = 'none';
+                watermark.style.cursor = 'grabbing';
+                const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+                const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+                const rect = watermark.getBoundingClientRect();
+                offset.x = clientX - rect.left;
+                offset.y = clientY - rect.top;
+                document.addEventListener('mousemove', dragMove);
+                document.addEventListener('touchmove', dragMove, { passive: false });
+                document.addEventListener('mouseup', dragEnd, { once: true });
+                document.addEventListener('touchend', dragEnd, { once: true });
+            };
+
+            const dragMove = (e) => {
+                if (!isDragging) return;
+                e.preventDefault();
+                const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+                const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+                let newLeft = clientX - offset.x;
+                let newTop = clientY - offset.y;
+                newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - watermark.offsetWidth));
+                newTop = Math.max(0, Math.min(newTop, window.innerHeight - watermark.offsetHeight));
+                watermark.style.left = `${newLeft}px`;
+                watermark.style.top = `${newTop}px`;
+                watermark.style.right = 'auto';
+                watermark.style.bottom = 'auto';
+            };
+
+            const dragEnd = () => {
+                isDragging = false;
+                watermark.style.transition = '';
+                watermark.style.cursor = 'grab';
+                document.removeEventListener('mousemove', dragMove);
+                document.removeEventListener('touchmove', dragMove);
+            };
+
+            watermark.addEventListener('mousedown', dragStart);
+            watermark.addEventListener('touchstart', dragStart, { passive: false });
+        }
+
+        function checkForLogoutPage() {
+            const isLogoutPage = window.location.pathname.includes('/bookmarks');
+            if (isLogoutPage && !warningShown) {
+                DialogManager.showDialog({
+                    type: 'warning',
+                    title: '重要提示',
+                    message: '请勿手动点击"退出登录",这会导致 Cookie 失效。\n\n如需切换账号,请使用本工具的注入或删除功能。',
+                    countdown: 5,
+                    allowDismiss: false
+                });
+                warningShown = true;
+            }
+        }
+
+        function observeUrlChanges() {
+            let lastUrl = location.href;
+            new MutationObserver(() => {
+                if (location.href !== lastUrl) {
+                    lastUrl = location.href;
+                    warningShown = false;
+                    checkForLogoutPage();
+                }
+            }).observe(document.body, { childList: true, subtree: true });
+
+            window.addEventListener('popstate', () => {
+                warningShown = false;
+                checkForLogoutPage();
+            });
+        }
+
+        return {
+            init: function() {
+                createWatermark();
+                checkForLogoutPage();
+                observeUrlChanges();
+            }
+        };
+    })();
+
+    function initialize() {
+        if (document.getElementById(SELECTORS.FAB.substring(1))) return;
+
+        UIManager.init();
+        FacebookFeatures.init();
+
+        const fab = UIManager.getFab();
+        let isDragging = false, wasDragged = false, offset = { x: 0, y: 0 };
+
+        const dragStart = (e) => {
+            isDragging = true;
+            fab.style.transition = 'none';
+            fab.style.cursor = 'grabbing';
+            const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+            const rect = fab.getBoundingClientRect();
+            offset.x = clientX - rect.left;
+            offset.y = clientY - rect.top;
+            document.addEventListener('mousemove', dragMove);
+            document.addEventListener('touchmove', dragMove, { passive: false });
+            document.addEventListener('mouseup', dragEnd, { once: true });
+            document.addEventListener('touchend', dragEnd, { once: true });
+        };
+
+        const dragMove = (e) => {
+            if (!isDragging) return;
+            wasDragged = true;
+            e.preventDefault();
+            const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+            let newLeft = clientX - offset.x;
+            let newTop = clientY - offset.y;
+            newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - fab.offsetWidth));
+            newTop = Math.max(0, Math.min(newTop, window.innerHeight - fab.offsetHeight));
+            fab.style.left = `${newLeft}px`;
+            fab.style.top = `${newTop}px`;
+            fab.style.right = 'auto';
+            fab.style.bottom = 'auto';
+        };
+
+        const dragEnd = () => {
+            isDragging = false;
+            fab.style.transition = '';
+            fab.style.cursor = 'pointer';
+            document.removeEventListener('mousemove', dragMove);
+            document.removeEventListener('touchmove', dragMove);
+            setTimeout(() => { wasDragged = false; }, 50);
+        };
+
+        fab.addEventListener('mousedown', dragStart);
+        fab.addEventListener('touchstart', dragStart, { passive: false });
+        fab.addEventListener('click', (e) => {
+            if (wasDragged) {
+                e.stopPropagation();
+                return;
+            }
+            UIManager.togglePanel();
+        });
+
+        UIManager.getScrim().addEventListener('click', () => UIManager.togglePanel(false));
+        UIManager.getButton(SELECTORS.BTN_CLOSE).addEventListener('click', () => UIManager.togglePanel(false));
+        UIManager.getButton(SELECTORS.BTN_INJECT).addEventListener('click', CookieService.injectAndReload);
+        UIManager.getButton(SELECTORS.BTN_BACKUP).addEventListener('click', CookieService.backupCookies);
+        UIManager.getButton(SELECTORS.BTN_DELETE).addEventListener('click', CookieService.deleteAllCookies);
+        UIManager.getButton(SELECTORS.BTN_IMPORT).addEventListener('click', () => UIManager.getFileInputElement().click());
+        UIManager.getFileInputElement().addEventListener('change', (e) => CookieService.importFromFile(e.target));
+
+        console.log('🍪 Facebook Cookie Manager v2.0.1 (Mobile Optimized) loaded.');
+    }
+
+    if (document.readyState === 'complete') {
+        initialize();
+    } else {
+        window.addEventListener('load', initialize);
+    }
+})();
