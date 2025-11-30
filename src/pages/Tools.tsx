@@ -33,15 +33,15 @@ const Tools = () => {
       path: "/14",
       icon: Hash,
       title: "14位数字提取",
-      description: "自动从文本中提取并去重14位连续数字",
+      description: "自动提取并去重14位连续数字", // 文字精简适配手机
       external: false,
-      color: "from-blue-500 to-cyan-500", // Custom gradient for icon
+      color: "from-blue-500 to-cyan-500",
     },
     {
       path: "/14d",
       icon: Binary,
       title: "FB UID 生成器",
-      description: "批量生成 99 个 Facebook 账户 ID",
+      description: "批量生成 99 个账户 ID",
       external: false,
       color: "from-indigo-500 to-purple-500",
     },
@@ -49,7 +49,7 @@ const Tools = () => {
       path: "/discord",
       icon: FileText,
       title: "账号格式化",
-      description: "批量格式化账号信息为标准格式",
+      description: "格式化账号为标准格式",
       external: false,
       color: "from-violet-500 to-fuchsia-500",
     },
@@ -57,7 +57,7 @@ const Tools = () => {
       path: "/jh",
       icon: Cookie,
       title: "Cookie 筛选",
-      description: "快速筛选指定的Cookie字段",
+      description: "快速筛选指定字段",
       external: false,
       color: "from-amber-400 to-orange-500",
     },
@@ -65,7 +65,7 @@ const Tools = () => {
       path: "/cookie",
       icon: RefreshCw,
       title: "Cookie 转换",
-      description: "提取c_user并转换为指定格式",
+      description: "提取 c_user 并转换格式",
       external: false,
       color: "from-orange-400 to-red-500",
     },
@@ -73,7 +73,7 @@ const Tools = () => {
       path: "/qc",
       icon: ListFilter,
       title: "文本去重",
-      description: "快速去除文本中的重复行",
+      description: "快速去除重复行",
       external: false,
       color: "from-emerald-400 to-teal-500",
     },
@@ -81,7 +81,7 @@ const Tools = () => {
       path: "/yopmail",
       icon: AtSign,
       title: "邮箱后缀转换",
-      description: "批量格式化域名为邮箱后缀",
+      description: "批量格式化为邮箱后缀",
       external: false,
       color: "from-sky-400 to-blue-500",
     },
@@ -89,15 +89,15 @@ const Tools = () => {
       path: "/rj",
       icon: Store,
       title: "软件商店",
-      description: "浏览并下载常用软件工具",
+      description: "下载常用软件工具",
       external: false,
       color: "from-pink-500 to-rose-500",
     },
     {
       path: "https://3.584136.xyz",
       icon: UserCheck,
-      title: "账号状态检查",
-      description: "Facebook 账号状态在线检测",
+      title: "账号检查",
+      description: "Facebook 账号状态检测",
       external: true,
       color: "from-slate-500 to-slate-700",
     },
@@ -113,7 +113,7 @@ const Tools = () => {
       path: "https://4.584136.xyz",
       icon: CalendarDays,
       title: "春节倒计时",
-      description: "精确计算距离农历新年的剩余时间",
+      description: "计算距离农历新年时间",
       external: true,
       color: "from-red-500 to-rose-600",
     },
@@ -122,6 +122,8 @@ const Tools = () => {
   const handleNavigation = (path: string, isExternal: boolean) => {
     if (loadingPath) return;
     setLoadingPath(path);
+    
+    // 触觉反馈 (如果有 Haptic API 支持可以加，这里仅用 UI 动画)
     setTimeout(() => {
       if (isExternal) {
         window.open(path, "_blank");
@@ -136,17 +138,14 @@ const Tools = () => {
   return (
     <PageLayout
       title="实用工具"
-      description="选择下方工具，快速完成各种数据处理任务"
-      backLabel="返回首页"
+      description="选择下方工具，快速完成数据处理"
+      backLabel="返回"
     >
-      {/* 
-        Apple Style Background Hint 
-        (Optional: Ensures glassmorphism works if parent bg is plain)
-      */}
-      <div className="absolute inset-0 bg-gradient-to-b from-gray-50/50 to-gray-100/50 -z-10 pointer-events-none" />
-
-      {/* Main Bento Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 p-2 sm:p-4">
+      {/* 背景装饰：手机端更淡雅的背景 */}
+      <div className="fixed inset-0 bg-gray-50/80 -z-20 pointer-events-none" />
+      
+      {/* Main Grid: 手机端 gap 紧凑 (gap-3)，桌面端宽松 (gap-6) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 p-2 sm:p-4 pb-24">
         {tools.map((tool) => {
           const IconComponent = tool.icon;
           const isLoading = loadingPath === tool.path;
@@ -156,203 +155,139 @@ const Tools = () => {
               key={tool.path}
               onClick={() => handleNavigation(tool.path, tool.external)}
               className={`
-                group relative 
-                h-full w-full
-                cursor-pointer 
-                select-none
-                transition-all duration-300 ease-[cubic-bezier(0.25,0.8,0.25,1)]
-                ${isLoading ? 'scale-[0.98] opacity-90' : 'hover:scale-[1.02] hover:-translate-y-1 active:scale-95'}
+                group relative w-full
+                cursor-pointer select-none
+                /* 手机端点击缩放动画 */
+                transition-transform duration-200 ease-out
+                ${isLoading ? 'scale-[0.98]' : 'active:scale-[0.97] sm:hover:scale-[1.02] sm:hover:-translate-y-1'}
               `}
+              // 移除手机端高亮，防止点击残留
+              style={{ WebkitTapHighlightColor: 'transparent' }}
             >
-              {/* Card Surface (Glassmorphism) */}
               <div className={`
-                relative z-10 flex flex-col h-full
-                overflow-hidden
-                rounded-[32px] 
-                backdrop-blur-xl 
-                border 
-                transition-colors duration-300
+                relative z-10 overflow-hidden
+                /* 手机端: 横向 Flex 布局; 桌面端: 纵向 Flex */
+                flex flex-row sm:flex-col items-center sm:items-start
+                /* 手机端圆角稍小 (20px), 桌面端大圆角 (32px) */
+                rounded-[20px] sm:rounded-[32px]
+                border
+                backdrop-blur-xl
+                transition-all duration-300
+                /* 手机端内边距紧凑 (p-3.5), 桌面端宽松 (p-6) */
+                p-3.5 sm:p-6
+                h-full
                 ${isLoading 
-                  ? 'bg-white/80 border-blue-200/50 shadow-none' 
-                  : 'bg-white/60 border-white/40 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:bg-white/80 hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] hover:border-white/60'
+                  ? 'bg-white/90 border-blue-300 shadow-none' 
+                  : 'bg-white/70 border-white/60 shadow-sm sm:shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:hover:shadow-xl'
                 }
               `}>
                 
-                {/* Inner Content Layout */}
-                <div className="p-5 sm:p-6 flex flex-row sm:flex-col gap-5 sm:gap-6 items-center sm:items-start h-full">
+                {/* 1. 图标容器 */}
+                <div className={`
+                  relative shrink-0
+                  /* 手机端图标: 48px (w-12); 桌面端: 60px */
+                  w-12 h-12 sm:w-[60px] sm:h-[60px]
+                  rounded-xl sm:rounded-[20px]
+                  flex items-center justify-center
+                  shadow-sm sm:shadow-md
+                  bg-gradient-to-br ${tool.color}
+                  transition-all duration-300
+                  mr-3.5 sm:mr-0 sm:mb-6
+                `}>
+                  {/* 高光层 */}
+                  <div className="absolute inset-0 rounded-xl sm:rounded-[20px] bg-gradient-to-b from-white/30 to-transparent opacity-100 pointer-events-none" />
                   
-                  {/* App Icon Style Container */}
-                  <div className={`
-                    relative shrink-0
-                    w-[52px] h-[52px] sm:w-[60px] sm:h-[60px]
-                    rounded-2xl sm:rounded-[20px]
-                    flex items-center justify-center
-                    shadow-md
-                    bg-gradient-to-br ${tool.color}
-                    transition-all duration-300
-                    ${isLoading ? 'scale-90 opacity-80' : 'group-hover:shadow-lg group-hover:scale-105'}
-                  `}>
-                    {/* Inner Reflection/Gloss (Top Highlight) */}
-                    <div className="absolute inset-0 rounded-2xl sm:rounded-[20px] bg-gradient-to-b from-white/30 to-transparent opacity-100 pointer-events-none" />
-                    
-                    {isLoading ? (
-                      <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 text-white animate-spin" />
-                    ) : (
-                      <IconComponent className="w-6 h-6 sm:w-8 sm:h-8 text-white drop-shadow-md" strokeWidth={2} />
-                    )}
-                  </div>
-
-                  {/* Text Content */}
-                  <div className="flex-1 min-w-0 flex flex-col justify-center sm:justify-start">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-[17px] sm:text-[19px] font-semibold text-gray-900 tracking-tight leading-snug">
-                        {tool.title}
-                      </h3>
-                      {tool.external && (
-                        <ExternalLink className="w-3.5 h-3.5 text-gray-400 sm:hidden ml-2 opacity-60" />
-                      )}
-                    </div>
-                    <p className="text-[13px] sm:text-[14px] text-gray-500 font-medium leading-relaxed line-clamp-2 mt-1 sm:mt-2">
-                      {tool.description}
-                    </p>
-                  </div>
-
-                  {/* Action Arrow (Mobile: Chevron, Desktop: Bottom Row) */}
-                  <div className="sm:w-full sm:mt-auto sm:pt-2">
-                     {/* Mobile Arrow */}
-                    <div className="sm:hidden text-gray-300">
-                      {isLoading ? <span className="block w-2 h-2 bg-gray-400 rounded-full animate-pulse"/> : <ChevronRight className="w-6 h-6 opacity-40" />}
-                    </div>
-
-                    {/* Desktop Action Row */}
-                    <div className="hidden sm:flex items-center justify-between pt-4 border-t border-gray-100/50 mt-auto">
-                      <span className={`
-                        text-xs font-semibold tracking-wide uppercase
-                        transition-colors duration-300
-                        ${isLoading ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-600'}
-                      `}>
-                        {tool.external ? 'Open Link' : 'Open Tool'}
-                      </span>
-                      <div className={`
-                        w-8 h-8 rounded-full flex items-center justify-center
-                        bg-gray-100/50 group-hover:bg-blue-50
-                        transition-all duration-300
-                        ${isLoading ? 'translate-x-1' : 'group-hover:translate-x-1'}
-                      `}>
-                        <ArrowRight className={`w-3.5 h-3.5 ${isLoading ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-600'}`} />
-                      </div>
-                    </div>
-                  </div>
-
+                  {isLoading ? (
+                    <Loader2 className="w-5 h-5 sm:w-8 sm:h-8 text-white animate-spin" />
+                  ) : (
+                    <IconComponent className="w-5 h-5 sm:w-8 sm:h-8 text-white drop-shadow-sm" strokeWidth={2} />
+                  )}
                 </div>
-                
-                {/* External Link Badge (Desktop) */}
-                {tool.external && (
-                  <div className="hidden sm:block absolute top-4 right-4">
-                    <div className="bg-gray-100/80 backdrop-blur-md p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                       <ExternalLink className="w-3 h-3 text-gray-500" />
-                    </div>
+
+                {/* 2. 文本内容区 */}
+                <div className="flex-1 min-w-0 flex flex-col justify-center sm:justify-start h-full">
+                  <div className="flex items-center">
+                    <h3 className={`
+                      text-[16px] sm:text-[19px] font-semibold tracking-tight leading-tight
+                      truncate pr-2
+                      ${isLoading ? 'text-blue-600' : 'text-slate-800'}
+                    `}>
+                      {tool.title}
+                    </h3>
                   </div>
-                )}
+                  <p className={`
+                    text-[13px] sm:text-[14px] font-medium leading-snug mt-0.5 sm:mt-2 line-clamp-1 sm:line-clamp-2
+                    ${isLoading ? 'text-blue-400' : 'text-slate-500'}
+                  `}>
+                    {tool.description}
+                  </p>
+                </div>
+
+                {/* 3. 手机端右侧指示器 (桌面端隐藏) */}
+                <div className="sm:hidden shrink-0 text-slate-300 pl-2">
+                  {isLoading ? (
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                  ) : (
+                    <ChevronRight className="w-5 h-5 opacity-50" />
+                  )}
+                </div>
+
+                {/* 4. 桌面端底部 Action (手机端隐藏) */}
+                <div className="hidden sm:flex w-full items-center justify-between pt-4 mt-auto border-t border-slate-100/50">
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    {tool.external ? 'Open' : 'Start'}
+                  </span>
+                  <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-blue-50 transition-colors">
+                     <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500" />
+                  </div>
+                </div>
+
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* 
-        Tips Section - "Widget" Style 
-        Designed to look like an iOS Widget Stack
-      */}
-      <div className="mt-10 sm:mt-16 pb-12 px-2 sm:px-4">
-        <div className="max-w-4xl mx-auto">
-          <Card className="
-            relative overflow-hidden border-0
-            rounded-[32px]
-            bg-white/40 backdrop-blur-xl
-            shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)]
-            ring-1 ring-white/60
-          ">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/40 via-white/10 to-indigo-50/20 pointer-events-none" />
-            
-            <div className="relative p-8 sm:p-10">
-              <div className="flex flex-col md:flex-row gap-8 md:gap-10">
-                
-                {/* Header / Icon Column */}
-                <div className="flex md:flex-col items-center md:items-start gap-4 md:gap-6 shrink-0">
-                  <div className="
-                    w-14 h-14 sm:w-16 sm:h-16 
-                    rounded-[20px] bg-gradient-to-br from-indigo-500 to-blue-600
-                    shadow-lg shadow-indigo-500/20
-                    flex items-center justify-center text-white
-                  ">
-                    <Sparkles className="w-7 h-7 sm:w-8 sm:h-8" fill="currentColor" fillOpacity={0.2} />
-                  </div>
-                  <div className="text-left">
-                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight">
-                      Tips
-                    </h3>
-                    <p className="text-sm text-gray-500 font-medium">使用指南</p>
-                  </div>
-                </div>
+      {/* 底部 Tips - 手机端简化显示 */}
+      <div className="px-4 pb-10 sm:px-6 sm:pb-16 max-w-4xl mx-auto">
+        <div className="
+          relative overflow-hidden
+          rounded-[24px] sm:rounded-[32px]
+          bg-white/50 backdrop-blur-lg
+          border border-white/60
+          p-5 sm:p-8
+        ">
+          <div className="flex flex-col gap-4 sm:gap-8">
+            {/* 标题行 */}
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
+              <span className="text-sm sm:text-lg font-bold text-slate-800">使用小贴士</span>
+            </div>
 
-                {/* Grid Content */}
-                <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-8">
-                  {/* Tip Item 1 */}
-                  <div className="group">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100 transition-colors">
-                        <ShieldCheck className="w-4 h-4" />
-                      </div>
-                      <h4 className="text-[15px] font-semibold text-gray-800">隐私安全</h4>
-                    </div>
-                    <p className="text-sm text-gray-500 leading-relaxed">
-                      所有文本处理均在<span className="text-gray-700 font-medium">本地浏览器</span>完成，数据绝不会上传至云端服务器。
-                    </p>
-                  </div>
-
-                  {/* Tip Item 2 */}
-                  <div className="group">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="p-1.5 rounded-lg bg-amber-50 text-amber-600 group-hover:bg-amber-100 transition-colors">
-                        <Zap className="w-4 h-4" />
-                      </div>
-                      <h4 className="text-[15px] font-semibold text-gray-800">性能优化</h4>
-                    </div>
-                    <p className="text-sm text-gray-500 leading-relaxed">
-                      处理超大数据量时，推荐使用 <span className="text-gray-700 font-medium">Chrome</span> 或 Edge 浏览器以获得最佳性能。
-                    </p>
-                  </div>
-
-                  {/* Tip Item 3 */}
-                  <div className="group">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="p-1.5 rounded-lg bg-cyan-50 text-cyan-600 group-hover:bg-cyan-100 transition-colors">
-                        <Globe className="w-4 h-4" />
-                      </div>
-                      <h4 className="text-[15px] font-semibold text-gray-800">外部链接</h4>
-                    </div>
-                    <p className="text-sm text-gray-500 leading-relaxed">
-                      带有箭头的工具为第三方服务，可能需要特定的网络环境。
-                    </p>
-                  </div>
-
-                  {/* Tip Item 4 */}
-                  <div className="group">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="p-1.5 rounded-lg bg-rose-50 text-rose-600 group-hover:bg-rose-100 transition-colors">
-                        <Cookie className="w-4 h-4" />
-                      </div>
-                      <h4 className="text-[15px] font-semibold text-gray-800">Cookie 格式</h4>
-                    </div>
-                    <p className="text-sm text-gray-500 leading-relaxed">
-                      请确保输入格式为标准的 <span className="text-gray-700 font-medium">Netscape</span> 或 JSON 格式。
-                    </p>
-                  </div>
-                </div>
+            {/* 内容 Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6">
+              <div className="flex gap-3 items-start">
+                <ShieldCheck className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" />
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                  数据<span className="font-semibold">本地处理</span>，不上传服务器。
+                </p>
+              </div>
+              <div className="flex gap-3 items-start">
+                <Zap className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                  大文件建议使用 <span className="font-semibold">Chrome</span> 浏览器。
+                </p>
+              </div>
+              <div className="flex gap-3 items-start">
+                <ExternalLink className="w-4 h-4 text-cyan-500 mt-0.5 shrink-0" />
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                  外部工具可能需要特殊网络环境。
+                </p>
               </div>
             </div>
-          </Card>
+          </div>
         </div>
       </div>
     </PageLayout>
