@@ -379,40 +379,44 @@ export function generateEmail(firstName: string, lastName: string) {
   const domain = domains[Math.floor(Math.random() * domains.length)];
   
   // 转换为拉丁字母 (只保留英文字母和数字)
-  const cleanFirstName = convertToLatinChars(firstName);
-  const cleanLastName = convertToLatinChars(lastName);
+  let cleanFirstName = convertToLatinChars(firstName);
+  let cleanLastName = convertToLatinChars(lastName);
   
-  // 如果名字太短,添加随机数字
-  const needsNumber = cleanFirstName.length < 3 || cleanLastName.length < 2;
-  const randomNum = needsNumber ? Math.floor(Math.random() * 1000) : Math.floor(Math.random() * 100);
+  // 如果名字太短,补充到最少3个字符
+  if (cleanFirstName.length < 3) {
+    cleanFirstName = cleanFirstName + Math.floor(Math.random() * 100 + 100); // 添加3位数字
+  }
+  if (cleanLastName.length < 3) {
+    cleanLastName = cleanLastName + Math.floor(Math.random() * 100 + 100); // 添加3位数字
+  }
+  
+  // 生成随机数字
+  const randomNum = Math.floor(Math.random() * 1000);
+  const smallNum = Math.floor(Math.random() * 100);
   
   // 生成邮箱的多种格式 (只使用字母、数字和点号)
+  // 过滤掉会产生单字母的格式
   const formats = [
     // firstname.lastname@
     `${cleanFirstName}.${cleanLastName}`,
     // firstnamelastname@
     `${cleanFirstName}${cleanLastName}`,
     // firstname.lastname + 数字@
-    `${cleanFirstName}.${cleanLastName}${randomNum}`,
+    `${cleanFirstName}.${cleanLastName}${smallNum}`,
     // firstname + 数字@
     `${cleanFirstName}${randomNum}`,
-    // firstname.initial@
-    `${cleanFirstName}.${cleanLastName.charAt(0)}`,
-    // initial.lastname@
-    `${cleanFirstName.charAt(0)}.${cleanLastName}`,
     // lastname.firstname@
     `${cleanLastName}.${cleanFirstName}`,
     // firstname.lastname.数字@
-    `${cleanFirstName}.${cleanLastName}.${Math.floor(Math.random() * 10)}`,
+    `${cleanFirstName}.${cleanLastName}.${Math.floor(Math.random() * 100)}`,
+    // lastname + 数字@
+    `${cleanLastName}${randomNum}`,
+    // firstname_数字@
+    `${cleanFirstName}${Math.floor(Math.random() * 10000)}`,
   ];
   
   // 随机选择一种格式
   let username = formats[Math.floor(Math.random() * formats.length)];
-  
-  // 确保用户名不为空且长度合理
-  if (!username || username.length < 3) {
-    username = `${cleanFirstName}${cleanLastName}${Math.floor(Math.random() * 1000)}`;
-  }
   
   // 最终清理:确保只包含字母、数字和点号
   username = username.replace(/[^a-z0-9.]/g, '');
@@ -422,6 +426,11 @@ export function generateEmail(firstName: string, lastName: string) {
   
   // 确保没有连续的点号
   username = username.replace(/\.{2,}/g, '.');
+  
+  // 确保用户名长度合理 (至少6个字符)
+  if (username.length < 6) {
+    username = `${cleanFirstName}${cleanLastName}${Math.floor(Math.random() * 1000)}`;
+  }
   
   return `${username}@${domain}`;
 }
