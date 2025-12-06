@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  const country = request.geo?.country || 'US';
+  // 从请求头获取地理位置信息 (Vercel 自动注入)
+  const country = request.headers.get('x-vercel-ip-country') || 'US';
   const response = NextResponse.next();
   
   // 将国家代码添加到响应头
