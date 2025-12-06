@@ -339,12 +339,14 @@ function convertToLatinChars(name: string): string {
     '韩': 'han', '唐': 'tang', '冯': 'feng', '于': 'yu', '董': 'dong', '萧': 'xiao',
     // 常见名字
     '伟': 'wei', '强': 'qiang', '磊': 'lei', '军': 'jun', '波': 'bo', '涛': 'tao',
-    '超': 'chao', '勇': 'yong', '杰': 'jie', '鹏': 'peng', '浩': 'hao', '亮': 'liang',
-    '芳': 'fang', '娜': 'na', '秀英': 'xiuying', '敏': 'min', '静': 'jing', '丽': 'li',
-    '强': 'qiang', '艳': 'yan', '秀兰': 'xiulan', '莉': 'li', '玲': 'ling', '燕': 'yan',
-    '宇': 'yu', '辉': 'hui', '刚': 'gang', '健': 'jian', '峰': 'feng', '建': 'jian',
-    '明': 'ming', '俊': 'jun', '龙': 'long', '帅': 'shuai', '斌': 'bin', '凯': 'kai',
-    '飞': 'fei', '文': 'wen', '华': 'hua', '志': 'zhi', '鑫': 'xin', '旭': 'xu',
+    '超': 'chao', '勇': 'yong', '杰': 'jie', '鹏': 'peng', '浩': 'hao',
+    '芳': 'fang', '娜': 'na', '秀英': 'xiuying', '敏': 'min', '静': 'jing',
+    '艳': 'yan', '秀兰': 'xiulan', '玲': 'ling', '宇': 'yu', '辉': 'hui',
+    '刚': 'gang', '健': 'jian', '峰': 'feng', '建': 'jian', '明': 'ming',
+    '龙': 'long', '帅': 'shuai', '斌': 'bin', '凯': 'kai', '飞': 'fei',
+    '文': 'wen', '华': 'hua', '志': 'zhi', '鑫': 'xin', '旭': 'xu',
+    '红': 'hong', '霞': 'xia', '梅': 'mei', '婷': 'ting', '雪': 'xue',
+    '倩': 'qian', '琳': 'lin', '慧': 'hui', '萍': 'ping', '颖': 'ying',
   };
 
   // 如果已经是英文,直接返回小写并移除特殊字符
