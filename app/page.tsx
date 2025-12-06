@@ -163,7 +163,7 @@ export default function Home() {
           <p className="text-gray-600">基于第三方 IP API 智能检测您的位置</p>
         </div>
 
-        {/* IP 地址信息卡片 */}
+        {/* IP 地址信息卡片 - 简化版 */}
         {locationInfo && (
           <div className={`rounded-2xl shadow-lg p-6 mb-6 text-white ${
             locationInfo.error 
@@ -172,96 +172,51 @@ export default function Home() {
           }`}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <span className="text-4xl">{getCountryConfig(locationInfo.country).flag}</span>
+                <span className="text-5xl">{getCountryConfig(locationInfo.country).flag}</span>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-xl font-bold">您的位置信息</h3>
+                    <h3 className="text-2xl font-bold">
+                      {locationInfo.countryName || getCountryConfig(locationInfo.country).name}
+                    </h3>
                     {locationInfo.accurate && !locationInfo.error && (
                       <span className="px-2 py-0.5 bg-green-400/30 text-green-100 text-xs rounded-full font-medium">
-                        ✓ 精确
-                      </span>
-                    )}
-                    {locationInfo.error && (
-                      <span className="px-2 py-0.5 bg-red-400/30 text-red-100 text-xs rounded-full font-medium">
-                        ⚠ 检测失败
+                        ✓ 已检测
                       </span>
                     )}
                   </div>
-                  <p className="text-blue-100 text-sm">
-                    {locationInfo.source === 'ipwhois' && '通过 ipwho.is API 检测'}
-                    {locationInfo.source === 'ip-api' && '通过 ip-api.com 检测'}
-                    {locationInfo.source === 'ipapi.co' && '通过 ipapi.co 检测'}
-                    {locationInfo.source === 'ipinfo' && '通过 ipinfo.io 检测'}
-                    {locationInfo.source === 'fallback' && '使用默认配置'}
+                  <p className="text-blue-100 text-sm mt-1">
+                    IP: {locationInfo.ip}
                   </p>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => copyToClipboard(locationInfo.ip, 'IP 地址')}
-                  className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors text-sm font-medium backdrop-blur-sm"
-                  disabled={locationInfo.ip === '检测失败'}
-                >
-                  📋 复制IP
-                </button>
-                {locationInfo.error && (
+              <button
+                onClick={() => copyToClipboard(locationInfo.ip, 'IP 地址')}
+                className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors text-sm font-medium backdrop-blur-sm"
+                disabled={locationInfo.ip === '检测失败'}
+              >
+                📋 复制
+              </button>
+            </div>
+
+            {locationInfo.error ? (
+              <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                <p className="text-sm">⚠️ {locationInfo.error}</p>
+                <div className="flex gap-2 mt-2">
                   <button
                     onClick={retryDetection}
-                    className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors text-sm font-medium backdrop-blur-sm"
+                    className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded text-xs font-medium"
                   >
-                    🔄 重试
+                    🔄 重试检测
                   </button>
-                )}
-              </div>
-            </div>
-            
-            {locationInfo.error ? (
-              <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-                <p className="text-sm">⚠️ {locationInfo.error}</p>
-                <p className="text-xs mt-2 text-red-100">已使用默认配置 (美国),您可以手动选择其他国家</p>
+                </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
-                  <p className="text-blue-100 text-xs mb-1">IP 地址</p>
-                  <p className="font-mono font-bold text-lg">{locationInfo.ip}</p>
-                </div>
-                
-                <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
-                  <p className="text-blue-100 text-xs mb-1">国家/地区</p>
-                  <p className="font-bold text-lg">
-                    {getCountryConfig(locationInfo.country).flag} {locationInfo.countryName || getCountryConfig(locationInfo.country).name}
-                  </p>
-                </div>
-                
-                {locationInfo.city && (
-                  <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
-                    <p className="text-blue-100 text-xs mb-1">城市</p>
-                    <p className="font-bold text-lg">{decodeURIComponent(locationInfo.city)}</p>
-                  </div>
-                )}
-                
-                {locationInfo.region && (
-                  <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
-                    <p className="text-blue-100 text-xs mb-1">地区</p>
-                    <p className="font-bold text-lg">{locationInfo.region}</p>
-                  </div>
-                )}
-
-                {locationInfo.timezone && (
-                  <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
-                    <p className="text-blue-100 text-xs mb-1">时区</p>
-                    <p className="font-bold text-lg">{locationInfo.timezone}</p>
-                  </div>
-                )}
+              <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                <p className="text-xs text-blue-100">
+                  💡 生成的身份信息将基于 <span className="font-bold">{getCountryConfig(locationInfo.country).name}</span> 的格式
+                </p>
               </div>
             )}
-
-            <div className="mt-4 p-3 bg-white/10 rounded-lg backdrop-blur-sm">
-              <p className="text-xs text-blue-100">
-                💡 提示: 生成的身份信息将基于 <span className="font-bold">{selectedCountry.name}</span> 的格式
-              </p>
-            </div>
           </div>
         )}
 
