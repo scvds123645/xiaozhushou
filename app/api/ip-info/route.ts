@@ -114,6 +114,12 @@ export async function GET(request: NextRequest) {
       console.log('ipwho.is 返回数据:', data);
       
       if (data.success && data.country_code) {
+        console.log('ipwho.is 成功返回:', {
+          ip: data.ip,
+          country_code: data.country_code,
+          country: data.country
+        });
+        
         return NextResponse.json({
           source: 'ipwhois',
           ip: data.ip || ip,

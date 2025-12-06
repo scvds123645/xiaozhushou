@@ -28,7 +28,7 @@ interface LocationInfo {
 }
 
 export default function Home() {
-  const [selectedCountry, setSelectedCountry] = useState<CountryConfig>(countries[1]);
+  const [selectedCountry, setSelectedCountry] = useState<CountryConfig>(countries[0]); // 先用第一个作为默认值
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [locationInfo, setLocationInfo] = useState<LocationInfo | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -44,13 +44,22 @@ export default function Home() {
     fetch('/api/ip-info')
       .then(res => res.json())
       .then(data => {
-        console.log('IP 检测结果:', data);
+        console.log('=== IP 检测结果 ===');
+        console.log('返回的数据:', data);
+        console.log('国家代码:', data.country);
+        
         setLocationInfo(data);
         
-        // 根据检测到的国家代码设置选中的国家
-        const detectedCountry = getCountryConfig(data.country);
-        setSelectedCountry(detectedCountry);
-        console.log('设置国家为:', detectedCountry.name, detectedCountry.code);
+        // 查找对应的国家配置
+        const detectedCountry = countries.find(c => c.code === data.country);
+        
+        if (detectedCountry) {
+          console.log('找到匹配的国家:', detectedCountry.name, detectedCountry.code);
+          setSelectedCountry(detectedCountry);
+        } else {
+          console.warn('未找到国家代码:', data.country, '使用默认(中国)');
+          setSelectedCountry(countries[0]); // 中国
+        }
         
         setIsLoading(false);
       })
@@ -67,7 +76,7 @@ export default function Home() {
         } else {
           // 最终回退方案
           setLocationInfo({ 
-            country: 'US', 
+            country: 'CN', 
             ip: '检测失败', 
             city: '', 
             region: '', 
@@ -75,7 +84,7 @@ export default function Home() {
             source: 'fallback',
             error: '无法连接到 IP 检测服务'
           });
-          setSelectedCountry(countries[1]); // 美国
+          setSelectedCountry(countries[0]); // 中国
           setIsLoading(false);
         }
       });
@@ -167,10 +176,10 @@ export default function Home() {
               : 'bg-gradient-to-r from-blue-500 to-cyan-500'
           }`}>
             <div className="flex items-center gap-4 mb-4">
-              <span className="text-6xl">{getCountryConfig(locationInfo.country).flag}</span>
+              <span className="text-6xl">{selectedCountry?.flag || '🌍'}</span>
               <div className="flex-1">
                 <h3 className="text-3xl font-bold mb-2">
-                  {getCountryConfig(locationInfo.country).name}
+                  {selectedCountry?.name || '检测中...'}
                 </h3>
                 <p className="text-blue-100 text-lg font-mono">
                   IP: {locationInfo.ip}
@@ -193,7 +202,7 @@ export default function Home() {
             ) : (
               <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
                 <p className="text-sm text-blue-100">
-                  💡 生成的身份信息将基于 <span className="font-bold">{getCountryConfig(locationInfo.country).name}</span> 的格式
+                  💡 生成的身份信息将基于 <span className="font-bold">{selectedCountry?.name || '检测到的国家'}</span> 的格式
                 </p>
               </div>
             )}
