@@ -1,4 +1,4 @@
-import { countries, namesByCountry, CountryConfig } from './countryData';
+import { countries, namesByCountry, CountryConfig } from '@/lib/countryData';
 
 // 元音和辅音
 const vowels = 'aeiou';
