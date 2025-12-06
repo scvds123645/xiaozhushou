@@ -163,39 +163,23 @@ export default function Home() {
           <p className="text-gray-600">基于第三方 IP API 智能检测您的位置</p>
         </div>
 
-        {/* IP 地址信息卡片 - 简化版 */}
+        {/* IP 地址信息卡片 - 极简版 */}
         {locationInfo && (
           <div className={`rounded-2xl shadow-lg p-6 mb-6 text-white ${
             locationInfo.error 
               ? 'bg-gradient-to-r from-orange-500 to-red-500' 
               : 'bg-gradient-to-r from-blue-500 to-cyan-500'
           }`}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <span className="text-5xl">{getCountryConfig(locationInfo.country).flag}</span>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-2xl font-bold">
-                      {locationInfo.countryName || getCountryConfig(locationInfo.country).name}
-                    </h3>
-                    {locationInfo.accurate && !locationInfo.error && (
-                      <span className="px-2 py-0.5 bg-green-400/30 text-green-100 text-xs rounded-full font-medium">
-                        ✓ 已检测
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-blue-100 text-sm mt-1">
-                    IP: {locationInfo.ip}
-                  </p>
-                </div>
+            <div className="flex items-center gap-4 mb-4">
+              <span className="text-6xl">{getCountryConfig(locationInfo.country).flag}</span>
+              <div className="flex-1">
+                <h3 className="text-3xl font-bold mb-2">
+                  {getCountryConfig(locationInfo.country).name}
+                </h3>
+                <p className="text-blue-100 text-lg font-mono">
+                  IP: {locationInfo.ip}
+                </p>
               </div>
-              <button
-                onClick={() => copyToClipboard(locationInfo.ip, 'IP 地址')}
-                className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors text-sm font-medium backdrop-blur-sm"
-                disabled={locationInfo.ip === '检测失败'}
-              >
-                📋 复制
-              </button>
             </div>
 
             {locationInfo.error ? (
@@ -212,7 +196,7 @@ export default function Home() {
               </div>
             ) : (
               <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
-                <p className="text-xs text-blue-100">
+                <p className="text-sm text-blue-100">
                   💡 生成的身份信息将基于 <span className="font-bold">{getCountryConfig(locationInfo.country).name}</span> 的格式
                 </p>
               </div>
