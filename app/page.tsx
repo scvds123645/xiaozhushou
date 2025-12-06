@@ -138,6 +138,9 @@ export default function Home() {
   // 当打开国家列表时,自动滚动到已选中的国家
   useEffect(() => {
     if (showCountrySelect && countryListRef.current) {
+      // 阻止背景滚动
+      document.body.style.overflow = 'hidden';
+      
       // 延迟执行以确保 DOM 已经渲染
       setTimeout(() => {
         const selectedElement = countryListRef.current?.querySelector(`[data-country="${selectedCountry.code}"]`);
@@ -148,7 +151,15 @@ export default function Home() {
           });
         }
       }, 100);
+    } else {
+      // 恢复背景滚动
+      document.body.style.overflow = 'unset';
     }
+    
+    // 清理函数
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
   }, [showCountrySelect, selectedCountry.code]);
 
   // 手动重新检测 IP
@@ -225,7 +236,7 @@ export default function Home() {
         )}
 
         {/* 国家选择 - 移动端优化 */}
-        <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6">
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6 relative">
           <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
             选择国家 <span className="text-gray-500 text-xs">(可手动更改)</span>
           </label>
@@ -243,17 +254,45 @@ export default function Home() {
             <span className="text-gray-400">{showCountrySelect ? '▲' : '▼'}</span>
           </button>
 
-          {/* 展开的国家列表 */}
+          {/* 全屏遮罩层 */}
           {showCountrySelect && (
-            <div className="mt-3">
-              <input
-                type="text"
-                placeholder="🔍 搜索国家..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-2.5 sm:py-3 border-2 border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 placeholder-gray-500 text-sm sm:text-base"
-              />
-              <div className="max-h-48 sm:max-h-64 overflow-y-auto border border-gray-200 rounded-lg bg-white" ref={countryListRef}>
+            <div 
+              className="fixed inset-0 bg-black/50 z-40"
+              onClick={() => {
+                setShowCountrySelect(false);
+                setSearchQuery('');
+              }}
+            />
+          )}
+
+          {/* 展开的国家列表 - 固定在屏幕中央 */}
+          {showCountrySelect && (
+            <div className="fixed left-4 right-4 top-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl z-50 overflow-hidden max-w-2xl mx-auto">
+              <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-indigo-500 to-purple-500">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-white font-bold text-lg">选择国家/地区</h3>
+                  <button 
+                    onClick={() => {
+                      setShowCountrySelect(false);
+                      setSearchQuery('');
+                    }}
+                    className="text-white hover:bg-white/20 rounded-full p-2 transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  placeholder="🔍 搜索国家..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 placeholder-gray-500 text-sm"
+                />
+              </div>
+              <div 
+                className="max-h-[60vh] overflow-y-auto scroll-smooth" 
+                ref={countryListRef}
+              >
                 {filteredCountries.map((country) => (
                   <button
                     key={country.code}
@@ -264,13 +303,13 @@ export default function Home() {
                       setSearchQuery('');
                       console.log('手动选择国家:', country.name, country.code);
                     }}
-                    className={`w-full text-left px-3 sm:px-4 py-2.5 sm:py-3 hover:bg-indigo-50 active:bg-indigo-100 transition-colors border-b border-gray-100 last:border-b-0 ${
+                    className={`w-full text-left px-4 py-3 hover:bg-indigo-50 active:bg-indigo-100 transition-colors border-b border-gray-100 last:border-b-0 ${
                       selectedCountry.code === country.code ? 'bg-indigo-100 border-l-4 border-l-indigo-600' : ''
                     }`}
                   >
-                    <span className="text-lg sm:text-2xl mr-2 sm:mr-3">{country.flag}</span>
-                    <span className="font-semibold text-gray-900 text-sm sm:text-base">{country.name}</span>
-                    <span className="text-gray-600 ml-2 font-medium text-xs sm:text-sm">({country.phonePrefix})</span>
+                    <span className="text-2xl mr-3">{country.flag}</span>
+                    <span className="font-semibold text-gray-900 text-base">{country.name}</span>
+                    <span className="text-gray-600 ml-2 font-medium text-sm">({country.phonePrefix})</span>
                   </button>
                 ))}
               </div>
