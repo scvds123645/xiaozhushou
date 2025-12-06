@@ -4,23 +4,26 @@ import { Card } from "@/components/ui/card";
 import { Copy, RefreshCw, Sparkles, CheckCircle, XCircle } from "lucide-react";
 
 // ============ 数据配置 / Data Configuration ============
+
 const MOBILE_PREFIXES = [
-  "134", "135", "136", "137", "138", "139", "147", "150", "151", "152", 
-  "157", "158", "159", "178", "182", "183", "184", "187", "188", "198", 
-  "130", "131", "132", "145", "155", "156", "166", "171", "175", "176", 
-  "185", "186", "133", "149", "153", "173", "177", "180", "181", "189", 
+  "134", "135", "136", "137", "138", "139", "147", "150", "151", "152",
+  "157", "158", "159", "178", "182", "183", "184", "187", "188", "198",
+  "130", "131", "132", "145", "155", "156", "166", "171", "175", "176",
+  "185", "186", "133", "149", "153", "173", "177", "180", "181", "189",
   "191", "199"
 ];
-// (由于篇幅限制，这里省略了部分邮箱后缀，使用你原有的长列表即可)
-const EMAIL_SUFFIXES = ["@yopmail.com", "@gmail.yopmail.com", "@yopmail.fr", "@yopmail.net", "@cool.site.ru", "@test.com"]; 
+
+const EMAIL_SUFFIXES = ["@yopmail.com", "@00two.shop"];
+
 const NAME_PARTS = [
-  "john", "mike", "alex", "david", "chris", "james", "robert", "michael", 
-  "william", "daniel", "smith", "brown", "jones", "wilson", "taylor", 
-  "davis", "miller", "moore", "anderson", "jackson", "white", "harris", 
+  "john", "mike", "alex", "david", "chris", "james", "robert", "michael",
+  "william", "daniel", "smith", "brown", "jones", "wilson", "taylor",
+  "davis", "miller", "moore", "anderson", "jackson", "white", "harris",
   "martin", "lee", "walker", "sam", "tom", "ben", "joe", "max"
 ];
 
 // ============ 工具函数 / Utility Functions ============
+
 const random = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 const pad = (n, len = 2) => String(n).padStart(len, "0");
@@ -28,7 +31,7 @@ const pad = (n, len = 2) => String(n).padStart(len, "0");
 const genName = (vowelStart) => {
   const v = "aeiou", c = "bcdfghjklmnpqrstvwxyz";
   let name = "";
-  for (let i = 0; i < 8; i++) { 
+  for (let i = 0; i < 8; i++) {
     const useVowel = vowelStart ? i % 2 === 0 : i % 2 !== 0;
     name += random([...(useVowel ? v : c)]);
   }
@@ -37,9 +40,9 @@ const genName = (vowelStart) => {
 
 const genEmail = () => {
   let username = Array.from({ length: randomInt(2, 3) }, () => random(NAME_PARTS)).join("");
-  while (username.length < 10) { 
-    username += Math.random() > 0.5 && (15 - username.length) >= 3
-      ? pad(randomInt(0, 999), 3)
+  while (username.length < 10) {
+    username += Math.random() > 0.5 && (15 - username.length) >= 3 
+      ? pad(randomInt(0, 999), 3) 
       : random([..."abcdefghijklmnopqrstuvwxyz"]);
   }
   username = username.substring(0, 15);
@@ -53,22 +56,33 @@ const genBirthday = () => {
   return `${year}年${pad(randomInt(1, 12))}月${pad(randomInt(1, 28))}日`;
 };
 
-// --- 新增：生成随机密码函数 ---
 const genPassword = () => {
-  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let pass = "";
-  // 生成 10-12 位密码
-  const len = randomInt(10, 12);
-  for (let i = 0; i < len; i++) {
-    pass += random([...chars]);
+  const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const lowercase = "abcdefghijklmnopqrstuvwxyz";
+  const numbers = "0123456789";
+  const special = "!@#$%^&*";
+  const all = uppercase + lowercase + numbers + special;
+  
+  let password = "";
+  // 确保至少包含一个大写、小写、数字和特殊字符
+  password += random([...uppercase]);
+  password += random([...lowercase]);
+  password += random([...numbers]);
+  password += random([...special]);
+  
+  // 填充到12位
+  for (let i = 4; i < 12; i++) {
+    password += random([...all]);
   }
-  // 确保包含至少一个数字，防止全是字母
-  return pass + randomInt(0, 9);
+  
+  // 打乱顺序
+  return password.split('').sort(() => Math.random() - 0.5).join('');
 };
 
 // ============ Toast Component (Mobile Optimized) ============
+
 const Toast = memo(({ message, type }) => (
-  <div 
+  <div
     className="flex items-center gap-3 bg-white/95 backdrop-blur rounded-full shadow-xl px-5 py-3 border border-gray-100 max-w-[90vw]"
     style={{
       boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
@@ -83,14 +97,16 @@ const Toast = memo(({ message, type }) => (
     <span className="text-sm text-gray-800 font-medium whitespace-nowrap">{message}</span>
   </div>
 ));
+
 Toast.displayName = 'Toast';
 
 // ============ InfoRow Component (Touch Optimized) ============
+
 const InfoRow = memo(({ label, value, onCopy, onRefresh, link, loading }) => (
-  <div className="space-y-1.5 group">
+  <div className="space-y-3">
     <div className="flex items-center justify-between">
       <label className="text-xs font-bold text-gray-500 uppercase tracking-wider select-none">{label}</label>
-      <div className="flex gap-2"> 
+      <div className="flex gap-2">
         {onRefresh && (
           <button
             onClick={onRefresh}
@@ -112,10 +128,10 @@ const InfoRow = memo(({ label, value, onCopy, onRefresh, link, loading }) => (
     </div>
     <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm active:border-blue-400 transition-colors">
       {link ? (
-        <a 
-          href={link} 
-          target="_blank" 
-          rel="noopener noreferrer" 
+        <a
+          href={link}
+          target="_blank"
+          rel="noopener noreferrer"
           className="text-base font-medium text-blue-600 truncate block"
         >
           {value}
@@ -126,11 +142,13 @@ const InfoRow = memo(({ label, value, onCopy, onRefresh, link, loading }) => (
     </div>
   </div>
 ));
+
 InfoRow.displayName = 'InfoRow';
 
 // ============ Telegram Banner Component ============
+
 const TgBanner = memo(({ onCopy }) => (
-  <Card className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 shadow-sm">
+  <div className="space-y-3">
     <div className="flex items-center gap-3 mb-4">
       <div className="flex-shrink-0 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm">
         <svg className="w-6 h-6 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
@@ -142,23 +160,26 @@ const TgBanner = memo(({ onCopy }) => (
         <p className="text-gray-500 text-xs mt-0.5">创号教程、工具更新和独家资源</p>
       </div>
     </div>
-    <Button 
-      onClick={onCopy} 
+    <Button
+      onClick={onCopy}
       className="w-full bg-white text-blue-600 hover:bg-gray-50 border border-blue-200 font-bold rounded-lg h-10 shadow-sm active:scale-[0.98] transition-all"
     >
       复制神秘代码
     </Button>
-  </Card>
+  </div>
 ));
+
 TgBanner.displayName = 'TgBanner';
 
 // ============ Main Component ============
+
 export default function AccountGenerator() {
   const [info, setInfo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [bgLoaded, setBgLoaded] = useState(false);
   const [toasts, setToasts] = useState([]);
 
+  // 初始化加载背景图
   useEffect(() => {
     const img = new Image();
     img.src = "https://www.584136.xyz/%E5%A4%B4%E5%83%8F/%E8%83%8C%E6%99%AF89.jpg";
@@ -176,10 +197,12 @@ export default function AccountGenerator() {
   const copy = useCallback(async (text, label) => {
     if (!text) return;
     try {
+      // 兼容移动端剪贴板
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(text);
         showToast(`已复制${label}`, 'success');
       } else {
+        // Fallback for older browsers or non-secure contexts
         const textArea = document.createElement("textarea");
         textArea.value = text;
         document.body.appendChild(textArea);
@@ -194,28 +217,30 @@ export default function AccountGenerator() {
   }, [showToast]);
 
   const generate = useCallback(() => {
+    // 增加触觉反馈 (如果设备支持)
     if (window.navigator && window.navigator.vibrate) {
       window.navigator.vibrate(50);
     }
-    
+
     const emailData = genEmail();
+
     setInfo({
       lastName: genName(false),
       firstName: genName(true),
       phone: genPhone(),
-      // 1. 在这里添加密码
       password: genPassword(),
       email: emailData.email,
       username: emailData.username,
       birthday: genBirthday(),
     });
+
     showToast("新身份已生成", 'success');
   }, [showToast]);
 
   const refreshEmail = useCallback(async () => {
     if (!info) return;
     setLoading(true);
-    await new Promise(r => setTimeout(r, 600)); 
+    await new Promise(r => setTimeout(r, 600));
     const emailData = genEmail();
     setInfo((prev) => ({ ...prev, ...emailData }));
     showToast("邮箱已刷新", 'success');
@@ -223,17 +248,18 @@ export default function AccountGenerator() {
   }, [info, showToast]);
 
   return (
-    <div 
+    <div
       className="min-h-screen relative overflow-hidden bg-gray-50"
       style={{
         backgroundImage: bgLoaded ? 'url(https://www.584136.xyz/%E5%A4%B4%E5%83%8F/%E8%83%8C%E6%99%AF89.jpg)' : 'none',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
-        backgroundAttachment: 'fixed' 
+        backgroundAttachment: 'fixed'
       }}
     >
+      {/* Overlay with more blur for readability */}
       <div className="min-h-screen w-full absolute inset-0 bg-white/80 backdrop-blur-sm overflow-y-auto">
-        
+        {/* Header - Sticky */}
         <header className="bg-white/90 backdrop-blur-md border-b border-gray-200/50 sticky top-0 z-40 shadow-sm supports-[backdrop-filter]:bg-white/60">
           <div className="max-w-md mx-auto px-5 h-14 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -244,10 +270,11 @@ export default function AccountGenerator() {
               </div>
               <h1 className="text-lg font-bold text-gray-900 tracking-tight">创号小助手</h1>
             </div>
-            <div className="px-2 py-0.5 bg-gray-100 rounded-md text-xs font-bold text-gray-500">v2.1</div>
+            <div className="px-2 py-0.5 bg-gray-100 rounded-md text-xs font-bold text-gray-500">v2.0</div>
           </div>
         </header>
 
+        {/* Content */}
         <main className="max-w-md mx-auto px-4 py-6 space-y-6 pb-24">
           <Button
             onClick={generate}
@@ -261,10 +288,18 @@ export default function AccountGenerator() {
             <div className="space-y-4 animate-[fadeIn_0.4s_ease-out]">
               <Card className="p-5 space-y-5 bg-white shadow-sm border border-gray-100 rounded-2xl">
                 <div className="grid grid-cols-2 gap-4">
-                  <InfoRow label="姓氏" value={info.lastName} onCopy={() => copy(info.lastName, "姓氏")} />
-                  <InfoRow label="名字" value={info.firstName} onCopy={() => copy(info.firstName, "名字")} />
+                  <InfoRow
+                    label="姓氏"
+                    value={info.lastName}
+                    onCopy={() => copy(info.lastName, "姓氏")}
+                  />
+                  <InfoRow
+                    label="名字"
+                    value={info.firstName}
+                    onCopy={() => copy(info.firstName, "名字")}
+                  />
                 </div>
-                
+
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">生日</label>
                   <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
@@ -272,20 +307,28 @@ export default function AccountGenerator() {
                   </div>
                 </div>
 
-                <InfoRow label="手机号 (CN)" value={info.phone} onCopy={() => copy(info.phone, "手机号")} />
-                
-                {/* 2. 在这里添加密码的显示行 */}
-                <InfoRow label="随机密码" value={info.password} onCopy={() => copy(info.password, "密码")} />
-                
+                <InfoRow
+                  label="手机号 (CN)"
+                  value={info.phone}
+                  onCopy={() => copy(info.phone, "手机号")}
+                />
+
+                <InfoRow
+                  label="密码"
+                  value={info.password}
+                  onCopy={() => copy(info.password, "密码")}
+                />
+
                 <div className="space-y-3 pt-3 border-t border-gray-100 border-dashed">
-                  <InfoRow 
-                    label="临时邮箱" 
-                    value={info.email} 
-                    onCopy={() => copy(info.email, "邮箱")} 
+                  <InfoRow
+                    label="临时邮箱"
+                    value={info.email}
+                    onCopy={() => copy(info.email, "邮箱")}
                     onRefresh={refreshEmail}
                     link={`https://yopmail.com?${info.username}`}
                     loading={loading}
                   />
+
                   <div className="bg-blue-50 rounded-lg px-3 py-2.5 flex gap-3 items-start">
                     <span className="text-blue-500 text-sm mt-0.5">💡</span>
                     <p className="text-xs text-blue-700 leading-relaxed font-medium">
@@ -298,26 +341,40 @@ export default function AccountGenerator() {
               <TgBanner onCopy={() => copy("@fang180", "神秘代码")} />
             </div>
           )}
-          
+
           {!info && (
-             <div className="text-center py-10 text-gray-400">
-                <p className="text-sm">点击上方按钮开始生成</p>
-             </div>
+            <div className="text-center py-10 text-gray-400">
+              <p className="text-sm">点击上方按钮开始生成</p>
+            </div>
           )}
         </main>
       </div>
-      
+
+      {/* Styles for animation */}
       <style>{`
         @keyframes slideDown {
-          from { transform: translateY(-100%); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
+          from {
+            transform: translateY(-100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
         }
         @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
       `}</style>
-      
+
+      {/* Toast Container - Centered Top */}
       <div className="fixed top-16 left-0 right-0 z-[60] flex flex-col items-center gap-2 pointer-events-none">
         {toasts.map((toast) => (
           <Toast key={toast.id} message={toast.message} type={toast.type} />
