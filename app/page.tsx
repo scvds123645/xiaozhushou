@@ -13,24 +13,38 @@ interface UserInfo {
   email: string;
 }
 
+interface LocationInfo {
+  country: string;
+  ip: string;
+  city: string;
+  region: string;
+}
+
 export default function Home() {
   const [selectedCountry, setSelectedCountry] = useState<CountryConfig>(countries[1]);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [locationInfo, setLocationInfo] = useState<LocationInfo | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
-  // 检测用户国家
+  // 检测用户国家和 IP
   useEffect(() => {
+    setIsLoading(true);
     fetch('/api/country')
       .then(res => res.json())
       .then(data => {
+        setLocationInfo(data);
         const country = getCountryConfig(data.country);
         setSelectedCountry(country);
+        setIsLoading(false);
       })
       .catch(() => {
         // 默认使用美国
+        setLocationInfo({ country: 'US', ip: '未知', city: '', region: '' });
         setSelectedCountry(countries[1]);
+        setIsLoading(false);
       });
   }, []);
 
@@ -80,6 +94,17 @@ export default function Home() {
     window.open(url, '_blank');
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">正在检测您的位置...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!userInfo) return null;
 
   return (
@@ -88,17 +113,72 @@ export default function Home() {
         {/* 头部 */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-800 mb-2">🎲 随机身份生成器</h1>
-          <p className="text-gray-600">快速生成逼真的身份信息</p>
+          <p className="text-gray-600">基于您的 IP 地址智能生成身份信息</p>
         </div>
+
+        {/* IP 地址信息卡片 */}
+        {locationInfo && (
+          <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl shadow-lg p-6 mb-6 text-white">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <span className="text-4xl">{selectedCountry.flag}</span>
+                <div>
+                  <h3 className="text-xl font-bold">您的位置信息</h3>
+                  <p className="text-blue-100 text-sm">根据您的 IP 地址检测</p>
+                </div>
+              </div>
+              <button
+                onClick={() => copyToClipboard(locationInfo.ip, 'IP 地址')}
+                className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors text-sm font-medium backdrop-blur-sm"
+              >
+                📋 复制IP
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                <p className="text-blue-100 text-xs mb-1">IP 地址</p>
+                <p className="font-mono font-bold text-lg">{locationInfo.ip}</p>
+              </div>
+              
+              <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                <p className="text-blue-100 text-xs mb-1">国家/地区</p>
+                <p className="font-bold text-lg">
+                  {selectedCountry.flag} {selectedCountry.name}
+                </p>
+              </div>
+              
+              {locationInfo.city && (
+                <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                  <p className="text-blue-100 text-xs mb-1">城市</p>
+                  <p className="font-bold text-lg">{decodeURIComponent(locationInfo.city)}</p>
+                </div>
+              )}
+              
+              {locationInfo.region && (
+                <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                  <p className="text-blue-100 text-xs mb-1">地区代码</p>
+                  <p className="font-bold text-lg">{locationInfo.region}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 p-3 bg-white/10 rounded-lg backdrop-blur-sm">
+              <p className="text-xs text-blue-100">
+                💡 提示: 生成的身份信息将基于 <span className="font-bold">{selectedCountry.name}</span> 的格式
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* 国家选择 */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            选择国家
+            选择国家 <span className="text-gray-500 text-xs">(可手动更改)</span>
           </label>
           <input
             type="text"
-            placeholder="搜索国家..."
+            placeholder="🔍 搜索国家..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
@@ -109,7 +189,7 @@ export default function Home() {
                 key={country.code}
                 onClick={() => setSelectedCountry(country)}
                 className={`w-full text-left px-4 py-3 hover:bg-indigo-50 transition-colors ${
-                  selectedCountry.code === country.code ? 'bg-indigo-100' : ''
+                  selectedCountry.code === country.code ? 'bg-indigo-100 border-l-4 border-indigo-600' : ''
                 }`}
               >
                 <span className="text-2xl mr-2">{country.flag}</span>
@@ -122,6 +202,11 @@ export default function Home() {
 
         {/* 生成的信息 */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-gray-800">🆔 生成的身份信息</h2>
+            <span className="text-sm text-gray-500">基于 {selectedCountry.flag} {selectedCountry.name}</span>
+          </div>
+          
           <div className="space-y-4">
             <InfoField label="姓名" value={`${userInfo.lastName} ${userInfo.firstName}`} onCopy={copyToClipboard} />
             <InfoField label="生日" value={userInfo.birthday} onCopy={copyToClipboard} />
@@ -131,16 +216,16 @@ export default function Home() {
               <InfoField label="邮箱" value={userInfo.email} onCopy={copyToClipboard} />
               <button
                 onClick={openEmail}
-                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium whitespace-nowrap"
+                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium whitespace-nowrap self-end"
               >
-                打开邮箱
+                📬 打开邮箱
               </button>
             </div>
           </div>
 
           <button
             onClick={generate}
-            className="w-full mt-6 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium text-lg"
+            className="w-full mt-6 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium text-lg shadow-md hover:shadow-lg"
           >
             🔄 重新生成
           </button>
@@ -150,16 +235,16 @@ export default function Home() {
         <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl shadow-lg p-6 text-white mb-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-xl font-bold mb-1">加入我们的 Telegram 频道</h3>
+              <h3 className="text-xl font-bold mb-1">📱 加入我们的 Telegram 频道</h3>
               <p className="text-purple-100">获取更多实用工具和资源</p>
             </div>
-            <span className="text-4xl">📱</span>
+            <span className="text-4xl">✨</span>
           </div>
           <a
             href="https://t.me/fang180"
             target="_blank"
             rel="noopener noreferrer"
-            className="block w-full text-center px-6 py-3 bg-white text-purple-600 rounded-lg hover:bg-purple-50 transition-colors font-medium"
+            className="block w-full text-center px-6 py-3 bg-white text-purple-600 rounded-lg hover:bg-purple-50 transition-colors font-medium shadow-md"
           >
             @fang180
           </a>
@@ -174,17 +259,23 @@ export default function Home() {
             </div>
             <button
               onClick={() => copyToClipboard('FANG180-VIP', '神秘代码')}
-              className="px-6 py-2 bg-yellow-400 text-gray-800 rounded-lg hover:bg-yellow-500 transition-colors font-medium"
+              className="px-6 py-2 bg-yellow-400 text-gray-800 rounded-lg hover:bg-yellow-500 transition-colors font-medium shadow-md"
             >
               复制代码
             </button>
           </div>
         </div>
+
+        {/* 底部说明 */}
+        <div className="mt-6 text-center text-sm text-gray-600">
+          <p>⚠️ 此工具仅用于测试和开发目的</p>
+          <p className="mt-1">所有数据随机生成,不对应真实个人信息</p>
+        </div>
       </div>
 
       {/* Toast 提示 */}
       {showToast && (
-        <div className="fixed bottom-4 right-4 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg animate-fade-in">
+        <div className="fixed bottom-4 right-4 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg animate-fade-in z-50">
           ✓ {toastMessage}
         </div>
       )}
@@ -202,7 +293,7 @@ function InfoField({ label, value, onCopy }: { label: string; value: string; onC
           type="text"
           value={value}
           readOnly
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-800"
+          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-800 font-mono"
         />
         <button
           onClick={() => onCopy(value, label)}
