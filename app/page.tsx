@@ -191,7 +191,6 @@ export default function Home() {
         {/* 头部 */}
         <div className="text-center mb-4 sm:mb-8">
           <h1 className="text-2xl sm:text-4xl font-bold text-gray-800 mb-1 sm:mb-2">🎲 随机身份生成器</h1>
-          <p className="text-xs sm:text-base text-gray-600">智能检测您的位置</p>
         </div>
 
         {/* IP 地址信息卡片 - 移动端优化 */}
@@ -201,7 +200,7 @@ export default function Home() {
               ? 'bg-gradient-to-r from-orange-500 to-red-500' 
               : 'bg-gradient-to-r from-blue-500 to-cyan-500'
           }`}>
-            <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               <span className="text-4xl sm:text-6xl">{selectedCountry?.flag || '🌍'}</span>
               <div className="flex-1 min-w-0">
                 <h3 className="text-xl sm:text-3xl font-bold mb-1 sm:mb-2 truncate">
@@ -213,8 +212,8 @@ export default function Home() {
               </div>
             </div>
 
-            {locationInfo.error ? (
-              <div className="bg-white/10 rounded-lg p-2 sm:p-3 backdrop-blur-sm">
+            {locationInfo.error && (
+              <div className="bg-white/10 rounded-lg p-2 sm:p-3 backdrop-blur-sm mt-3">
                 <p className="text-xs sm:text-sm">⚠️ {locationInfo.error}</p>
                 <div className="flex gap-2 mt-2">
                   <button
@@ -224,12 +223,6 @@ export default function Home() {
                     🔄 重试检测
                   </button>
                 </div>
-              </div>
-            ) : (
-              <div className="bg-white/10 rounded-lg p-2 sm:p-3 backdrop-blur-sm">
-                <p className="text-xs sm:text-sm text-blue-100">
-                  💡 生成的身份信息将基于 <span className="font-bold">{selectedCountry?.name || '检测到的国家'}</span> 的格式
-                </p>
               </div>
             )}
           </div>
