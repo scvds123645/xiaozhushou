@@ -47,14 +47,10 @@ export default function Home() {
         console.log('IP 检测结果:', data);
         setLocationInfo(data);
         
-        // 只有在成功获取到有效国家代码时才设置国家
-        if (data.country && data.country !== 'US' || data.accurate) {
-          const country = getCountryConfig(data.country);
-          setSelectedCountry(country);
-        } else {
-          // 如果检测失败,使用默认的美国
-          console.warn('IP 检测不准确,使用默认国家');
-        }
+        // 根据检测到的国家代码设置选中的国家
+        const detectedCountry = getCountryConfig(data.country);
+        setSelectedCountry(detectedCountry);
+        console.log('设置国家为:', detectedCountry.name, detectedCountry.code);
         
         setIsLoading(false);
       })
@@ -220,9 +216,12 @@ export default function Home() {
             {filteredCountries.map((country) => (
               <button
                 key={country.code}
-                onClick={() => setSelectedCountry(country)}
+                onClick={() => {
+                  setSelectedCountry(country);
+                  console.log('手动选择国家:', country.name, country.code);
+                }}
                 className={`w-full text-left px-4 py-3 hover:bg-indigo-50 transition-colors border-b border-gray-100 last:border-b-0 ${
-                  selectedCountry.code === country.code ? 'bg-indigo-100 border-l-4 border-indigo-600' : ''
+                  selectedCountry.code === country.code ? 'bg-indigo-100 border-l-4 border-l-indigo-600' : ''
                 }`}
               >
                 <span className="text-2xl mr-3">{country.flag}</span>
