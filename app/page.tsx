@@ -18,6 +18,12 @@ interface LocationInfo {
   ip: string;
   city: string;
   region: string;
+  source?: string;
+  accurate?: boolean;
+  countryName?: string;
+  timezone?: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export default function Home() {
@@ -32,7 +38,9 @@ export default function Home() {
   // 检测用户国家和 IP
   useEffect(() => {
     setIsLoading(true);
-    fetch('/api/country')
+    
+    // 先尝试使用精确的 IP 检测 API
+    fetch('/api/ip-info')
       .then(res => res.json())
       .then(data => {
         setLocationInfo(data);
@@ -41,10 +49,21 @@ export default function Home() {
         setIsLoading(false);
       })
       .catch(() => {
-        // 默认使用美国
-        setLocationInfo({ country: 'US', ip: '未知', city: '', region: '' });
-        setSelectedCountry(countries[1]);
-        setIsLoading(false);
+        // 如果失败,回退到基本的国家检测
+        fetch('/api/country')
+          .then(res => res.json())
+          .then(data => {
+            setLocationInfo({ ...data, accurate: false, source: 'vercel' });
+            const country = getCountryConfig(data.country);
+            setSelectedCountry(country);
+            setIsLoading(false);
+          })
+          .catch(() => {
+            // 最后的回退方案
+            setLocationInfo({ country: 'US', ip: '未知', city: '', region: '', accurate: false, source: 'default' });
+            setSelectedCountry(countries[1]);
+            setIsLoading(false);
+          });
       });
   }, []);
 
@@ -123,8 +142,17 @@ export default function Home() {
               <div className="flex items-center gap-3">
                 <span className="text-4xl">{selectedCountry.flag}</span>
                 <div>
-                  <h3 className="text-xl font-bold">您的位置信息</h3>
-                  <p className="text-blue-100 text-sm">根据您的 IP 地址检测</p>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xl font-bold">您的位置信息</h3>
+                    {locationInfo.accurate && (
+                      <span className="px-2 py-0.5 bg-green-400/30 text-green-100 text-xs rounded-full font-medium">
+                        ✓ 精确
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-blue-100 text-sm">
+                    {locationInfo.source === 'ip-api' ? '通过 IP 地理位置 API 检测' : '通过 Vercel Edge 检测'}
+                  </p>
                 </div>
               </div>
               <button
@@ -144,7 +172,7 @@ export default function Home() {
               <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
                 <p className="text-blue-100 text-xs mb-1">国家/地区</p>
                 <p className="font-bold text-lg">
-                  {selectedCountry.flag} {selectedCountry.name}
+                  {selectedCountry.flag} {locationInfo.countryName || selectedCountry.name}
                 </p>
               </div>
               
@@ -157,8 +185,15 @@ export default function Home() {
               
               {locationInfo.region && (
                 <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
-                  <p className="text-blue-100 text-xs mb-1">地区代码</p>
+                  <p className="text-blue-100 text-xs mb-1">地区</p>
                   <p className="font-bold text-lg">{locationInfo.region}</p>
+                </div>
+              )}
+
+              {locationInfo.timezone && (
+                <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                  <p className="text-blue-100 text-xs mb-1">时区</p>
+                  <p className="font-bold text-lg">{locationInfo.timezone}</p>
                 </div>
               )}
             </div>
