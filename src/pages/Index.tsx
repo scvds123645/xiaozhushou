@@ -1,13 +1,3 @@
-这里是修改后的完整代码。
-
-**主要的改动点如下：**
-1.  **添加了 `genPassword` 工具函数**：生成包含大小写字母和数字的 12 位随机密码（符合大多数网站注册要求）。
-2.  **更新了 `generate` 函数**：在生成信息时，增加 `password` 字段。
-3.  **更新了 UI 布局**：在“手机号”下方增加了一行“随机密码”显示栏。
-
-你可以直接复制替换整个文件：
-
-```javascript
 import { useState, useCallback, memo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -336,4 +326,3 @@ export default function AccountGenerator() {
     </div>
   );
 }
-```
