@@ -172,7 +172,7 @@ export default function Home() {
           }`}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <span className="text-4xl">{selectedCountry.flag}</span>
+                <span className="text-4xl">{getCountryConfig(locationInfo.country).flag}</span>
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-xl font-bold">您的位置信息</h3>
@@ -230,7 +230,7 @@ export default function Home() {
                 <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
                   <p className="text-blue-100 text-xs mb-1">国家/地区</p>
                   <p className="font-bold text-lg">
-                    {selectedCountry.flag} {locationInfo.countryName || selectedCountry.name}
+                    {getCountryConfig(locationInfo.country).flag} {locationInfo.countryName || getCountryConfig(locationInfo.country).name}
                   </p>
                 </div>
                 
