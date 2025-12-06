@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { countries, CountryConfig } from '@/lib/countryData';
 import { generateName, generateBirthday, generatePhone, generatePassword, generateEmail, getCountryConfig } from '@/lib/generator';
 
@@ -37,6 +37,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
   const [showCountrySelect, setShowCountrySelect] = useState(false);
+  const countryListRef = useRef<HTMLDivElement>(null);
 
   // 检测用户国家和 IP
   useEffect(() => {
@@ -133,6 +134,22 @@ export default function Home() {
       : `https://${domain}`;
     window.open(url, '_blank');
   };
+
+  // 当打开国家列表时,自动滚动到已选中的国家
+  useEffect(() => {
+    if (showCountrySelect && countryListRef.current) {
+      // 延迟执行以确保 DOM 已经渲染
+      setTimeout(() => {
+        const selectedElement = countryListRef.current?.querySelector(`[data-country="${selectedCountry.code}"]`);
+        if (selectedElement) {
+          selectedElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+          });
+        }
+      }, 100);
+    }
+  }, [showCountrySelect, selectedCountry.code]);
 
   // 手动重新检测 IP
   const retryDetection = () => {
@@ -236,10 +253,11 @@ export default function Home() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full px-4 py-2.5 sm:py-3 border-2 border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 placeholder-gray-500 text-sm sm:text-base"
               />
-              <div className="max-h-48 sm:max-h-64 overflow-y-auto border border-gray-200 rounded-lg bg-white">
+              <div className="max-h-48 sm:max-h-64 overflow-y-auto border border-gray-200 rounded-lg bg-white" ref={countryListRef}>
                 {filteredCountries.map((country) => (
                   <button
                     key={country.code}
+                    data-country={country.code}
                     onClick={() => {
                       setSelectedCountry(country);
                       setShowCountrySelect(false);
