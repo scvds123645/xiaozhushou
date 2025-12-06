@@ -128,10 +128,7 @@ export default function Home() {
   // 打开邮箱
   const openEmail = () => {
     if (!userInfo) return;
-    const domain = userInfo.email.split('@')[1];
-    const url = domain === 'yopmail.com' 
-      ? `https://yopmail.com/?${userInfo.email.split('@')[0]}`
-      : `https://${domain}`;
+    const url = `https://yopmail.com?${userInfo.email}`;
     window.open(url, '_blank');
   };
 
