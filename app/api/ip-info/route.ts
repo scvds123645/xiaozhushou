@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export const runtime = 'edge';
+// 移除 edge runtime 限制,使用 Node.js runtime
+// export const runtime = 'edge';
 
 interface IPApiResponse {
   status?: string;
@@ -50,6 +51,13 @@ export async function GET(request: NextRequest) {
              realIP || 
              '未知';
 
+  console.log('检测到的 IP 地址:', ip);
+  console.log('请求头信息:', {
+    'x-forwarded-for': forwardedFor,
+    'x-real-ip': realIP,
+    'cf-connecting-ip': cfConnectingIP
+  });
+
   // 检查是否为有效的公网 IP
   const isValidPublicIP = (ipAddr: string): boolean => {
     if (ipAddr === '未知' || !ipAddr) return false;
@@ -69,6 +77,7 @@ export async function GET(request: NextRequest) {
   };
 
   if (!isValidPublicIP(ip)) {
+    console.warn('检测到内网 IP 或无效 IP:', ip);
     return NextResponse.json({
       source: 'header',
       ip: ip,
@@ -80,22 +89,29 @@ export async function GET(request: NextRequest) {
       latitude: null,
       longitude: null,
       accurate: false,
-      error: '无法检测到有效的公网 IP 地址'
+      error: '无法检测到有效的公网 IP 地址 (可能在本地环境或内网)'
     });
   }
 
-  // 方案 1: ipwhois.io (完全免费，无需 API key)
+  // 方案 1: ipwho.is (完全免费,无需 API key,推荐)
   try {
+    console.log('尝试使用 ipwho.is API...');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
     const response = await fetch(`https://ipwho.is/${ip}`, {
       headers: { 
-        'User-Agent': 'Mozilla/5.0',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Accept': 'application/json'
       },
-      signal: AbortSignal.timeout(5000)
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
     
     if (response.ok) {
       const data: IPWhoIsResponse = await response.json();
+      console.log('ipwho.is 返回数据:', data);
       
       if (data.success && data.country_code) {
         return NextResponse.json({
@@ -113,21 +129,28 @@ export async function GET(request: NextRequest) {
       }
     }
   } catch (error) {
-    console.error('ipwhois.io 请求失败:', error);
+    console.error('ipwho.is 请求失败:', error);
   }
 
-  // 方案 2: ip-api.com (免费，限制：每分钟 45 次请求)
+  // 方案 2: ip-api.com (免费,限制:每分钟 45 次请求)
   try {
+    console.log('尝试使用 ip-api.com API...');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
     const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,countryCode,region,regionName,city,zip,lat,lon,timezone,query`, {
       headers: { 
-        'User-Agent': 'Mozilla/5.0',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Accept': 'application/json'
       },
-      signal: AbortSignal.timeout(5000)
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
     
     if (response.ok) {
       const data: IPApiResponse = await response.json();
+      console.log('ip-api.com 返回数据:', data);
       
       if (data.status === 'success' && data.countryCode) {
         return NextResponse.json({
@@ -148,18 +171,25 @@ export async function GET(request: NextRequest) {
     console.error('ip-api.com 请求失败:', error);
   }
 
-  // 方案 3: ipapi.co (免费，限制：每天 1000 次请求)
+  // 方案 3: ipapi.co (免费,限制:每天 1000 次请求)
   try {
+    console.log('尝试使用 ipapi.co API...');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
     const response = await fetch(`https://ipapi.co/${ip}/json/`, {
       headers: { 
-        'User-Agent': 'Mozilla/5.0',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Accept': 'application/json'
       },
-      signal: AbortSignal.timeout(5000)
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
     
     if (response.ok) {
       const data: any = await response.json();
+      console.log('ipapi.co 返回数据:', data);
       
       if (data.country_code && !data.error) {
         return NextResponse.json({
@@ -180,18 +210,25 @@ export async function GET(request: NextRequest) {
     console.error('ipapi.co 请求失败:', error);
   }
 
-  // 方案 4: ipinfo.io (免费，限制：每月 50000 次请求)
+  // 方案 4: ipinfo.io (免费,限制:每月 50000 次请求)
   try {
+    console.log('尝试使用 ipinfo.io API...');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
     const response = await fetch(`https://ipinfo.io/${ip}/json`, {
       headers: { 
-        'User-Agent': 'Mozilla/5.0',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Accept': 'application/json'
       },
-      signal: AbortSignal.timeout(5000)
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
     
     if (response.ok) {
       const data: IPInfoResponse = await response.json();
+      console.log('ipinfo.io 返回数据:', data);
       
       if (data.country) {
         const [lat, lon] = data.loc?.split(',').map(Number) || [null, null];
@@ -214,7 +251,8 @@ export async function GET(request: NextRequest) {
     console.error('ipinfo.io 请求失败:', error);
   }
 
-  // 所有方案都失败，返回基础信息
+  // 所有方案都失败,返回基础信息
+  console.error('所有 IP 检测 API 都失败了');
   return NextResponse.json({
     source: 'fallback',
     ip: ip,
@@ -226,6 +264,6 @@ export async function GET(request: NextRequest) {
     latitude: null,
     longitude: null,
     accurate: false,
-    error: '所有 IP 检测服务暂时不可用'
+    error: '所有 IP 检测服务暂时不可用,请稍后重试'
   });
 }

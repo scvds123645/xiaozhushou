@@ -24,6 +24,7 @@ interface LocationInfo {
   timezone?: string;
   latitude?: number | null;
   longitude?: number | null;
+  error?: string;
 }
 
 export default function Home() {
@@ -34,38 +35,55 @@ export default function Home() {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
 
-  // 检测用户国家和 IP
+  // 检测用户国家和 IP (仅使用第三方 API)
   useEffect(() => {
     setIsLoading(true);
     
-    // 先尝试使用精确的 IP 检测 API
     fetch('/api/ip-info')
       .then(res => res.json())
       .then(data => {
+        console.log('IP 检测结果:', data);
         setLocationInfo(data);
-        const country = getCountryConfig(data.country);
-        setSelectedCountry(country);
+        
+        // 只有在成功获取到有效国家代码时才设置国家
+        if (data.country && data.country !== 'US' || data.accurate) {
+          const country = getCountryConfig(data.country);
+          setSelectedCountry(country);
+        } else {
+          // 如果检测失败,使用默认的美国
+          console.warn('IP 检测不准确,使用默认国家');
+        }
+        
         setIsLoading(false);
       })
-      .catch(() => {
-        // 如果失败,回退到基本的国家检测
-        fetch('/api/country')
-          .then(res => res.json())
-          .then(data => {
-            setLocationInfo({ ...data, accurate: false, source: 'vercel' });
-            const country = getCountryConfig(data.country);
-            setSelectedCountry(country);
-            setIsLoading(false);
-          })
-          .catch(() => {
-            // 最后的回退方案
-            setLocationInfo({ country: 'US', ip: '未知', city: '', region: '', accurate: false, source: 'default' });
-            setSelectedCountry(countries[1]);
-            setIsLoading(false);
+      .catch(error => {
+        console.error('IP 检测失败:', error);
+        
+        // 重试机制 (最多重试 2 次)
+        if (retryCount < 2) {
+          console.log(`重试 IP 检测 (${retryCount + 1}/2)...`);
+          setRetryCount(retryCount + 1);
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+        } else {
+          // 最终回退方案
+          setLocationInfo({ 
+            country: 'US', 
+            ip: '检测失败', 
+            city: '', 
+            region: '', 
+            accurate: false, 
+            source: 'fallback',
+            error: '无法连接到 IP 检测服务'
           });
+          setSelectedCountry(countries[1]); // 美国
+          setIsLoading(false);
+        }
       });
-  }, []);
+  }, [retryCount]);
 
   // 生成用户信息
   const generate = () => {
@@ -113,12 +131,22 @@ export default function Home() {
     window.open(url, '_blank');
   };
 
+  // 手动重新检测 IP
+  const retryDetection = () => {
+    setRetryCount(0);
+    window.location.reload();
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">正在检测您的位置...</p>
+          <p className="text-gray-600 text-lg font-medium">正在通过第三方 API 检测您的位置...</p>
+          <p className="text-gray-500 text-sm mt-2">这可能需要几秒钟</p>
+          {retryCount > 0 && (
+            <p className="text-orange-600 text-sm mt-2">重试中 ({retryCount}/2)...</p>
+          )}
         </div>
       </div>
     );
@@ -132,71 +160,102 @@ export default function Home() {
         {/* 头部 */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-800 mb-2">🎲 随机身份生成器</h1>
-          <p className="text-gray-600">基于您的 IP 地址智能生成身份信息</p>
+          <p className="text-gray-600">基于第三方 IP API 智能检测您的位置</p>
         </div>
 
         {/* IP 地址信息卡片 */}
         {locationInfo && (
-          <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl shadow-lg p-6 mb-6 text-white">
+          <div className={`rounded-2xl shadow-lg p-6 mb-6 text-white ${
+            locationInfo.error 
+              ? 'bg-gradient-to-r from-orange-500 to-red-500' 
+              : 'bg-gradient-to-r from-blue-500 to-cyan-500'
+          }`}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <span className="text-4xl">{selectedCountry.flag}</span>
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-xl font-bold">您的位置信息</h3>
-                    {locationInfo.accurate && (
+                    {locationInfo.accurate && !locationInfo.error && (
                       <span className="px-2 py-0.5 bg-green-400/30 text-green-100 text-xs rounded-full font-medium">
                         ✓ 精确
                       </span>
                     )}
+                    {locationInfo.error && (
+                      <span className="px-2 py-0.5 bg-red-400/30 text-red-100 text-xs rounded-full font-medium">
+                        ⚠ 检测失败
+                      </span>
+                    )}
                   </div>
                   <p className="text-blue-100 text-sm">
-                    {locationInfo.source === 'ip-api' ? '通过 IP 地理位置 API 检测' : '通过 Vercel Edge 检测'}
+                    {locationInfo.source === 'ipwhois' && '通过 ipwho.is API 检测'}
+                    {locationInfo.source === 'ip-api' && '通过 ip-api.com 检测'}
+                    {locationInfo.source === 'ipapi.co' && '通过 ipapi.co 检测'}
+                    {locationInfo.source === 'ipinfo' && '通过 ipinfo.io 检测'}
+                    {locationInfo.source === 'fallback' && '使用默认配置'}
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => copyToClipboard(locationInfo.ip, 'IP 地址')}
-                className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors text-sm font-medium backdrop-blur-sm"
-              >
-                📋 复制IP
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => copyToClipboard(locationInfo.ip, 'IP 地址')}
+                  className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors text-sm font-medium backdrop-blur-sm"
+                  disabled={locationInfo.ip === '检测失败'}
+                >
+                  📋 复制IP
+                </button>
+                {locationInfo.error && (
+                  <button
+                    onClick={retryDetection}
+                    className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors text-sm font-medium backdrop-blur-sm"
+                  >
+                    🔄 重试
+                  </button>
+                )}
+              </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
-                <p className="text-blue-100 text-xs mb-1">IP 地址</p>
-                <p className="font-mono font-bold text-lg">{locationInfo.ip}</p>
+            {locationInfo.error ? (
+              <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
+                <p className="text-sm">⚠️ {locationInfo.error}</p>
+                <p className="text-xs mt-2 text-red-100">已使用默认配置 (美国),您可以手动选择其他国家</p>
               </div>
-              
-              <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
-                <p className="text-blue-100 text-xs mb-1">国家/地区</p>
-                <p className="font-bold text-lg">
-                  {selectedCountry.flag} {locationInfo.countryName || selectedCountry.name}
-                </p>
-              </div>
-              
-              {locationInfo.city && (
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
-                  <p className="text-blue-100 text-xs mb-1">城市</p>
-                  <p className="font-bold text-lg">{decodeURIComponent(locationInfo.city)}</p>
+                  <p className="text-blue-100 text-xs mb-1">IP 地址</p>
+                  <p className="font-mono font-bold text-lg">{locationInfo.ip}</p>
                 </div>
-              )}
-              
-              {locationInfo.region && (
+                
                 <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
-                  <p className="text-blue-100 text-xs mb-1">地区</p>
-                  <p className="font-bold text-lg">{locationInfo.region}</p>
+                  <p className="text-blue-100 text-xs mb-1">国家/地区</p>
+                  <p className="font-bold text-lg">
+                    {selectedCountry.flag} {locationInfo.countryName || selectedCountry.name}
+                  </p>
                 </div>
-              )}
+                
+                {locationInfo.city && (
+                  <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                    <p className="text-blue-100 text-xs mb-1">城市</p>
+                    <p className="font-bold text-lg">{decodeURIComponent(locationInfo.city)}</p>
+                  </div>
+                )}
+                
+                {locationInfo.region && (
+                  <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                    <p className="text-blue-100 text-xs mb-1">地区</p>
+                    <p className="font-bold text-lg">{locationInfo.region}</p>
+                  </div>
+                )}
 
-              {locationInfo.timezone && (
-                <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
-                  <p className="text-blue-100 text-xs mb-1">时区</p>
-                  <p className="font-bold text-lg">{locationInfo.timezone}</p>
-                </div>
-              )}
-            </div>
+                {locationInfo.timezone && (
+                  <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                    <p className="text-blue-100 text-xs mb-1">时区</p>
+                    <p className="font-bold text-lg">{locationInfo.timezone}</p>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="mt-4 p-3 bg-white/10 rounded-lg backdrop-blur-sm">
               <p className="text-xs text-blue-100">
@@ -305,6 +364,7 @@ export default function Home() {
         <div className="mt-6 text-center text-sm text-gray-600">
           <p>⚠️ 此工具仅用于测试和开发目的</p>
           <p className="mt-1">所有数据随机生成,不对应真实个人信息</p>
+          <p className="mt-2 text-xs text-gray-500">IP 检测使用第三方 API: ipwho.is, ip-api.com, ipapi.co, ipinfo.io</p>
         </div>
       </div>
 
