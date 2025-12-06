@@ -1,98 +1,76 @@
-import { countries, namesByCountry, CountryConfig } from '@/lib/countryData';
+// 请确保你的 generator.ts 中有这个函数，并且逻辑正确
 
-// 元音和辅音
-const vowels = 'aeiou';
-const consonants = 'bcdfghjklmnpqrstvwxyz';
+import { countries, namesByCountry, CountryConfig } from './countryData';
 
-// 生成逼真的英文名（元音辅音交替）
-export function generateEnglishName(length: number = 6): string {
-  let name = '';
-  const startWithVowel = Math.random() > 0.5;
+// 获取国家配置
+export function getCountryConfig(countryCode: string): CountryConfig {
+  const country = countries.find(c => c.code === countryCode);
   
-  for (let i = 0; i < length; i++) {
-    const useVowel = startWithVowel ? i % 2 === 0 : i % 2 !== 0;
-    const chars = useVowel ? vowels : consonants;
-    name += chars[Math.floor(Math.random() * chars.length)];
+  if (!country) {
+    console.warn(`未找到国家代码 ${countryCode} 的配置，使用美国作为默认`);
+    // 如果找不到，返回美国
+    return countries.find(c => c.code === 'US') || countries[0];
   }
   
-  return name.charAt(0).toUpperCase() + name.slice(1);
+  return country;
 }
 
-// 根据国家生成姓名
-export function generateName(countryCode: string): { firstName: string; lastName: string } {
-  const countryNames = namesByCountry[countryCode];
+// 生成姓名
+export function generateName(countryCode: string) {
+  const names = namesByCountry[countryCode];
   
-  if (countryNames) {
-    return {
-      firstName: countryNames.firstNames[Math.floor(Math.random() * countryNames.firstNames.length)],
-      lastName: countryNames.lastNames[Math.floor(Math.random() * countryNames.lastNames.length)],
-    };
+  if (names) {
+    // 如果有该国家的名字数据，直接使用
+    const firstName = names.firstNames[Math.floor(Math.random() * names.firstNames.length)];
+    const lastName = names.lastNames[Math.floor(Math.random() * names.lastNames.length)];
+    return { firstName, lastName };
   }
   
-  // 默认生成英文名
+  // 否则生成英文名
+  const firstNames = ['James', 'John', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph', 'Thomas', 'Charles',
+    'Mary', 'Patricia', 'Jennifer', 'Linda', 'Elizabeth', 'Barbara', 'Susan', 'Jessica', 'Sarah', 'Karen'];
+  const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez',
+    'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin'];
+  
   return {
-    firstName: generateEnglishName(Math.floor(Math.random() * 3) + 5),
-    lastName: generateEnglishName(Math.floor(Math.random() * 3) + 6),
+    firstName: firstNames[Math.floor(Math.random() * firstNames.length)],
+    lastName: lastNames[Math.floor(Math.random() * lastNames.length)]
   };
 }
 
-// 生成生日（18-25岁）
-export function generateBirthday(): string {
-  const today = new Date();
-  const age = Math.floor(Math.random() * 8) + 18; // 18-25岁
-  const year = today.getFullYear() - age;
-  const month = Math.floor(Math.random() * 12) + 1;
-  const day = Math.floor(Math.random() * 28) + 1; // 简化处理,避免月份天数问题
-  
-  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+// 生成生日
+export function generateBirthday() {
+  const year = 1960 + Math.floor(Math.random() * 45); // 1960-2005
+  const month = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0');
+  const day = String(Math.floor(Math.random() * 28) + 1).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 // 生成手机号
-export function generatePhone(country: CountryConfig): string {
-  const format = country.phoneFormat;
-  let phone = '';
-  
-  for (const char of format) {
-    if (char === 'X') {
-      phone += Math.floor(Math.random() * 10);
-    } else {
-      phone += char;
+export function generatePhone(country: CountryConfig) {
+  let phone = country.phoneFormat;
+  for (let i = 0; i < phone.length; i++) {
+    if (phone[i] === 'X') {
+      phone = phone.substring(0, i) + Math.floor(Math.random() * 10) + phone.substring(i + 1);
     }
   }
-  
   return country.phonePrefix + ' ' + phone;
 }
 
-// 生成强密码
-export function generatePassword(): string {
-  const lowercase = 'abcdefghijklmnopqrstuvwxyz';
-  const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const numbers = '0123456789';
-  const special = '!@#$%^&*';
-  const all = lowercase + uppercase + numbers + special;
-  
+// 生成密码
+export function generatePassword() {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%';
   let password = '';
-  password += uppercase[Math.floor(Math.random() * uppercase.length)];
-  password += lowercase[Math.floor(Math.random() * lowercase.length)];
-  password += numbers[Math.floor(Math.random() * numbers.length)];
-  password += special[Math.floor(Math.random() * special.length)];
-  
-  for (let i = 4; i < 16; i++) {
-    password += all[Math.floor(Math.random() * all.length)];
+  for (let i = 0; i < 12; i++) {
+    password += chars[Math.floor(Math.random() * chars.length)];
   }
-  
-  return password.split('').sort(() => Math.random() - 0.5).join('');
+  return password;
 }
 
 // 生成邮箱
-export function generateEmail(firstName: string, lastName: string): string {
-  const domains = ['yopmail.com', '00two.shop'];
+export function generateEmail(firstName: string, lastName: string) {
+  const domains = ['yopmail.com', 'tempmail.com', 'guerrillamail.com'];
   const domain = domains[Math.floor(Math.random() * domains.length)];
-  const username = `${firstName.toLowerCase()}.${lastName.toLowerCase()}${Math.floor(Math.random() * 999)}`;
+  const username = `${firstName.toLowerCase()}${lastName.toLowerCase()}${Math.floor(Math.random() * 999)}`;
   return `${username}@${domain}`;
-}
-
-// 获取国家配置
-export function getCountryConfig(code: string): CountryConfig {
-  return countries.find(c => c.code === code) || countries[1]; // 默认美国
 }

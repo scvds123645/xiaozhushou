@@ -8,6 +8,10 @@ export interface CountryConfig {
 
 export const countries: CountryConfig[] = [
   { code: 'CN', name: '中国', phonePrefix: '+86', phoneFormat: '1XXXXXXXXXX', flag: '🇨🇳' },
+  { code: 'HK', name: '香港', phonePrefix: '+852', phoneFormat: 'XXXX XXXX', flag: '🇭🇰' },
+  { code: 'TW', name: '台湾', phonePrefix: '+886', phoneFormat: 'XXXX XXX XXX', flag: '🇹🇼' },
+  { code: 'MO', name: '澳门', phonePrefix: '+853', phoneFormat: 'XXXX XXXX', flag: '🇲🇴' },
+  { code: 'SG', name: '新加坡', phonePrefix: '+65', phoneFormat: 'XXXX XXXX', flag: '🇸🇬' },
   { code: 'US', name: '美国', phonePrefix: '+1', phoneFormat: 'XXX-XXX-XXXX', flag: '🇺🇸' },
   { code: 'JP', name: '日本', phonePrefix: '+81', phoneFormat: 'XX-XXXX-XXXX', flag: '🇯🇵' },
   { code: 'GB', name: '英国', phonePrefix: '+44', phoneFormat: 'XXXX XXX XXX', flag: '🇬🇧' },
@@ -27,12 +31,33 @@ export const countries: CountryConfig[] = [
   { code: 'CH', name: '瑞士', phonePrefix: '+41', phoneFormat: 'XX XXX XX XX', flag: '🇨🇭' },
   { code: 'PL', name: '波兰', phonePrefix: '+48', phoneFormat: 'XXX XXX XXX', flag: '🇵🇱' },
   { code: 'TR', name: '土耳其', phonePrefix: '+90', phoneFormat: 'XXX XXX XX XX', flag: '🇹🇷' },
+  { code: 'TH', name: '泰国', phonePrefix: '+66', phoneFormat: 'XX XXX XXXX', flag: '🇹🇭' },
+  { code: 'MY', name: '马来西亚', phonePrefix: '+60', phoneFormat: 'XX-XXX XXXX', flag: '🇲🇾' },
+  { code: 'ID', name: '印度尼西亚', phonePrefix: '+62', phoneFormat: 'XXX-XXX-XXXX', flag: '🇮🇩' },
+  { code: 'PH', name: '菲律宾', phonePrefix: '+63', phoneFormat: 'XXX XXX XXXX', flag: '🇵🇭' },
+  { code: 'VN', name: '越南', phonePrefix: '+84', phoneFormat: 'XXX XXX XXXX', flag: '🇻🇳' },
 ];
 
 export const namesByCountry: Record<string, { firstNames: string[], lastNames: string[] }> = {
   CN: {
     firstNames: ['伟', '芳', '娜', '秀英', '敏', '静', '丽', '强', '磊', '军'],
     lastNames: ['王', '李', '张', '刘', '陈', '杨', '赵', '黄', '周', '吴'],
+  },
+  HK: {
+    firstNames: ['志明', '嘉欣', '家豪', '诗雅', '伟豪', '咏琪', '健华', '美玲', '俊杰', '雅婷'],
+    lastNames: ['陈', '黄', '李', '林', '张', '吴', '刘', '梁', '郑', '何'],
+  },
+  TW: {
+    firstNames: ['志豪', '淑芬', '建宏', '雅婷', '家豪', '怡君', '俊宏', '淑惠', '志伟', '美玲'],
+    lastNames: ['陈', '林', '黄', '张', '李', '王', '吴', '刘', '蔡', '杨'],
+  },
+  MO: {
+    firstNames: ['志明', '嘉欣', '家豪', '诗雅', '伟豪', '咏琪', '健华', '美玲', '俊杰', '雅婷'],
+    lastNames: ['陈', '黄', '李', '林', '张', '吴', '刘', '梁', '郑', '何'],
+  },
+  SG: {
+    firstNames: ['Wei Ming', 'Hui Ling', 'Jun Hao', 'Xin Yi', 'Kai Wen', 'Ying Xuan', 'Jia Wei', 'Li Ting', 'Zhi Hao', 'Mei Lin'],
+    lastNames: ['Tan', 'Lim', 'Lee', 'Ng', 'Ong', 'Wong', 'Goh', 'Chua', 'Chan', 'Koh'],
   },
   US: {
     firstNames: ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth'],
