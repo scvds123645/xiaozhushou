@@ -181,20 +181,20 @@ export default function Home() {
             placeholder="🔍 搜索国家..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 placeholder-gray-500 text-base"
           />
-          <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg">
+          <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg bg-white">
             {filteredCountries.map((country) => (
               <button
                 key={country.code}
                 onClick={() => setSelectedCountry(country)}
-                className={`w-full text-left px-4 py-3 hover:bg-indigo-50 transition-colors ${
+                className={`w-full text-left px-4 py-3 hover:bg-indigo-50 transition-colors border-b border-gray-100 last:border-b-0 ${
                   selectedCountry.code === country.code ? 'bg-indigo-100 border-l-4 border-indigo-600' : ''
                 }`}
               >
-                <span className="text-2xl mr-2">{country.flag}</span>
-                <span className="font-medium">{country.name}</span>
-                <span className="text-gray-500 ml-2">({country.phonePrefix})</span>
+                <span className="text-2xl mr-3">{country.flag}</span>
+                <span className="font-semibold text-gray-900 text-base">{country.name}</span>
+                <span className="text-gray-600 ml-2 font-medium">({country.phonePrefix})</span>
               </button>
             ))}
           </div>
@@ -287,17 +287,17 @@ export default function Home() {
 function InfoField({ label, value, onCopy }: { label: string; value: string; onCopy: (text: string, label: string) => void }) {
   return (
     <div className="flex-1">
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      <label className="block text-sm font-semibold text-gray-800 mb-2">{label}</label>
       <div className="flex gap-2">
         <input
           type="text"
           value={value}
           readOnly
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-800 font-mono"
+          className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg bg-gray-50 text-gray-900 font-mono text-base font-medium"
         />
         <button
           onClick={() => onCopy(value, label)}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+          className="px-5 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-semibold shadow-sm hover:shadow-md"
         >
           复制
         </button>
