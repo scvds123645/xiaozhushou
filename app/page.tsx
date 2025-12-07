@@ -113,8 +113,14 @@ export default function Home() {
     }
   }, [selectedCountry, isLoading]);
 
+  // 移动端友好的复制函数 - 添加震动反馈
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text).then(() => {
+      // 添加震动反馈 (iOS/Android 支持)
+      if (navigator.vibrate) {
+        navigator.vibrate(50); // 震动 50ms
+      }
+      
       setToastMessage(`${label} 已复制`);
       setShowToast(true);
       setTimeout(() => setShowToast(false), 2000);
@@ -219,7 +225,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* 国家选择 - 移除搜索框 */}
+        {/* 国家选择 */}
         <div className="apple-card mb-4 sm:mb-6">
           <label className="block text-xs sm:text-sm font-sf-semibold text-gray-900 mb-2 sm:mb-3">
             选择国家/地区
@@ -298,7 +304,7 @@ export default function Home() {
           )}
         </div>
 
-        {/* 生成的信息 - 移动端优化 */}
+        {/* 生成的信息 */}
         <div className="apple-card mb-4 sm:mb-6">
           <div className="flex items-center justify-between mb-4 sm:mb-6 gap-2">
             <h2 className="text-base sm:text-xl font-sf-bold text-gray-900">生成的身份信息</h2>
@@ -329,7 +335,7 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Telegram 推广 - 移动端优化 */}
+        {/* Telegram 推广 */}
         <div className="apple-card bg-gradient-to-br from-sf-blue/10 to-sf-purple/10 mb-4 sm:mb-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4 gap-3">
             <div className="flex-1">
@@ -348,7 +354,7 @@ export default function Home() {
           </a>
         </div>
 
-        {/* 神秘代码 - 移动端优化 */}
+        {/* 神秘代码 */}
         <div className="apple-card bg-gradient-to-br from-yellow-50 to-orange-50">
           <div className="flex items-center justify-between gap-3">
             <div className="flex-1 min-w-0">
@@ -364,20 +370,26 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 底部说明 - 移动端优化 */}
+        {/* 底部说明 */}
         <div className="mt-4 sm:mt-8 text-center text-xs sm:text-sm text-gray-600 space-y-1 px-2">
           <p>⚠️ 此工具仅用于测试和开发目的</p>
           <p>所有数据随机生成,不对应真实个人信息</p>
         </div>
       </div>
 
-      {/* Toast 提示 - 移动端优化 */}
+      {/* 移动端友好的 Toast - 底部居中 + 震动反馈 */}
       {showToast && (
-        <div className="fixed bottom-4 sm:bottom-8 left-1/2 -translate-x-1/2 apple-toast z-50 text-sm sm:text-base mx-3">
-          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-          {toastMessage}
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 animate-toast-slide-up">
+          <div className="apple-toast-mobile px-6 py-3 bg-black/90 backdrop-blur-xl rounded-full shadow-2xl">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+              </svg>
+              <span className="text-white font-sf-semibold text-sm">
+                {toastMessage}
+              </span>
+            </div>
+          </div>
         </div>
       )}
     </div>
