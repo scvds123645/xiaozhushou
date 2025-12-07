@@ -2,14 +2,23 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "随机身份生成器 - 专业测试工具",
-  description: "快速生成逼真的随机身份信息，支持100+国家，包含姓名、生日、手机号、邮箱等完整数据，专为开发测试设计",
-  keywords: "随机身份生成器,假身份,测试数据,临时邮箱,开发工具",
+  title: "Facebook 创号小助手 - 快速生成真实身份信息",
+  description: "专为 Facebook 注册设计的身份生成工具，智能生成符合真实用户特征的姓名、生日、手机号、邮箱等信息，支持全球100+国家地区，提高账号注册成功率",
+  keywords: "Facebook创号,FB注册助手,Facebook账号生成器,FB身份生成,社交媒体注册工具,Facebook注册信息,临时邮箱,测试账号",
   viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "随机身份生成器"
+    title: "FB创号小助手"
+  },
+  openGraph: {
+    title: "Facebook 创号小助手 - 智能身份生成工具",
+    description: "快速生成符合 Facebook 用户特征的真实身份信息，支持全球地区",
+    type: "website",
+  },
+  robots: {
+    index: true,
+    follow: true,
   }
 };
 
@@ -23,6 +32,10 @@ export default function RootLayout({
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="theme-color" content="#1877F2" />
+        <meta name="application-name" content="FB创号小助手" />
+        <meta name="apple-mobile-web-app-title" content="FB创号小助手" />
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📱</text></svg>" />
       </head>
       <body className="antialiased">
         {children}
