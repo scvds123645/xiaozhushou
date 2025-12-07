@@ -1,186 +1,18 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+// ✅ 从 lib 导入所有函数和数据
+import { 
+  generateName, 
+  generateBirthday, 
+  generatePhone, 
+  generatePassword, 
+  generateEmail,
+  getCountryConfig 
+} from '@/lib/generator';
+import { countries, CountryConfig } from '@/lib/countryData';
 
-// ==================== 数据配置 ====================
-
-interface CountryConfig {
-  code: string;
-  name: string;
-  phonePrefix: string;
-  phoneFormat: string;
-  flag: string;
-}
-
-const countries: CountryConfig[] = [
-  { code: 'CN', name: '中国', phonePrefix: '+86', phoneFormat: '1XXXXXXXXXX', flag: '🇨🇳' },
-  { code: 'HK', name: '香港', phonePrefix: '+852', phoneFormat: 'XXXX XXXX', flag: '🇭🇰' },
-  { code: 'TW', name: '台湾', phonePrefix: '+886', phoneFormat: 'XXXX XXX XXX', flag: '🇹🇼' },
-  { code: 'MO', name: '澳门', phonePrefix: '+853', phoneFormat: 'XXXX XXXX', flag: '🇲🇴' },
-  { code: 'SG', name: '新加坡', phonePrefix: '+65', phoneFormat: 'XXXX XXXX', flag: '🇸🇬' },
-  { code: 'US', name: '美国', phonePrefix: '+1', phoneFormat: 'XXX-XXX-XXXX', flag: '🇺🇸' },
-  { code: 'JP', name: '日本', phonePrefix: '+81', phoneFormat: 'XX-XXXX-XXXX', flag: '🇯🇵' },
-  { code: 'GB', name: '英国', phonePrefix: '+44', phoneFormat: 'XXXX XXX XXX', flag: '🇬🇧' },
-  { code: 'DE', name: '德国', phonePrefix: '+49', phoneFormat: 'XXX XXXXXXXX', flag: '🇩🇪' },
-  { code: 'FR', name: '法国', phonePrefix: '+33', phoneFormat: 'X XX XX XX XX', flag: '🇫🇷' },
-  { code: 'KR', name: '韩国', phonePrefix: '+82', phoneFormat: 'XX-XXXX-XXXX', flag: '🇰🇷' },
-  { code: 'TH', name: '泰国', phonePrefix: '+66', phoneFormat: 'XX XXX XXXX', flag: '🇹🇭' },
-];
-
-const namesByCountry: Record<string, { firstNames: string[], lastNames: string[] }> = {
-  CN: {
-    firstNames: ['伟', '强', '磊', '军', '波', '涛', '超', '勇', '杰', '鹏', '芳', '娜', '秀英', '敏', '静', '丽', '艳', '秀兰', '莉'],
-    lastNames: ['王', '李', '张', '刘', '陈', '杨', '赵', '黄', '周', '吴', '徐', '孙', '胡', '朱', '高', '林', '何', '郭', '马', '罗'],
-  },
-  US: {
-    firstNames: ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth', 'David', 'Barbara', 'Richard', 'Susan', 'Joseph', 'Jessica', 'Thomas', 'Sarah', 'Charles', 'Karen'],
-    lastNames: ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee'],
-  },
-  TH: {
-    firstNames: ['Somchai', 'Somsak', 'Surasak', 'Wichai', 'Narong', 'Somying', 'Siriporn', 'Sumalee', 'Pensri', 'Wilaiwan'],
-    lastNames: ['Siriwat', 'Chaiyaporn', 'Rattanakorn', 'Thongchai', 'Jaturong', 'Pattanasin', 'Suwannarat', 'Thanawat', 'Wongsuwan', 'Boonyarat'],
-  },
-};
-
-// ==================== 工具函数 ====================
-
-function convertToLatinChars(str: string): string {
-  const normalized = str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  const ascii = normalized.replace(/[^a-zA-Z0-9]/g, "");
-  
-  if (ascii.length === 0) {
-    const chars = "abcdefghijklmnopqrstuvwxyz";
-    let result = "";
-    for (let i = 0; i < 5; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
-  }
-  return ascii.toLowerCase();
-}
-
-function randomDigit(min: number = 0, max: number = 9): string {
-  return Math.floor(Math.random() * (max - min + 1) + min).toString();
-}
-
-function randomDigits(length: number, min: number = 0, max: number = 9): string {
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    result += randomDigit(min, max);
-  }
-  return result;
-}
-
-function generateName(countryCode: string) {
-  const config = namesByCountry[countryCode] || namesByCountry['US'];
-  const firstName = config.firstNames[Math.floor(Math.random() * config.firstNames.length)];
-  const lastName = config.lastNames[Math.floor(Math.random() * config.lastNames.length)];
-  return { firstName, lastName };
-}
-
-function generateBirthday() {
-  const currentYear = new Date().getFullYear();
-  const random = Math.random();
-  let age: number;
-  
-  if (random < 0.25) {
-    age = Math.floor(Math.random() * 7) + 18;
-  } else if (random < 0.60) {
-    age = Math.floor(Math.random() * 10) + 25;
-  } else if (random < 0.80) {
-    age = Math.floor(Math.random() * 10) + 35;
-  } else if (random < 0.92) {
-    age = Math.floor(Math.random() * 10) + 45;
-  } else {
-    age = Math.floor(Math.random() * 11) + 55;
-  }
-  
-  const birthYear = currentYear - age;
-  const month = Math.floor(Math.random() * 12) + 1;
-  const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  
-  if (month === 2 && birthYear % 4 === 0 && (birthYear % 100 !== 0 || birthYear % 400 === 0)) {
-    daysInMonth[1] = 29;
-  }
-  
-  const day = Math.floor(Math.random() * daysInMonth[month - 1]) + 1;
-  const monthStr = month.toString().padStart(2, '0');
-  const dayStr = day.toString().padStart(2, '0');
-  
-  return `${birthYear}-${monthStr}-${dayStr}`;
-}
-
-function generatePhone(country: CountryConfig) {
-  const code = country.code;
-  let phone = '';
-
-  switch (code) {
-    case 'CN':
-      const cnPrefixes = ['30', '31', '32', '50', '51', '52', '55', '56', '80', '81', '82', '85', '86', '87', '88', '89'];
-      phone = '1' + cnPrefixes[Math.floor(Math.random() * cnPrefixes.length)] + randomDigits(8);
-      return `${country.phonePrefix} ${phone}`;
-
-    case 'TH':
-      const thFirst = ['6', '8', '9'][Math.floor(Math.random() * 3)];
-      phone = thFirst + randomDigits(8);
-      return `${country.phonePrefix} ${phone.slice(0, 2)} ${phone.slice(2, 5)} ${phone.slice(5)}`;
-
-    case 'US':
-      const areaCode = randomDigit(2, 9) + randomDigits(2);
-      const exchange = randomDigit(2, 9) + randomDigits(2);
-      const subscriber = randomDigits(4);
-      return `${country.phonePrefix} ${areaCode}-${exchange}-${subscriber}`;
-
-    default:
-      phone = country.phoneFormat;
-      while (phone.includes('X')) {
-        phone = phone.replace('X', randomDigit().toString());
-      }
-      return `${country.phonePrefix} ${phone}`;
-  }
-}
-
-function generatePassword() {
-  const length = 12;
-  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
-  let ret = "";
-  for (let i = 0; i < length; ++i) {
-    ret += charset.charAt(Math.floor(Math.random() * charset.length));
-  }
-  return ret;
-}
-
-function generateEmail(firstName: string, lastName: string) {
-  const domains = ["yopmail.com", "tempmail.com", "guerrillamail.com", "10minutemail.com"];
-  const domain = domains[Math.floor(Math.random() * domains.length)];
-  
-  const cleanFirstName = convertToLatinChars(firstName);
-  const cleanLastName = convertToLatinChars(lastName);
-  const birthYear = Math.floor(Math.random() * (2005 - 1985 + 1)) + 1985;
-  const shortYear = birthYear.toString().slice(-2);
-  
-  const separators = ['.', '_', ''];
-  const sep = separators[Math.floor(Math.random() * separators.length)];
-  
-  const formats = [
-    `${cleanLastName}${sep}${cleanFirstName}`,
-    `${cleanFirstName}${sep}${cleanLastName}`,
-    `${cleanLastName}${sep}${cleanFirstName}${birthYear}`,
-    `${cleanFirstName}${sep}${cleanLastName}${shortYear}`,
-  ];
-  
-  let username = formats[Math.floor(Math.random() * formats.length)];
-  username = username.replace(/[^a-z0-9._]/g, '');
-  username = username.replace(/^[._]+|[._]+$/g, '');
-  
-  if (username.length < 5) {
-    username += birthYear;
-  }
-  
-  return `${username}@${domain}`;
-}
-
-// ==================== 主组件 ====================
+// ==================== 类型定义 ====================
 
 interface UserInfo {
   firstName: string;
@@ -197,6 +29,18 @@ interface ToastConfig {
   type: 'success' | 'error' | 'info';
 }
 
+// ✅ IP 信息接口
+interface IPInfo {
+  ip: string;
+  country: string;
+  countryName: string;
+  city: string;
+  region: string;
+  accurate: boolean;
+}
+
+// ==================== 主组件 ====================
+
 export default function FBAssistant() {
   const [selectedCountry, setSelectedCountry] = useState<CountryConfig>(countries[0]);
   const [userInfo, setUserInfo] = useState<UserInfo>({
@@ -207,6 +51,10 @@ export default function FBAssistant() {
   const [isLoading, setIsLoading] = useState(true);
   const [showCountrySelect, setShowCountrySelect] = useState(false);
   const toastIdRef = useRef(0);
+  
+  // ✅ IP 信息状态
+  const [ipInfo, setIpInfo] = useState<IPInfo | null>(null);
+  const [ipLoading, setIpLoading] = useState(true);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     const id = ++toastIdRef.current;
@@ -225,6 +73,45 @@ export default function FBAssistant() {
     }
   };
 
+  // ✅ 获取 IP 信息
+  const fetchIPInfo = async () => {
+    try {
+      setIpLoading(true);
+      const response = await fetch('/api/ip-info');
+      const data = await response.json();
+      
+      setIpInfo({
+        ip: data.ip || '未知',
+        country: data.country || 'US',
+        countryName: data.countryName || '未知',
+        city: data.city || '',
+        region: data.region || '',
+        accurate: data.accurate || false,
+      });
+
+      // ✅ 根据 IP 自动选择国家
+      if (data.accurate && data.country) {
+        const matchedCountry = countries.find(c => c.code === data.country);
+        if (matchedCountry) {
+          setSelectedCountry(matchedCountry);
+        }
+      }
+    } catch (error) {
+      console.error('获取 IP 信息失败:', error);
+      setIpInfo({
+        ip: '获取失败',
+        country: 'US',
+        countryName: '未知',
+        city: '',
+        region: '',
+        accurate: false,
+      });
+    } finally {
+      setIpLoading(false);
+    }
+  };
+
+  // ✅ 使用导入的函数
   const generate = () => {
     const name = generateName(selectedCountry.code);
     setUserInfo({
@@ -238,10 +125,15 @@ export default function FBAssistant() {
   };
 
   useEffect(() => {
-    setTimeout(() => {
-      setIsLoading(false);
-      generate();
-    }, 1000);
+    // 先获取 IP 信息，再生成用户信息
+    const init = async () => {
+      await fetchIPInfo();
+      setTimeout(() => {
+        setIsLoading(false);
+        generate();
+      }, 500);
+    };
+    init();
   }, []);
 
   useEffect(() => {
@@ -287,24 +179,38 @@ export default function FBAssistant() {
             当前环境
           </div>
           <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.03)] ring-1 ring-black/5">
-            {/* IP Info */}
+            {/* ✅ IP Info - 动态显示 */}
             <div className="flex items-center justify-between p-4 bg-white">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-lg">
-                  📡
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-lg flex-shrink-0">
+                  {ipLoading ? '⏳' : '📡'}
                 </div>
-                <div>
-                  <div className="text-[15px] font-semibold text-gray-900">
-                    127.0.0.1
-                  </div>
-                  <div className="text-[13px] text-gray-500">
-                    本地网络
-                  </div>
+                <div className="flex-1 min-w-0">
+                  {ipLoading ? (
+                    <>
+                      <div className="h-4 bg-gray-200 rounded w-24 animate-pulse mb-1"></div>
+                      <div className="h-3 bg-gray-100 rounded w-16 animate-pulse"></div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-[15px] font-semibold text-gray-900 truncate">
+                        {ipInfo?.ip || '未知'}
+                      </div>
+                      <div className="text-[13px] text-gray-500 truncate">
+                        {ipInfo?.city && ipInfo?.region 
+                          ? `${ipInfo.city}, ${ipInfo.region}` 
+                          : ipInfo?.countryName || '未知位置'
+                        }
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-[#34C759] animate-pulse"></div>
-                <span className="text-xs font-medium text-[#34C759]">安全</span>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <div className={`w-2 h-2 rounded-full ${ipInfo?.accurate ? 'bg-[#34C759]' : 'bg-orange-400'} animate-pulse`}></div>
+                <span className={`text-xs font-medium ${ipInfo?.accurate ? 'text-[#34C759]' : 'text-orange-500'}`}>
+                  {ipLoading ? '检测中' : (ipInfo?.accurate ? '已验证' : '未验证')}
+                </span>
               </div>
             </div>
 
