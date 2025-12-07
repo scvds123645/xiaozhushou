@@ -80,6 +80,8 @@ export default function FBAssistant() {
       const response = await fetch('/api/ip-info');
       const data = await response.json();
       
+      console.log('=== IP API 返回完整数据 ===', data);
+      
       setIpInfo({
         ip: data.ip || '未知',
         country: data.country || 'US',
@@ -89,11 +91,14 @@ export default function FBAssistant() {
         accurate: data.accurate || false,
       });
 
-      // ✅ 根据 IP 自动选择国家
-      if (data.accurate && data.country) {
+      // ✅ 根据 IP 自动选择国家(即使 accurate 为 false 也尝试匹配)
+      if (data.country) {
         const matchedCountry = countries.find(c => c.code === data.country);
         if (matchedCountry) {
           setSelectedCountry(matchedCountry);
+          console.log('已自动选择国家:', matchedCountry.name, matchedCountry.code);
+        } else {
+          console.warn('未找到匹配的国家配置:', data.country);
         }
       }
     } catch (error) {
