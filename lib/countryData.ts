@@ -9,8 +9,8 @@ export interface CountryConfig {
 export const countries: CountryConfig[] = [  
   { code: 'CN', name: '中国', phonePrefix: '+86', phoneFormat: '1XXXXXXXXXX', flag: '🇨🇳' },  
   { code: 'HK', name: '香港', phonePrefix: '+852', phoneFormat: 'XXXX XXXX', flag: '🇭🇰' },  
-  { code: 'TW', name: '台湾', phonePrefix: '+886', phoneFormat: 'XXXX XXX XXX', flag: '🇹🇼' },  
-  { code: 'MO', name: '澳门', phonePrefix: '+853', phoneFormat: 'XXXX XXXX', flag: '🇲🇴' },  
+  { code: 'TW', name: '台灣', phonePrefix: '+886', phoneFormat: 'XXXX XXX XXX', flag: '🇹🇼' },  
+  { code: 'MO', name: '澳門', phonePrefix: '+853', phoneFormat: 'XXXX XXXX', flag: '🇲🇴' },  
   { code: 'SG', name: '新加坡', phonePrefix: '+65', phoneFormat: 'XXXX XXXX', flag: '🇸🇬' },  
   { code: 'US', name: '美国', phonePrefix: '+1', phoneFormat: 'XXX-XXX-XXXX', flag: '🇺🇸' },  
   { code: 'JP', name: '日本', phonePrefix: '+81', phoneFormat: 'XX-XXXX-XXXX', flag: '🇯🇵' },  
@@ -39,6 +39,7 @@ export const countries: CountryConfig[] = [
 ];  
   
 export const namesByCountry: Record<string, { firstNames: string[], lastNames: string[] }> = {  
+  // 中国大陆 - 简体中文
   CN: {  
     firstNames: [  
       '伟', '强', '磊', '军', '波', '涛', '超', '勇', '杰', '鹏',  
@@ -51,37 +52,41 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       '徐', '孙', '胡', '朱', '高', '林', '何', '郭', '马', '罗',  
       '梁', '宋', '郑', '谢', '韩', '唐', '冯', '于', '董', '萧'  
     ],  
-  },  
+  },
+  // 香港 - 繁体中文
   HK: {  
     firstNames: [  
-      '志明', '家豪', '伟豪', '健华', '俊杰', '建华', '俊宏', '志伟', '家辉', '伟强',  
-      '嘉欣', '诗雅', '咏琪', '美玲', '雅婷', '慧敏', '淑贤', '美华', '丽珍', '秀娟'  
+      '志明', '家豪', '偉豪', '健華', '俊傑', '建華', '俊宏', '志偉', '家輝', '偉強',  
+      '嘉欣', '詩雅', '詠琪', '美玲', '雅婷', '慧敏', '淑賢', '美華', '麗珍', '秀娟'  
     ],  
     lastNames: [  
-      '陈', '黄', '李', '林', '张', '吴', '刘', '梁', '郑', '何',  
-      '罗', '高', '叶', '朱', '钟', '卢', '潘', '谢', '曾', '邓'  
+      '陳', '黃', '李', '林', '張', '吳', '劉', '梁', '鄭', '何',  
+      '羅', '高', '葉', '朱', '鍾', '盧', '潘', '謝', '曾', '鄧'  
     ],  
-  },  
+  },
+  // 台湾 - 繁体中文
   TW: {  
     firstNames: [  
-      '志豪', '建宏', '家豪', '俊宏', '志伟', '宗翰', '宇翔', '承翰', '冠廷', '柏翰',  
-      '淑芬', '雅婷', '怡君', '淑惠', '美玲', '佩珊', '雅雯', '欣怡', '诗涵', '静怡'  
+      '志豪', '建宏', '家豪', '俊宏', '志偉', '宗翰', '宇翔', '承翰', '冠廷', '柏翰',  
+      '淑芬', '雅婷', '怡君', '淑惠', '美玲', '佩珊', '雅雯', '欣怡', '詩涵', '靜怡'  
     ],  
     lastNames: [  
-      '陈', '林', '黄', '张', '李', '王', '吴', '刘', '蔡', '杨',  
-      '郑', '赖', '谢', '徐', '许', '何', '罗', '叶', '苏', '周'  
+      '陳', '林', '黃', '張', '李', '王', '吳', '劉', '蔡', '楊',  
+      '鄭', '賴', '謝', '徐', '許', '何', '羅', '葉', '蘇', '周'  
     ],  
-  },  
+  },
+  // 澳门 - 繁体中文
   MO: {  
     firstNames: [  
-      '志明', '嘉欣', '家豪', '诗雅', '伟豪', '咏琪', '健华', '美玲', '俊杰', '雅婷',  
-      '建华', '淑贤', '志强', '慧敏', '德华', '美华', '家辉', '丽珍', '俊宏', '秀娟'  
+      '志明', '嘉欣', '家豪', '詩雅', '偉豪', '詠琪', '健華', '美玲', '俊傑', '雅婷',  
+      '建華', '淑賢', '志強', '慧敏', '德華', '美華', '家輝', '麗珍', '俊宏', '秀娟'  
     ],  
     lastNames: [  
-      '陈', '黄', '李', '林', '张', '吴', '刘', '梁', '郑', '何',  
-      '罗', '高', '叶', '朱', '钟', '卢', '潘', '谢', '曾', '邓'  
+      '陳', '黃', '李', '林', '張', '吳', '劉', '梁', '鄭', '何',  
+      '羅', '高', '葉', '朱', '鍾', '盧', '潘', '謝', '曾', '鄧'  
     ],  
-  },  
+  },
+  // 新加坡 - 简体中文（新加坡官方使用简体）
   SG: {  
     firstNames: [  
       'Wei Ming', 'Jun Hao', 'Kai Wen', 'Jia Wei', 'Zhi Hao', 'Wei Jie', 'Jun Wei', 'Kai Yang',  
@@ -91,8 +96,7 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       'Tan', 'Lim', 'Lee', 'Ng', 'Ong', 'Wong', 'Goh', 'Chua', 'Chan', 'Koh',  
       'Teo', 'Ang', 'Yeo', 'Low', 'Tay', 'Sim', 'Chia', 'Ho', 'Chong', 'Seah'  
     ],  
-  },  
-  // 新增 US 数据（关键修复点）  
+  },
   US: {  
     firstNames: [  
       'James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth',  
@@ -105,8 +109,7 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin',  
       'Lee', 'Perez', 'Thompson', 'White', 'Harris', 'Sanchez', 'Clark', 'Ramirez', 'Lewis', 'Robinson'  
     ],  
-  },  
-  // 补充 GB 数据  
+  },
   GB: {  
     firstNames: [  
       'Oliver', 'George', 'Harry', 'Noah', 'Jack', 'Leo', 'Arthur', 'Muhammad', 'Oscar', 'Charlie',  
@@ -116,8 +119,7 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       'Smith', 'Jones', 'Williams', 'Taylor', 'Brown', 'Davies', 'Evans', 'Wilson', 'Thomas', 'Roberts',  
       'Johnson', 'Lewis', 'Walker', 'Robinson', 'Wood', 'Thompson', 'Wright', 'Watson', 'Edwards', 'Hughes'  
     ],  
-  },  
-  // 补充 DE 数据  
+  },
   DE: {  
     firstNames: [  
       'Maximilian', 'Alexander', 'Paul', 'Elias', 'Ben', 'Noah', 'Leon', 'Louis', 'Jonas', 'Felix',  
@@ -127,8 +129,7 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       'Müller', 'Schmidt', 'Schneider', 'Fischer', 'Weber', 'Meyer', 'Wagner', 'Becker', 'Schulz', 'Hoffmann',  
       'Schäfer', 'Koch', 'Bauer', 'Richter', 'Klein', 'Wolf', 'Schröder', 'Neumann', 'Schwarz', 'Zimmermann'  
     ],  
-  },  
-  // 补充 FR 数据  
+  },
   FR: {  
     firstNames: [  
       'Gabriel', 'Léo', 'Raphaël', 'Arthur', 'Louis', 'Lucas', 'Adam', 'Jules', 'Hugo', 'Maël',  
@@ -138,8 +139,7 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       'Martin', 'Bernard', 'Thomas', 'Petit', 'Robert', 'Richard', 'Durand', 'Dubois', 'Moreau', 'Laurent',  
       'Simon', 'Michel', 'Lefebvre', 'Leroy', 'Roux', 'David', 'Bertrand', 'Morel', 'Fournier', 'Girard'  
     ],  
-  },  
-  // 补充 RU 数据  
+  },
   RU: {  
     firstNames: [  
       'Alexander', 'Mikhail', 'Maxim', 'Ivan', 'Artem', 'Dmitry', 'Daniil', 'Mark', 'Lev', 'Matvey',  
@@ -149,7 +149,7 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       'Ivanov', 'Smirnov', 'Kuznetsov', 'Popov', 'Vasilyev', 'Petrov', 'Sokolov', 'Mikhailov', 'Novikov', 'Fedorov',  
       'Morozov', 'Volkov', 'Alekseev', 'Lebedev', 'Semenov', 'Egorov', 'Pavlov', 'Kozlov', 'Stepanov', 'Nikolaev'  
     ],  
-  },  
+  },
   JP: {  
     firstNames: [  
       '太郎', '一郎', '健太', '翔', '大輔', '健', '誠', '拓也', '大樹', '裕太',  
@@ -199,4 +199,4 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       'Desai', 'Shah', 'Kapoor', 'Chopra', 'Malhotra', 'Agarwal', 'Bansal', 'Goyal', 'Jain', 'Khanna'  
     ],  
   },  
-};  
+};
