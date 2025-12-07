@@ -286,24 +286,23 @@ export default function Home() {
               />
               
               <div 
-                className="fixed left-3 right-3 sm:left-4 sm:right-4 top-1/2 bg-white/95 backdrop-blur-2xl rounded-2xl sm:rounded-3xl shadow-apple-xl z-50 overflow-hidden max-w-2xl mx-auto border border-gray-200"
+                className="fixed inset-x-4 top-1/2 -translate-y-1/2 bg-white/98 backdrop-blur-2xl rounded-3xl shadow-apple-xl z-50 overflow-hidden max-w-md mx-auto border border-gray-200"
                 style={{ 
-                  transform: 'translate(-50%, -50%)',
-                  left: '50%',
-                  animation: 'modalFadeIn 300ms cubic-bezier(0.25, 0.1, 0.25, 1)'
+                  animation: 'modalFadeIn 300ms cubic-bezier(0.25, 0.1, 0.25, 1)',
+                  maxHeight: '70vh'
                 }}
               >
-                <div className="p-4 sm:p-6 border-b border-gray-200">
-                  <div className="flex items-center justify-between mb-3 sm:mb-4">
-                    <h3 className="text-base sm:text-xl font-sf-bold text-gray-900">选择国家/地区</h3>
+                <div className="sticky top-0 p-5 bg-white/98 backdrop-blur-xl border-b border-gray-100 z-10">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-sf-bold text-gray-900">选择国家/地区</h3>
                     <button 
                       onClick={() => {
                         setShowCountrySelect(false);
                         setSearchQuery('');
                       }}
-                      className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all"
+                      className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all"
                     >
-                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>
@@ -313,10 +312,11 @@ export default function Home() {
                     placeholder="搜索国家..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="apple-search w-full text-sm sm:text-base"
+                    className="apple-search w-full text-base"
+                    autoFocus
                   />
                 </div>
-                <div className="max-h-60 sm:max-h-96 overflow-y-auto" ref={countryListRef}>
+                <div className="overflow-y-auto" style={{ maxHeight: 'calc(70vh - 140px)' }} ref={countryListRef}>
                   {filteredCountries.map((country) => (
                     <button
                       key={country.code}
@@ -326,13 +326,22 @@ export default function Home() {
                         setShowCountrySelect(false);
                         setSearchQuery('');
                       }}
-                      className={`w-full text-left px-4 sm:px-6 py-3 sm:py-4 hover:bg-gray-50 active:bg-gray-100 transition-all border-b border-gray-100 last:border-b-0 ${
+                      className={`w-full text-left px-5 py-4 hover:bg-gray-50 active:bg-gray-100 transition-all border-b border-gray-100 last:border-b-0 ${
                         selectedCountry.code === country.code ? 'bg-sf-blue/5 border-l-4 border-l-sf-blue' : ''
                       }`}
                     >
-                      <span className="text-xl sm:text-2xl mr-2 sm:mr-3">{country.flag}</span>
-                      <span className="font-sf-semibold text-gray-900 text-sm sm:text-base">{country.name}</span>
-                      <span className="text-gray-600 ml-2 font-sf-mono text-xs sm:text-sm">({country.phonePrefix})</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-3xl">{country.flag}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-sf-semibold text-gray-900 text-base">{country.name}</div>
+                          <div className="text-gray-500 font-sf-mono text-sm">{country.phonePrefix}</div>
+                        </div>
+                        {selectedCountry.code === country.code && (
+                          <svg className="w-6 h-6 text-sf-blue flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
                     </button>
                   ))}
                 </div>
