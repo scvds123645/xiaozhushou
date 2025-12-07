@@ -24,21 +24,54 @@ export function generateName(countryCode: string) {
   return { firstName, lastName };    
 }    
     
-// 2. 生成生日  
-export function generateBirthday() {    
-  const currentYear = new Date().getFullYear();    
-  const minAge = 18;    
-  const maxAge = 60;    
-      
-  const year = currentYear - Math.floor(Math.random() * (maxAge - minAge + 1)) - minAge;    
-  const month = Math.floor(Math.random() * 12) + 1;    
-  const day = Math.floor(Math.random() * 28) + 1;    
-      
-  const monthStr = month.toString().padStart(2, '0');    
-  const dayStr = day.toString().padStart(2, '0');    
-      
-  return `${year}-${monthStr}-${dayStr}`;    
-}    
+// 2. 生成生日 - 优化版：符合 Facebook 用户群体分布
+export function generateBirthday() {
+  const currentYear = new Date().getFullYear();
+  
+  // Facebook 用户年龄分布权重
+  // 基于真实的社交媒体用户数据
+  // 18-24: 25%
+  // 25-34: 35% (最大群体)
+  // 35-44: 20%
+  // 45-54: 12%
+  // 55-65: 8%
+  const random = Math.random();
+  let age: number;
+  
+  if (random < 0.25) {
+    // 18-24 岁 (25%)
+    age = Math.floor(Math.random() * 7) + 18;
+  } else if (random < 0.60) {
+    // 25-34 岁 (35%)
+    age = Math.floor(Math.random() * 10) + 25;
+  } else if (random < 0.80) {
+    // 35-44 岁 (20%)
+    age = Math.floor(Math.random() * 10) + 35;
+  } else if (random < 0.92) {
+    // 45-54 岁 (12%)
+    age = Math.floor(Math.random() * 10) + 45;
+  } else {
+    // 55-65 岁 (8%)
+    age = Math.floor(Math.random() * 11) + 55;
+  }
+  
+  const birthYear = currentYear - age;
+  const month = Math.floor(Math.random() * 12) + 1;
+  
+  // 根据月份确定天数（考虑闰年）
+  const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  // 闰年检查
+  if (month === 2 && birthYear % 4 === 0 && (birthYear % 100 !== 0 || birthYear % 400 === 0)) {
+    daysInMonth[1] = 29;
+  }
+  
+  const day = Math.floor(Math.random() * daysInMonth[month - 1]) + 1;
+  
+  const monthStr = month.toString().padStart(2, '0');
+  const dayStr = day.toString().padStart(2, '0');
+  
+  return `${birthYear}-${monthStr}-${dayStr}`;
+}
     
 // 随机数字生成辅助函数
 function randomDigit(min: number = 0, max: number = 9): string {
