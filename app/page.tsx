@@ -313,7 +313,6 @@ export default function Home() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="apple-search w-full text-base"
-                    autoFocus
                   />
                 </div>
                 <div className="overflow-y-auto" style={{ maxHeight: 'calc(70vh - 140px)' }} ref={countryListRef}>
