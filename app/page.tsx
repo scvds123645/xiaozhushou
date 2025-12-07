@@ -219,7 +219,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* 国家选择 - 移动端优化 */}
+        {/* 国家选择 - 移除搜索框 */}
         <div className="apple-card mb-4 sm:mb-6">
           <label className="block text-xs sm:text-sm font-sf-semibold text-gray-900 mb-2 sm:mb-3">
             选择国家/地区
@@ -271,7 +271,6 @@ export default function Home() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="apple-search w-full text-sm sm:text-base"
-                    autoFocus
                   />
                 </div>
                 <div className="max-h-60 sm:max-h-96 overflow-y-auto" ref={countryListRef}>
