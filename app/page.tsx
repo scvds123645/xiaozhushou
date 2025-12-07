@@ -133,17 +133,20 @@ export default function FBAssistant() {
     // 先获取 IP 信息，再生成用户信息
     const init = async () => {
       await fetchIPInfo();
-      setTimeout(() => {
-        setIsLoading(false);
-        generate();
-      }, 500);
+      setIsLoading(false);
+      // ⚠️ 注意：这里不调用 generate()，让下面的 useEffect 自动触发
     };
     init();
   }, []);
 
   useEffect(() => {
-    if (!isLoading) generate();
-  }, [selectedCountry]);
+    // ✅ 当 selectedCountry 改变时生成新信息
+    // 这样能确保使用正确的国家配置
+    if (!isLoading && selectedCountry) {
+      console.log('国家已更新，重新生成:', selectedCountry.code);
+      generate();
+    }
+  }, [selectedCountry, isLoading]);
 
   if (isLoading) {
     return (
