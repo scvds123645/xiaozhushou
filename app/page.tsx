@@ -265,7 +265,7 @@ export default function FBAssistant() {
         <div className="max-w-md mx-auto flex justify-between items-end">
           <div>
             <h1 className="text-[34px] font-bold tracking-tight text-black leading-tight">
-              FB Assistant
+              脸书小助手
             </h1>
             <p className="text-gray-500 text-[15px] font-medium mt-1">
               注册辅助工具
