@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     title: "FB创号小助手"
   },
   openGraph: {
-    title: "Facebook 创号小助手 - 智能身份生成工具",
+    title: "脸书小助手@fang180",
     description: "快速生成符合 Facebook 用户特征的真实身份信息，支持全球地区",
     type: "website",
   },
