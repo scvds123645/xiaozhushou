@@ -1,44 +1,12 @@
-@import "tailwindcss";
-
-@theme inline {
-  /* Apple System Colors */
-  --color-sf-blue: #007AFF;
-  --color-sf-blue-dark: #0051D5;
-  --color-sf-red: #FF3B30;
-  --color-sf-green: #34C759;
-  --color-sf-gray-bg: #F2F2F7; /* iOS System Gray 6 */
-  --color-sf-card: #FFFFFF;
-  --color-sf-separator: #C6C6C8;
-  
-  /* Fonts */
-  --font-sf: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
-  --font-sf-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
-  --font-mono: "SF Mono", "Menlo", "Monaco", "Courier New", monospace;
-
-  /* Animations */
-  --animate-scale-press: scale-press 0.2s cubic-bezier(0.2, 0, 0, 1);
-  --animate-slide-up-fade: slide-up-fade 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  --animate-slide-down-fade: slide-down-fade 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-
-  @keyframes scale-press {
-    0% { transform: scale(1); }
-    100% { transform: scale(0.96); }
-  }
-  @keyframes slide-up-fade {
-    0% { opacity: 0; transform: translateY(10px) scale(0.98); }
-    100% { opacity: 1; transform: translateY(0) scale(1); }
-  }
-  @keyframes slide-down-fade {
-    0% { opacity: 0; transform: translateY(-10px) scale(0.98); }
-    100% { opacity: 1; transform: translateY(0) scale(1); }
-  }
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* 基础重置 */
 body {
-  background-color: var(--color-sf-gray-bg);
+  background-color: #F2F2F7;
   color: #1D1D1F;
-  font-family: var(--font-sf);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
