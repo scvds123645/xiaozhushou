@@ -29,7 +29,14 @@ interface LocationInfo {
 
 export default function Home() {
   const [selectedCountry, setSelectedCountry] = useState<CountryConfig>(countries[0]);
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [userInfo, setUserInfo] = useState<UserInfo>({
+    firstName: '',
+    lastName: '',
+    birthday: '',
+    phone: '',
+    password: '',
+    email: ''
+  });
   const [locationInfo, setLocationInfo] = useState<LocationInfo | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showToast, setShowToast] = useState(false);
@@ -39,17 +46,40 @@ export default function Home() {
   const [showCountrySelect, setShowCountrySelect] = useState(false);
   const countryListRef = useRef<HTMLDivElement>(null);
 
+  // 生成函数
+  const generate = () => {
+    console.log('Generating for country:', selectedCountry.code);
+    const name = generateName(selectedCountry.code);
+    console.log('Generated name:', name);
+    
+    const info: UserInfo = {
+      firstName: name.firstName,
+      lastName: name.lastName,
+      birthday: generateBirthday(),
+      phone: generatePhone(selectedCountry),
+      password: generatePassword(),
+      email: generateEmail(name.firstName, name.lastName),
+    };
+    
+    console.log('Generated info:', info);
+    setUserInfo(info);
+  };
+
+  // IP 检测
   useEffect(() => {
     setIsLoading(true);
     
     fetch('/api/ip-info')
       .then(res => res.json())
       .then(data => {
+        console.log('Location data:', data);
         setLocationInfo(data);
         const detectedCountry = countries.find(c => c.code === data.country);
         if (detectedCountry) {
+          console.log('Detected country:', detectedCountry);
           setSelectedCountry(detectedCountry);
         } else {
+          console.log('Country not found, using default');
           setSelectedCountry(countries[0]);
         }
         setIsLoading(false);
@@ -61,7 +91,7 @@ export default function Home() {
           setTimeout(() => window.location.reload(), 2000);
         } else {
           setLocationInfo({ 
-            country: 'CN', 
+            country: 'US', 
             ip: '检测失败', 
             city: '', 
             region: '', 
@@ -75,22 +105,13 @@ export default function Home() {
       });
   }, [retryCount]);
 
-  const generate = () => {
-    const name = generateName(selectedCountry.code);
-    const info: UserInfo = {
-      firstName: name.firstName,
-      lastName: name.lastName,
-      birthday: generateBirthday(),
-      phone: generatePhone(selectedCountry),
-      password: generatePassword(),
-      email: generateEmail(name.firstName, name.lastName),
-    };
-    setUserInfo(info);
-  };
-
+  // 国家变化时生成
   useEffect(() => {
-    if (selectedCountry) generate();
-  }, [selectedCountry]);
+    if (selectedCountry && !isLoading) {
+      console.log('Country changed, generating new info');
+      generate();
+    }
+  }, [selectedCountry, isLoading]);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -106,7 +127,7 @@ export default function Home() {
   );
 
   const openEmail = () => {
-    if (!userInfo) return;
+    if (!userInfo || !userInfo.email) return;
     window.open(`https://yopmail.com?${userInfo.email}`, '_blank');
   };
 
@@ -147,7 +168,18 @@ export default function Home() {
     );
   }
 
-  if (!userInfo) return null;
+  // 确保 userInfo 有值
+  if (!userInfo.firstName || !userInfo.email) {
+    console.warn('UserInfo is empty, showing loading...');
+    return (
+      <div className="min-h-screen bg-sf-gray-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="apple-spinner mx-auto mb-4 sm:mb-6"></div>
+          <p className="text-gray-600 text-base sm:text-lg font-sf-medium px-4">正在生成身份信息...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-sf-gray-50 py-4 sm:py-8 px-3 sm:px-4 font-sf">
@@ -360,7 +392,7 @@ function InfoField({ label, value, onCopy }: { label: string; value: string; onC
       <div className="flex gap-2">
         <input
           type="text"
-          value={value}
+          value={value || ''}
           readOnly
           className="flex-1 apple-input-readonly text-xs sm:text-sm min-w-0"
         />
