@@ -193,10 +193,10 @@ export default function FakerGenerator() {
           </div>
         </div>
 
-        {/* Data Display */}
+        {/* Data Display - 姓氏和名字位置交换 */}
         <div className="space-y-3 sm:space-y-4">
-          <DataField label="名字" value={userInfo.firstName} icon="👤" onCopy={() => copyToClipboard(userInfo.firstName, '名字')} />
           <DataField label="姓氏" value={userInfo.lastName} icon="👤" onCopy={() => copyToClipboard(userInfo.lastName, '姓氏')} />
+          <DataField label="名字" value={userInfo.firstName} icon="👤" onCopy={() => copyToClipboard(userInfo.firstName, '名字')} />
           <DataField label="生日" value={userInfo.birthday} icon="🎂" onCopy={() => copyToClipboard(userInfo.birthday, '生日')} />
           <DataField label="手机号" value={userInfo.phone} icon="📱" mono onCopy={() => copyToClipboard(userInfo.phone, '手机号')} />
           <DataField label="密码" value={userInfo.password} icon="🔑" mono onCopy={() => copyToClipboard(userInfo.password, '密码')} />
