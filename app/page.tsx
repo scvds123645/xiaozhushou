@@ -186,7 +186,7 @@ export default function Home() {
       <div className="max-w-3xl mx-auto">
         {/* 导航栏 - 移动端优化 */}
         <header className="mb-4 sm:mb-8 text-center">
-          <h1 className="text-2xl sm:text-4xl font-sf-bold text-gray-900 mb-1 sm:mb-2 tracking-tight">随机身份生成器</h1>
+          <h1 className="text-2xl sm:text-4xl font-sf-bold text-gray-900 mb-1 sm:mb-2 tracking-tight">脸书小助手</h1>
           <p className="text-sm sm:text-base text-gray-600">测试专用 · 安全可靠</p>
         </header>
 
@@ -356,7 +356,7 @@ export default function Home() {
               <p className="text-xs sm:text-sm text-gray-600">复制解锁特殊功能</p>
             </div>
             <button
-              onClick={() => copyToClipboard('FANG180-VIP', '神秘代码')}
+              onClick={() => copyToClipboard('@fang180', '神秘代码')}
               className="apple-button-secondary text-xs sm:text-sm whitespace-nowrap"
             >
               复制代码
