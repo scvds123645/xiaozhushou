@@ -1,8 +1,186 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { countries, CountryConfig } from '@/lib/countryData';
-import { generateName, generateBirthday, generatePhone, generatePassword, generateEmail } from '@/lib/generator';
+
+// ==================== 数据配置 ====================
+
+interface CountryConfig {
+  code: string;
+  name: string;
+  phonePrefix: string;
+  phoneFormat: string;
+  flag: string;
+}
+
+const countries: CountryConfig[] = [
+  { code: 'CN', name: '中国', phonePrefix: '+86', phoneFormat: '1XXXXXXXXXX', flag: '🇨🇳' },
+  { code: 'HK', name: '香港', phonePrefix: '+852', phoneFormat: 'XXXX XXXX', flag: '🇭🇰' },
+  { code: 'TW', name: '台湾', phonePrefix: '+886', phoneFormat: 'XXXX XXX XXX', flag: '🇹🇼' },
+  { code: 'MO', name: '澳门', phonePrefix: '+853', phoneFormat: 'XXXX XXXX', flag: '🇲🇴' },
+  { code: 'SG', name: '新加坡', phonePrefix: '+65', phoneFormat: 'XXXX XXXX', flag: '🇸🇬' },
+  { code: 'US', name: '美国', phonePrefix: '+1', phoneFormat: 'XXX-XXX-XXXX', flag: '🇺🇸' },
+  { code: 'JP', name: '日本', phonePrefix: '+81', phoneFormat: 'XX-XXXX-XXXX', flag: '🇯🇵' },
+  { code: 'GB', name: '英国', phonePrefix: '+44', phoneFormat: 'XXXX XXX XXX', flag: '🇬🇧' },
+  { code: 'DE', name: '德国', phonePrefix: '+49', phoneFormat: 'XXX XXXXXXXX', flag: '🇩🇪' },
+  { code: 'FR', name: '法国', phonePrefix: '+33', phoneFormat: 'X XX XX XX XX', flag: '🇫🇷' },
+  { code: 'KR', name: '韩国', phonePrefix: '+82', phoneFormat: 'XX-XXXX-XXXX', flag: '🇰🇷' },
+  { code: 'TH', name: '泰国', phonePrefix: '+66', phoneFormat: 'XX XXX XXXX', flag: '🇹🇭' },
+];
+
+const namesByCountry: Record<string, { firstNames: string[], lastNames: string[] }> = {
+  CN: {
+    firstNames: ['伟', '强', '磊', '军', '波', '涛', '超', '勇', '杰', '鹏', '芳', '娜', '秀英', '敏', '静', '丽', '艳', '秀兰', '莉'],
+    lastNames: ['王', '李', '张', '刘', '陈', '杨', '赵', '黄', '周', '吴', '徐', '孙', '胡', '朱', '高', '林', '何', '郭', '马', '罗'],
+  },
+  US: {
+    firstNames: ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth', 'David', 'Barbara', 'Richard', 'Susan', 'Joseph', 'Jessica', 'Thomas', 'Sarah', 'Charles', 'Karen'],
+    lastNames: ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee'],
+  },
+  TH: {
+    firstNames: ['Somchai', 'Somsak', 'Surasak', 'Wichai', 'Narong', 'Somying', 'Siriporn', 'Sumalee', 'Pensri', 'Wilaiwan'],
+    lastNames: ['Siriwat', 'Chaiyaporn', 'Rattanakorn', 'Thongchai', 'Jaturong', 'Pattanasin', 'Suwannarat', 'Thanawat', 'Wongsuwan', 'Boonyarat'],
+  },
+};
+
+// ==================== 工具函数 ====================
+
+function convertToLatinChars(str: string): string {
+  const normalized = str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const ascii = normalized.replace(/[^a-zA-Z0-9]/g, "");
+  
+  if (ascii.length === 0) {
+    const chars = "abcdefghijklmnopqrstuvwxyz";
+    let result = "";
+    for (let i = 0; i < 5; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  }
+  return ascii.toLowerCase();
+}
+
+function randomDigit(min: number = 0, max: number = 9): string {
+  return Math.floor(Math.random() * (max - min + 1) + min).toString();
+}
+
+function randomDigits(length: number, min: number = 0, max: number = 9): string {
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += randomDigit(min, max);
+  }
+  return result;
+}
+
+function generateName(countryCode: string) {
+  const config = namesByCountry[countryCode] || namesByCountry['US'];
+  const firstName = config.firstNames[Math.floor(Math.random() * config.firstNames.length)];
+  const lastName = config.lastNames[Math.floor(Math.random() * config.lastNames.length)];
+  return { firstName, lastName };
+}
+
+function generateBirthday() {
+  const currentYear = new Date().getFullYear();
+  const random = Math.random();
+  let age: number;
+  
+  if (random < 0.25) {
+    age = Math.floor(Math.random() * 7) + 18;
+  } else if (random < 0.60) {
+    age = Math.floor(Math.random() * 10) + 25;
+  } else if (random < 0.80) {
+    age = Math.floor(Math.random() * 10) + 35;
+  } else if (random < 0.92) {
+    age = Math.floor(Math.random() * 10) + 45;
+  } else {
+    age = Math.floor(Math.random() * 11) + 55;
+  }
+  
+  const birthYear = currentYear - age;
+  const month = Math.floor(Math.random() * 12) + 1;
+  const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  
+  if (month === 2 && birthYear % 4 === 0 && (birthYear % 100 !== 0 || birthYear % 400 === 0)) {
+    daysInMonth[1] = 29;
+  }
+  
+  const day = Math.floor(Math.random() * daysInMonth[month - 1]) + 1;
+  const monthStr = month.toString().padStart(2, '0');
+  const dayStr = day.toString().padStart(2, '0');
+  
+  return `${birthYear}-${monthStr}-${dayStr}`;
+}
+
+function generatePhone(country: CountryConfig) {
+  const code = country.code;
+  let phone = '';
+
+  switch (code) {
+    case 'CN':
+      const cnPrefixes = ['30', '31', '32', '50', '51', '52', '55', '56', '80', '81', '82', '85', '86', '87', '88', '89'];
+      phone = '1' + cnPrefixes[Math.floor(Math.random() * cnPrefixes.length)] + randomDigits(8);
+      return `${country.phonePrefix} ${phone}`;
+
+    case 'TH':
+      const thFirst = ['6', '8', '9'][Math.floor(Math.random() * 3)];
+      phone = thFirst + randomDigits(8);
+      return `${country.phonePrefix} ${phone.slice(0, 2)} ${phone.slice(2, 5)} ${phone.slice(5)}`;
+
+    case 'US':
+      const areaCode = randomDigit(2, 9) + randomDigits(2);
+      const exchange = randomDigit(2, 9) + randomDigits(2);
+      const subscriber = randomDigits(4);
+      return `${country.phonePrefix} ${areaCode}-${exchange}-${subscriber}`;
+
+    default:
+      phone = country.phoneFormat;
+      while (phone.includes('X')) {
+        phone = phone.replace('X', randomDigit().toString());
+      }
+      return `${country.phonePrefix} ${phone}`;
+  }
+}
+
+function generatePassword() {
+  const length = 12;
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+  let ret = "";
+  for (let i = 0; i < length; ++i) {
+    ret += charset.charAt(Math.floor(Math.random() * charset.length));
+  }
+  return ret;
+}
+
+function generateEmail(firstName: string, lastName: string) {
+  const domains = ["yopmail.com", "tempmail.com", "guerrillamail.com", "10minutemail.com"];
+  const domain = domains[Math.floor(Math.random() * domains.length)];
+  
+  const cleanFirstName = convertToLatinChars(firstName);
+  const cleanLastName = convertToLatinChars(lastName);
+  const birthYear = Math.floor(Math.random() * (2005 - 1985 + 1)) + 1985;
+  const shortYear = birthYear.toString().slice(-2);
+  
+  const separators = ['.', '_', ''];
+  const sep = separators[Math.floor(Math.random() * separators.length)];
+  
+  const formats = [
+    `${cleanLastName}${sep}${cleanFirstName}`,
+    `${cleanFirstName}${sep}${cleanLastName}`,
+    `${cleanLastName}${sep}${cleanFirstName}${birthYear}`,
+    `${cleanFirstName}${sep}${cleanLastName}${shortYear}`,
+  ];
+  
+  let username = formats[Math.floor(Math.random() * formats.length)];
+  username = username.replace(/[^a-z0-9._]/g, '');
+  username = username.replace(/^[._]+|[._]+$/g, '');
+  
+  if (username.length < 5) {
+    username += birthYear;
+  }
+  
+  return `${username}@${domain}`;
+}
+
+// ==================== 主组件 ====================
 
 interface UserInfo {
   firstName: string;
@@ -13,467 +191,375 @@ interface UserInfo {
   email: string;
 }
 
-interface LocationInfo {
-  country: string;
-  ip: string;
-  city: string;
-  region: string;
-  source?: string;
-  accurate?: boolean;
-  countryName?: string;
-  timezone?: string;
-  latitude?: number | null;
-  longitude?: number | null;
-  error?: string;
-}
-
 interface ToastConfig {
   id: number;
   message: string;
   type: 'success' | 'error' | 'info';
 }
 
-export default function Home() {
+export default function FBAssistant() {
   const [selectedCountry, setSelectedCountry] = useState<CountryConfig>(countries[0]);
   const [userInfo, setUserInfo] = useState<UserInfo>({
-    firstName: '',
-    lastName: '',
-    birthday: '',
-    phone: '',
-    password: '',
-    email: ''
+    firstName: '', lastName: '', birthday: '', phone: '', password: '', email: ''
   });
-  const [locationInfo, setLocationInfo] = useState<LocationInfo | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [toasts, setToasts] = useState<ToastConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [retryCount, setRetryCount] = useState(0);
   const [showCountrySelect, setShowCountrySelect] = useState(false);
-  const countryListRef = useRef<HTMLDivElement>(null);
   const toastIdRef = useRef(0);
 
-  // 优化后的 Toast 显示函数
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     const id = ++toastIdRef.current;
-    const newToast: ToastConfig = { id, message, type };
-    
-    setToasts(prev => [...prev, newToast]);
-    
-    // 2秒后自动移除
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 2000);
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 2500);
   };
 
-  // 生成函数
+  const copyToClipboard = async (text: string, label: string) => {
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      if (navigator.vibrate) navigator.vibrate(50);
+      showToast(`${label} 已复制`);
+    } catch (e) {
+      showToast('复制失败', 'error');
+    }
+  };
+
   const generate = () => {
-    console.log('Generating for country:', selectedCountry.code);
     const name = generateName(selectedCountry.code);
-    console.log('Generated name:', name);
-    
-    const info: UserInfo = {
+    setUserInfo({
       firstName: name.firstName,
       lastName: name.lastName,
       birthday: generateBirthday(),
       phone: generatePhone(selectedCountry),
       password: generatePassword(),
       email: generateEmail(name.firstName, name.lastName),
-    };
-    
-    console.log('Generated info:', info);
-    setUserInfo(info);
+    });
   };
 
-  // IP 检测
   useEffect(() => {
-    setIsLoading(true);
-    
-    fetch('/api/ip-info')
-      .then(res => res.json())
-      .then(data => {
-        console.log('Location data:', data);
-        setLocationInfo(data);
-        const detectedCountry = countries.find(c => c.code === data.country);
-        if (detectedCountry) {
-          console.log('Detected country:', detectedCountry);
-          setSelectedCountry(detectedCountry);
-        } else {
-          console.log('Country not found, using default');
-          setSelectedCountry(countries[0]);
-        }
-        setIsLoading(false);
-      })
-      .catch(error => {
-        console.error('IP 检测失败:', error);
-        if (retryCount < 2) {
-          setRetryCount(retryCount + 1);
-          setTimeout(() => window.location.reload(), 2000);
-        } else {
-          setLocationInfo({ 
-            country: 'US', 
-            ip: '检测失败', 
-            city: '', 
-            region: '', 
-            accurate: false, 
-            source: 'fallback',
-            error: '无法连接到 IP 检测服务'
-          });
-          setSelectedCountry(countries[0]);
-          setIsLoading(false);
-        }
-      });
-  }, [retryCount]);
-
-  // 国家变化时生成
-  useEffect(() => {
-    if (selectedCountry && !isLoading) {
-      console.log('Country changed, generating new info');
+    setTimeout(() => {
+      setIsLoading(false);
       generate();
-    }
-  }, [selectedCountry, isLoading]);
-
-  // 优化的复制函数 - 添加震动反馈和错误处理
-  const copyToClipboard = async (text: string, label: string) => {
-    if (!text) {
-      showToast('复制内容为空', 'error');
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(text);
-      
-      // 添加震动反馈 (iOS/Android 支持)
-      if (navigator.vibrate) {
-        navigator.vibrate(50);
-      }
-      
-      showToast(`${label} 已复制`, 'success');
-    } catch (error) {
-      console.error('复制失败:', error);
-      showToast('复制失败,请重试', 'error');
-    }
-  };
-
-  const filteredCountries = countries.filter(c => 
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.code.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const openEmail = () => {
-    if (!userInfo || !userInfo.email) {
-      showToast('邮箱地址无效', 'error');
-      return;
-    }
-    window.open(`https://yopmail.com?${userInfo.email}`, '_blank');
-  };
+    }, 1000);
+  }, []);
 
   useEffect(() => {
-    if (showCountrySelect && countryListRef.current) {
-      document.body.style.overflow = 'hidden';
-      setTimeout(() => {
-        const selectedElement = countryListRef.current?.querySelector(`[data-country="${selectedCountry.code}"]`);
-        if (selectedElement) {
-          selectedElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 100);
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [showCountrySelect, selectedCountry.code]);
-
-  const retryDetection = () => {
-    setRetryCount(0);
-    window.location.reload();
-  };
+    if (!isLoading) generate();
+  }, [selectedCountry]);
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-sf-gray-50 flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="apple-spinner mx-auto mb-4 sm:mb-6"></div>
-          <p className="text-gray-600 text-base sm:text-lg font-sf-medium px-4">正在检测您的位置...</p>
-          <p className="text-gray-500 text-sm mt-2">这可能需要几秒钟</p>
-          {retryCount > 0 && (
-            <p className="text-sf-orange text-sm mt-2">重试中 ({retryCount}/2)...</p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // 确保 userInfo 有值
-  if (!userInfo.firstName || !userInfo.email) {
-    console.warn('UserInfo is empty, showing loading...');
-    return (
-      <div className="min-h-screen bg-sf-gray-50 flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="apple-spinner mx-auto mb-4 sm:mb-6"></div>
-          <p className="text-gray-600 text-base sm:text-lg font-sf-medium px-4">正在生成身份信息...</p>
-        </div>
+      <div className="min-h-screen bg-[#F2F2F7] flex flex-col items-center justify-center">
+        <div className="w-10 h-10 border-4 border-[#007AFF]/20 border-t-[#007AFF] rounded-full animate-spin mb-4"></div>
+        <p className="text-gray-500 text-sm animate-pulse">正在准备环境...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-sf-gray-50 py-4 sm:py-8 px-3 sm:px-4 font-sf">
-      <div className="max-w-3xl mx-auto">
-        {/* 导航栏 - 移动端优化 */}
-        <header className="mb-4 sm:mb-8 text-center">
-          <h1 className="text-2xl sm:text-4xl font-sf-bold text-gray-900 mb-1 sm:mb-2 tracking-tight">脸书小助手</h1>
-          <p className="text-sm sm:text-base text-gray-600">测试专用 · 安全可靠</p>
-        </header>
-
-        {/* IP 信息卡片 - 移动端优化 */}
-        {locationInfo && (
-          <div className={`apple-card mb-4 sm:mb-6 ${locationInfo.error ? 'bg-gradient-to-br from-sf-orange/10 to-sf-red/10' : 'bg-gradient-to-br from-sf-blue/5 to-sf-purple/5'}`}>
-            <div className="flex items-center gap-3 sm:gap-4">
-              <span className="text-3xl sm:text-5xl">{selectedCountry?.flag || '🌍'}</span>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-lg sm:text-2xl font-sf-semibold mb-1 text-gray-900 truncate">
-                  {selectedCountry?.name || '检测中...'}
-                </h3>
-                <p className="text-gray-600 font-sf-mono text-xs sm:text-sm truncate">
-                  IP: {locationInfo.ip}
-                </p>
-              </div>
-            </div>
-
-            {locationInfo.error && (
-              <div className="mt-3 sm:mt-4 p-2.5 sm:p-3 bg-white/60 backdrop-blur-xl rounded-xl border border-gray-200">
-                <p className="text-xs sm:text-sm text-gray-700">⚠️ {locationInfo.error}</p>
-                <button
-                  onClick={retryDetection}
-                  className="apple-button-secondary mt-2 sm:mt-3 text-xs sm:text-sm"
-                >
-                  重试检测
-                </button>
-              </div>
-            )}
+    <div className="min-h-screen bg-[#F2F2F7] pb-20 selection:bg-[#007AFF]/20 selection:text-[#007AFF]">
+      
+      {/* 顶部导航栏 */}
+      <header className="pt-14 pb-4 px-5 sticky top-0 bg-[#F2F2F7]/80 backdrop-blur-xl z-30">
+        <div className="max-w-md mx-auto flex justify-between items-end">
+          <div>
+            <h1 className="text-[34px] font-bold tracking-tight text-black leading-tight">
+              FB Assistant
+            </h1>
+            <p className="text-gray-500 text-[15px] font-medium mt-1">
+              注册辅助工具
+            </p>
           </div>
-        )}
+          <div className="mb-2">
+            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-[#007AFF] text-xs font-bold">
+              v1
+            </span>
+          </div>
+        </div>
+      </header>
 
-        {/* 国家选择 */}
-        <div className="apple-card mb-4 sm:mb-6">
-          <label className="block text-xs sm:text-sm font-sf-semibold text-gray-900 mb-2 sm:mb-3">
-            选择国家/地区
-          </label>
-          
-          <button
-            onClick={() => setShowCountrySelect(!showCountrySelect)}
-            className="apple-input flex items-center justify-between w-full"
-          >
-            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-              <span className="text-xl sm:text-2xl">{selectedCountry.flag}</span>
-              <span className="font-sf-semibold text-gray-900 text-sm sm:text-base truncate">{selectedCountry.name}</span>
-              <span className="text-gray-600 text-xs sm:text-sm font-sf-mono whitespace-nowrap">({selectedCountry.phonePrefix})</span>
-            </div>
-            <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 flex-shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-
-          {showCountrySelect && (
-            <>
-              <div 
-                className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 apple-fade-in"
-                onClick={() => {
-                  setShowCountrySelect(false);
-                  setSearchQuery('');
-                }}
-              />
-              
-              <div 
-                className="fixed inset-x-4 top-1/2 -translate-y-1/2 bg-white/98 backdrop-blur-2xl rounded-3xl shadow-apple-xl z-50 overflow-hidden max-w-md mx-auto border border-gray-200"
-                style={{ 
-                  animation: 'modalFadeIn 300ms cubic-bezier(0.25, 0.1, 0.25, 1)',
-                  maxHeight: '70vh'
-                }}
-              >
-                <div className="sticky top-0 p-5 bg-white/98 backdrop-blur-xl border-b border-gray-100 z-10">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-sf-bold text-gray-900">选择国家/地区</h3>
-                    <button 
-                      onClick={() => {
-                        setShowCountrySelect(false);
-                        setSearchQuery('');
-                      }}
-                      className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all"
-                    >
-                      <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
+      <main className="max-w-md mx-auto px-4 space-y-6">
+        
+        {/* 位置与国家选择 */}
+        <section>
+          <div className="pl-4 mb-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+            当前环境
+          </div>
+          <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.03)] ring-1 ring-black/5">
+            {/* IP Info */}
+            <div className="flex items-center justify-between p-4 bg-white">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-lg">
+                  📡
+                </div>
+                <div>
+                  <div className="text-[15px] font-semibold text-gray-900">
+                    127.0.0.1
                   </div>
-                  <input
-                    type="text"
-                    placeholder="搜索国家..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="apple-search w-full text-base"
-                  />
-                </div>
-                <div className="overflow-y-auto" style={{ maxHeight: 'calc(70vh - 140px)' }} ref={countryListRef}>
-                  {filteredCountries.map((country) => (
-                    <button
-                      key={country.code}
-                      data-country={country.code}
-                      onClick={() => {
-                        setSelectedCountry(country);
-                        setShowCountrySelect(false);
-                        setSearchQuery('');
-                      }}
-                      className={`w-full text-left px-5 py-4 hover:bg-gray-50 active:bg-gray-100 transition-all border-b border-gray-100 last:border-b-0 ${
-                        selectedCountry.code === country.code ? 'bg-sf-blue/5 border-l-4 border-l-sf-blue' : ''
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-3xl">{country.flag}</span>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-sf-semibold text-gray-900 text-base">{country.name}</div>
-                          <div className="text-gray-500 font-sf-mono text-sm">{country.phonePrefix}</div>
-                        </div>
-                        {selectedCountry.code === country.code && (
-                          <svg className="w-6 h-6 text-sf-blue flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </div>
-                    </button>
-                  ))}
+                  <div className="text-[13px] text-gray-500">
+                    本地网络
+                  </div>
                 </div>
               </div>
-            </>
-          )}
-        </div>
-
-        {/* 生成的信息 */}
-        <div className="apple-card mb-4 sm:mb-6">
-          <div className="flex items-center justify-between mb-4 sm:mb-6 gap-2">
-            <h2 className="text-base sm:text-xl font-sf-bold text-gray-900">生成的身份信息</h2>
-            <span className="text-xs sm:text-sm text-gray-600 whitespace-nowrap">基于 {selectedCountry.flag} {selectedCountry.name}</span>
-          </div>
-          
-          <div className="space-y-3 sm:space-y-4">
-            <InfoField label="姓名" value={`${userInfo.lastName} ${userInfo.firstName}`} onCopy={copyToClipboard} />
-            <InfoField label="生日" value={userInfo.birthday} onCopy={copyToClipboard} />
-            <InfoField label="手机号" value={userInfo.phone} onCopy={copyToClipboard} />
-            <InfoField label="密码" value={userInfo.password} onCopy={copyToClipboard} />
-            <div className="space-y-2 sm:space-y-3">
-              <InfoField label="邮箱" value={userInfo.email} onCopy={copyToClipboard} />
-              <button onClick={openEmail} className="apple-button-success w-full text-sm sm:text-base">
-                <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                打开邮箱
-              </button>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-[#34C759] animate-pulse"></div>
+                <span className="text-xs font-medium text-[#34C759]">安全</span>
+              </div>
             </div>
-          </div>
 
-          <button onClick={generate} className="apple-button-primary w-full mt-4 sm:mt-6 text-sm sm:text-base">
-            <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            重新生成
-          </button>
-        </div>
+            <div className="ml-[56px] h-[1px] bg-gray-100"></div>
 
-        {/* Telegram 推广 */}
-        <div className="apple-card bg-gradient-to-br from-sf-blue/10 to-sf-purple/10 mb-4 sm:mb-6">
-          <div className="flex items-center justify-between mb-3 sm:mb-4 gap-3">
-            <div className="flex-1">
-              <h3 className="text-base sm:text-lg font-sf-bold text-gray-900 mb-1">加入 Telegram 频道</h3>
-              <p className="text-xs sm:text-sm text-gray-600">获取更多实用工具</p>
-            </div>
-            <span className="text-2xl sm:text-3xl">✨</span>
-          </div>
-          <a
-            href="https://t.me/fang180"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="apple-button-telegram w-full text-sm sm:text-base"
-          >
-            @fang180
-          </a>
-        </div>
-
-        {/* 神秘代码 */}
-        <div className="apple-card bg-gradient-to-br from-yellow-50 to-orange-50">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <h3 className="font-sf-bold text-gray-900 mb-1 text-sm sm:text-base">神秘代码</h3>
-              <p className="text-xs sm:text-sm text-gray-600">复制解锁特殊功能</p>
-            </div>
-            <button
-              onClick={() => copyToClipboard('@fang180', '神秘代码')}
-              className="apple-button-secondary text-xs sm:text-sm whitespace-nowrap"
+            {/* Country Select */}
+            <button 
+              onClick={() => setShowCountrySelect(true)}
+              className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 active:bg-gray-100 transition-colors group"
             >
-              复制代码
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xl shadow-inner">
+                  {selectedCountry.flag}
+                </div>
+                <div className="text-left">
+                  <div className="text-[15px] font-semibold text-gray-900 group-hover:text-[#007AFF] transition-colors">
+                    {selectedCountry.name}
+                  </div>
+                  <div className="text-[13px] text-gray-500 font-mono">
+                    {selectedCountry.phonePrefix}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-gray-400">
+                <span className="text-[15px]">更改</span>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
             </button>
           </div>
-        </div>
+        </section>
 
-        {/* 底部说明 */}
-        <div className="mt-4 sm:mt-8 text-center text-xs sm:text-sm text-gray-600 space-y-1 px-2">
-          <p>⚠️ 此工具仅用于测试和开发目的</p>
-          <p>所有数据随机生成,不对应真实个人信息</p>
-        </div>
-      </div>
+        {/* 身份信息 */}
+        <section>
+          <div className="flex items-center justify-between px-4 mb-2">
+            <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">生成信息</h3>
+            <button 
+              onClick={generate}
+              className="text-[#007AFF] text-[13px] font-semibold active:opacity-60 transition-opacity"
+            >
+              刷新全部
+            </button>
+          </div>
+          
+          <div className="bg-white rounded-[20px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.03)] ring-1 ring-black/5">
+            <InfoRow 
+              label="姓名" 
+              value={`${userInfo.lastName} ${userInfo.firstName}`} 
+              icon="👤"
+              onCopy={() => copyToClipboard(`${userInfo.lastName} ${userInfo.firstName}`, '姓名')} 
+            />
+            <InfoRow 
+              label="生日" 
+              value={userInfo.birthday} 
+              icon="🎂"
+              onCopy={() => copyToClipboard(userInfo.birthday, '生日')} 
+            />
+            <InfoRow 
+              label="手机" 
+              value={userInfo.phone} 
+              icon="📱"
+              isMono
+              onCopy={() => copyToClipboard(userInfo.phone, '手机号')} 
+            />
+            <InfoRow 
+              label="密码" 
+              value={userInfo.password} 
+              icon="🔑"
+              isMono
+              isLast={false}
+              onCopy={() => copyToClipboard(userInfo.password, '密码')} 
+            />
+            
+            <div className="ml-[52px] h-[1px] bg-gray-100"></div>
+            
+            {/* 邮箱特殊处理 */}
+            <div className="flex items-center justify-between p-3 pl-4 pr-2 bg-white group">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-500 flex items-center justify-center text-sm">
+                  📧
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[11px] text-gray-500 font-medium mb-0.5">邮箱</div>
+                  <div className="text-[15px] text-gray-900 font-mono truncate select-all">
+                    {userInfo.email}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <button 
+                  onClick={() => copyToClipboard(userInfo.email, '邮箱')}
+                  className="p-2 rounded-full text-gray-400 hover:bg-gray-100 hover:text-[#007AFF] active:scale-90 transition-all"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </button>
+                <button 
+                  onClick={() => window.open(`https://yopmail.com?${userInfo.email}`, '_blank')}
+                  className="h-8 px-3 rounded-full bg-indigo-50 text-indigo-600 text-xs font-bold hover:bg-indigo-100 active:scale-95 transition-all"
+                >
+                  查看
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
 
-      {/* 优化的 Toast 容器 - 支持多个 Toast */}
-      <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 items-center pointer-events-none">
+        {/* 操作按钮 */}
+        <section className="pt-2">
+          <button 
+            onClick={generate}
+            className="w-full h-[50px] bg-[#007AFF] hover:bg-[#0051D5] active:scale-[0.98] transition-all rounded-full flex items-center justify-center gap-2 text-white font-semibold text-[17px] shadow-lg shadow-[#007AFF]/20"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            生成新身份
+          </button>
+          
+          <a href="https://t.me/fang180" target="_blank" className="mt-4 w-full h-[50px] bg-white ring-1 ring-black/5 hover:bg-gray-50 active:scale-[0.98] transition-all rounded-full flex items-center justify-center gap-2 text-[#0088CC] font-semibold text-[16px]">
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .24z"/>
+            </svg>
+            加入 Telegram 频道
+          </a>
+        </section>
+
+        <footer className="py-8 text-center space-y-2">
+          <p className="text-xs text-gray-400">Designed by Fang180 • Apple Style UI</p>
+        </footer>
+
+      </main>
+
+      {/* Toast Notification - 优化版 */}
+      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 pointer-events-none">
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className="animate-toast-slide-up apple-toast-mobile px-6 py-3 bg-black/90 backdrop-blur-xl rounded-full shadow-2xl pointer-events-auto"
+            style={{
+              animation: 'slideDownFade 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
+            }}
+            className="bg-gray-900/95 backdrop-blur-xl px-5 py-3 rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.4)] flex items-center gap-3 min-w-[200px] justify-center border border-white/10"
           >
-            <div className="flex items-center gap-2">
-              {toast.type === 'success' && (
-                <svg className="w-5 h-5 text-green-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                </svg>
-              )}
-              {toast.type === 'error' && (
-                <svg className="w-5 h-5 text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              )}
-              {toast.type === 'info' && (
-                <svg className="w-5 h-5 text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              )}
-              <span className="text-white font-sf-semibold text-sm whitespace-nowrap">
-                {toast.message}
-              </span>
-            </div>
+            {toast.type === 'success' && <div className="w-2 h-2 rounded-full bg-[#34C759] shadow-[0_0_12px_rgba(52,199,89,0.8)]"></div>}
+            {toast.type === 'error' && <div className="w-2 h-2 rounded-full bg-[#FF3B30] shadow-[0_0_12px_rgba(255,59,48,0.8)]"></div>}
+            <span className="text-white text-[15px] font-semibold tracking-wide drop-shadow-lg">{toast.message}</span>
           </div>
         ))}
       </div>
+
+      {/* Country Selection Modal */}
+      {showCountrySelect && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          <div 
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity" 
+            onClick={() => setShowCountrySelect(false)}
+          ></div>
+          <div 
+            className="relative w-full max-w-md bg-[#F2F2F7] sm:rounded-2xl rounded-t-2xl shadow-2xl overflow-hidden max-h-[85vh] flex flex-col"
+            style={{
+              animation: 'slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
+            }}
+          >
+            <div className="p-4 bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-10 flex items-center justify-between">
+              <button 
+                onClick={() => setShowCountrySelect(false)}
+                className="text-[#007AFF] text-[15px] font-medium px-2"
+              >
+                取消
+              </button>
+              <span className="font-semibold text-[17px]">选择地区</span>
+              <div className="w-[40px]"></div>
+            </div>
+            
+            <div className="p-3 bg-[#F2F2F7]">
+              <div className="relative">
+                <svg className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input 
+                  type="text" 
+                  placeholder="搜索" 
+                  className="w-full bg-[#E3E3E8] rounded-[10px] py-2 pl-9 pr-4 text-[15px] placeholder-gray-500 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#007AFF]/20 transition-all"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="overflow-y-auto flex-1 bg-white">
+              {countries.filter(c => c.name.includes(searchQuery) || c.code.includes(searchQuery)).map((country) => (
+                <button
+                  key={country.code}
+                  onClick={() => {
+                    setSelectedCountry(country);
+                    setShowCountrySelect(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-gray-100 last:border-0 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                >
+                  <span className="text-2xl">{country.flag}</span>
+                  <span className="flex-1 text-left text-[16px] text-gray-900">{country.name}</span>
+                  <span className="text-gray-400 text-[14px] font-mono">{country.phonePrefix}</span>
+                  {selectedCountry.code === country.code && (
+                    <svg className="w-5 h-5 text-[#007AFF]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        @keyframes slideDownFade {
+          0% { opacity: 0; transform: translateY(-10px) scale(0.98); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes slideUpFade {
+          0% { opacity: 0; transform: translateY(10px) scale(0.98); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
     </div>
   );
 }
 
-function InfoField({ label, value, onCopy }: { label: string; value: string; onCopy: (text: string, label: string) => void }) {
+function InfoRow({ label, value, icon, isMono = false, isLast = false, onCopy }: any) {
   return (
-    <div>
-      <label className="block text-xs sm:text-sm font-sf-semibold text-gray-900 mb-1.5 sm:mb-2">{label}</label>
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={value || ''}
-          readOnly
-          className="flex-1 apple-input-readonly text-xs sm:text-sm min-w-0"
-        />
-        <button
-          onClick={() => onCopy(value, label)}
-          className="apple-button-copy text-xs sm:text-sm whitespace-nowrap px-3 sm:px-5"
+    <>
+      <div className="flex items-center justify-between p-3 pl-4 pr-2 bg-white hover:bg-gray-50 transition-colors group">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="w-7 h-7 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center text-sm">
+            {icon}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[11px] text-gray-500 font-medium mb-0.5">{label}</div>
+            <div className={`text-[15px] text-gray-900 truncate select-all ${isMono ? 'font-mono tracking-tight' : ''}`}>
+              {value}
+            </div>
+          </div>
+        </div>
+        <button 
+          onClick={onCopy}
+          className="p-2 rounded-full text-gray-400 hover:bg-white hover:shadow-sm hover:text-[#007AFF] active:scale-90 transition-all ring-1 ring-transparent hover:ring-gray-100"
         >
-          复制
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
         </button>
       </div>
-    </div>
+      {!isLast && <div className="ml-[52px] h-[1px] bg-gray-100"></div>}
+    </>
   );
 }
