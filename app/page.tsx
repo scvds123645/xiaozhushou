@@ -27,6 +27,12 @@ interface LocationInfo {
   error?: string;
 }
 
+interface ToastConfig {
+  id: number;
+  message: string;
+  type: 'success' | 'error' | 'info';
+}
+
 export default function Home() {
   const [selectedCountry, setSelectedCountry] = useState<CountryConfig>(countries[0]);
   const [userInfo, setUserInfo] = useState<UserInfo>({
@@ -39,12 +45,25 @@ export default function Home() {
   });
   const [locationInfo, setLocationInfo] = useState<LocationInfo | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
+  const [toasts, setToasts] = useState<ToastConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
   const [showCountrySelect, setShowCountrySelect] = useState(false);
   const countryListRef = useRef<HTMLDivElement>(null);
+  const toastIdRef = useRef(0);
+
+  // 优化后的 Toast 显示函数
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    const id = ++toastIdRef.current;
+    const newToast: ToastConfig = { id, message, type };
+    
+    setToasts(prev => [...prev, newToast]);
+    
+    // 2秒后自动移除
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 2000);
+  };
 
   // 生成函数
   const generate = () => {
@@ -113,18 +132,26 @@ export default function Home() {
     }
   }, [selectedCountry, isLoading]);
 
-  // 移动端友好的复制函数 - 添加震动反馈
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text).then(() => {
+  // 优化的复制函数 - 添加震动反馈和错误处理
+  const copyToClipboard = async (text: string, label: string) => {
+    if (!text) {
+      showToast('复制内容为空', 'error');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      
       // 添加震动反馈 (iOS/Android 支持)
       if (navigator.vibrate) {
-        navigator.vibrate(50); // 震动 50ms
+        navigator.vibrate(50);
       }
       
-      setToastMessage(`${label} 已复制`);
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 2000);
-    });
+      showToast(`${label} 已复制`, 'success');
+    } catch (error) {
+      console.error('复制失败:', error);
+      showToast('复制失败,请重试', 'error');
+    }
   };
 
   const filteredCountries = countries.filter(c => 
@@ -133,7 +160,10 @@ export default function Home() {
   );
 
   const openEmail = () => {
-    if (!userInfo || !userInfo.email) return;
+    if (!userInfo || !userInfo.email) {
+      showToast('邮箱地址无效', 'error');
+      return;
+    }
     window.open(`https://yopmail.com?${userInfo.email}`, '_blank');
   };
 
@@ -255,7 +285,14 @@ export default function Home() {
                 }}
               />
               
-              <div className="fixed left-3 right-3 sm:left-4 sm:right-4 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-2xl rounded-2xl sm:rounded-3xl shadow-apple-xl z-50 overflow-hidden max-w-2xl mx-auto apple-scale-in border border-gray-200">
+              <div 
+                className="fixed left-3 right-3 sm:left-4 sm:right-4 top-1/2 bg-white/95 backdrop-blur-2xl rounded-2xl sm:rounded-3xl shadow-apple-xl z-50 overflow-hidden max-w-2xl mx-auto border border-gray-200"
+                style={{ 
+                  transform: 'translate(-50%, -50%)',
+                  left: '50%',
+                  animation: 'modalFadeIn 300ms cubic-bezier(0.25, 0.1, 0.25, 1)'
+                }}
+              >
                 <div className="p-4 sm:p-6 border-b border-gray-200">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
                     <h3 className="text-base sm:text-xl font-sf-bold text-gray-900">选择国家/地区</h3>
@@ -377,21 +414,36 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 移动端友好的 Toast - 底部居中 + 震动反馈 */}
-      {showToast && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 animate-toast-slide-up">
-          <div className="apple-toast-mobile px-6 py-3 bg-black/90 backdrop-blur-xl rounded-full shadow-2xl">
+      {/* 优化的 Toast 容器 - 支持多个 Toast */}
+      <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 items-center pointer-events-none">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className="animate-toast-slide-up apple-toast-mobile px-6 py-3 bg-black/90 backdrop-blur-xl rounded-full shadow-2xl pointer-events-auto"
+          >
             <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-              </svg>
-              <span className="text-white font-sf-semibold text-sm">
-                {toastMessage}
+              {toast.type === 'success' && (
+                <svg className="w-5 h-5 text-green-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+              {toast.type === 'error' && (
+                <svg className="w-5 h-5 text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              )}
+              {toast.type === 'info' && (
+                <svg className="w-5 h-5 text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              )}
+              <span className="text-white font-sf-semibold text-sm whitespace-nowrap">
+                {toast.message}
               </span>
             </div>
           </div>
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 }
