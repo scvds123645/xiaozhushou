@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo, useCallback, memo, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { 
   generateName, 
   generateBirthday, 
@@ -25,7 +25,7 @@ interface IPInfo {
   accurate: boolean;
 }
 
-// 轻量级国旗组件 - 使用emoji作为降级方案
+// 轻量级国旗组件
 const FlagIcon = memo(({ countryCode }: { countryCode: string }) => {
   const [FlagComponent, setFlagComponent] = useState<any>(null);
   
@@ -45,7 +45,7 @@ const FlagIcon = memo(({ countryCode }: { countryCode: string }) => {
 
 FlagIcon.displayName = 'FlagIcon';
 
-// SVG图标组件 - 使用单一组件复用,减少重复代码
+// SVG图标组件
 const Icon = memo(({ type, className = "w-4 h-4" }: { type: string; className?: string }) => {
   const paths: Record<string, string> = {
     check: "M5 13l4 4L19 7",
@@ -107,7 +107,7 @@ const DataField = memo(({ label, value, color, mono, onCopy }: {
 
 DataField.displayName = 'DataField';
 
-// 虚拟滚动国家选择项 - 只渲染可见区域
+// 虚拟滚动国家选择项
 const CountryItem = memo(({ country, isSelected, isLast, onSelect }: { 
   country: CountryConfig; 
   isSelected: boolean; 
@@ -149,13 +149,65 @@ export default function FakerGenerator() {
     setTimeout(() => setToast(''), 1500);
   }, []);
 
+  // 增强的复制函数 - 支持多种降级方案
   const copyToClipboard = useCallback(async (text: string, label: string) => {
-    if (!text) return;
+    if (!text) {
+      showToast('内容为空');
+      return;
+    }
+
     try {
-      await navigator.clipboard.writeText(text);
-      showToast(`${label} 已复制`);
-    } catch {
-      showToast('复制失败');
+      // 方案1: 现代 Clipboard API (最优先)
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        showToast(`${label} 已复制`);
+        return;
+      }
+
+      // 方案2: document.execCommand (降级方案)
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+          showToast(`${label} 已复制`);
+        } else {
+          throw new Error('execCommand failed');
+        }
+      } finally {
+        document.body.removeChild(textArea);
+      }
+    } catch (err) {
+      console.error('复制失败:', err);
+      
+      // 方案3: 显示文本供用户手动复制
+      const fallbackText = `无法自动复制,请手动复制:\n${text}`;
+      if (confirm(fallbackText)) {
+        // 用户点击确定后再尝试选择文本
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '50%';
+        textArea.style.top = '50%';
+        textArea.style.transform = 'translate(-50%, -50%)';
+        textArea.style.width = '80%';
+        textArea.style.padding = '20px';
+        textArea.style.zIndex = '9999';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        setTimeout(() => {
+          document.body.removeChild(textArea);
+        }, 3000);
+      }
+      showToast('复制失败,请手动复制');
     }
   }, [showToast]);
 
@@ -187,7 +239,6 @@ export default function FakerGenerator() {
     setUserInfo({ firstName: name.firstName, lastName: name.lastName, birthday, phone, password, email });
   }, [selectedCountry]);
 
-  // 使用防抖优化搜索
   const filteredCountries = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return countries;
