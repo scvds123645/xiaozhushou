@@ -10,9 +10,6 @@ import {
 } from '@/lib/generator';
 import { countries, CountryConfig } from '@/lib/countryData';
 
-// 动态导入国旗组件库 - 按需加载
-const FlagIcons = lazy(() => import('country-flag-icons/react/3x2'));
-
 interface UserInfo {
   firstName: string;
   lastName: string;
