@@ -225,7 +225,7 @@ export default function FakerGenerator() {
     phone: () => copyToClipboard(userInfo.phone, '手机号'),
     password: () => copyToClipboard(userInfo.password, '密码'),
     email: () => copyToClipboard(userInfo.email, '邮箱'),
-    link: () => copyToClipboard(`https://yopmail.com?${userInfo.email}`, '接码地址'),
+    link: () => copyToClipboard(`https://yopmail.net?${userInfo.email}`, '接码地址'),
   }), [userInfo, copyToClipboard]);
 
   if (isLoading) {
