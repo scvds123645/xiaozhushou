@@ -104,14 +104,7 @@ export default function FakerGenerator() {
       email: email,
     };
     
-    console.log('生成新数据:', newData); // 调试日志
-    
-    // 使用函数式更新确保状态正确设置
-    setUserInfo(prev => {
-      console.log('上一个状态:', prev);
-      console.log('新状态:', newData);
-      return newData;
-    });
+    setUserInfo(newData);
   };
 
   useEffect(() => {
@@ -180,7 +173,7 @@ export default function FakerGenerator() {
             <label className="block text-[10px] sm:text-xs text-gray-500 mb-1.5 sm:mb-2 font-medium px-1">地区</label>
             <button
               onClick={() => setShowCountrySelect(true)}
-              className="w-full bg-white/60 backdrop-blur-md hover:bg-white/80 active:bg-white/90 border border-white/50 rounded-xl sm:rounded-2xl p-2.5 sm:p-3 flex items-center justify-between transition-all shadow-sm hover:shadow-md"
+              className="w-full bg-white/60 backdrop-blur-md border border-white/50 rounded-xl sm:rounded-2xl p-2.5 sm:p-3 flex items-center justify-between transition-all shadow-sm active:scale-[0.98] active:bg-white/80"
             >
               <div className="flex items-center gap-2 sm:gap-2.5">
                 <span className="text-xl sm:text-2xl flex-shrink-0">{selectedCountry.flag}</span>
@@ -200,7 +193,7 @@ export default function FakerGenerator() {
             <label className="block text-[10px] sm:text-xs text-gray-500 mb-1.5 sm:mb-2 font-medium px-1">操作</label>
             <button
               onClick={generate}
-              className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 active:scale-[0.98] text-white rounded-xl sm:rounded-2xl px-4 sm:px-5 py-3 sm:py-3 font-medium text-sm sm:text-base transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+              className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl sm:rounded-2xl px-4 sm:px-5 py-3 sm:py-3 font-medium text-sm sm:text-base transition-all shadow-md flex items-center justify-center gap-2 active:scale-[0.97] active:from-indigo-600 active:to-purple-600"
             >
               <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -219,7 +212,7 @@ export default function FakerGenerator() {
           <DataField label="密码" value={userInfo.password} icon="🔑" mono onCopy={() => copyToClipboard(userInfo.password, '密码')} />
           
           {/* 邮箱字段 */}
-          <div className="bg-white/60 backdrop-blur-md border border-white/50 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-sm hover:shadow-md transition-all">
+          <div className="bg-white/60 backdrop-blur-md border border-white/50 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-sm">
             <div className="flex flex-col gap-2.5 sm:gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-1.5">
@@ -234,7 +227,7 @@ export default function FakerGenerator() {
                 <button
                   onClick={() => copyToClipboard(userInfo.email, '邮箱')}
                   disabled={!userInfo.email}
-                  className="flex-1 px-3 py-2 bg-white/80 hover:bg-white active:bg-white border border-white/50 rounded-lg sm:rounded-xl transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-3 py-2.5 bg-white/80 border border-white/50 rounded-lg sm:rounded-xl transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.97] active:bg-white"
                 >
                   <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -244,7 +237,7 @@ export default function FakerGenerator() {
                 <button
                   onClick={() => copyToClipboard(`https://yopmail.com?${userInfo.email}`, '接码地址')}
                   disabled={!userInfo.email}
-                  className="flex-1 px-3 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 active:bg-indigo-500/30 border border-indigo-500/20 rounded-lg sm:rounded-xl transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-3 py-2.5 bg-indigo-500/10 border border-indigo-500/20 rounded-lg sm:rounded-xl transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.97] active:bg-indigo-500/20"
                 >
                   <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
@@ -261,7 +254,7 @@ export default function FakerGenerator() {
           <a
             href="https://t.me/fang180"
             target="_blank"
-            className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-2.5 bg-[#0088CC] hover:bg-[#006BA8] active:bg-[#005C91] text-white rounded-xl font-medium text-sm sm:text-base transition-all shadow-md hover:shadow-lg"
+            className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-2.5 bg-[#0088CC] text-white rounded-xl font-medium text-sm sm:text-base transition-all shadow-md active:scale-[0.97] active:bg-[#006BA8]"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .24z"/>
@@ -296,7 +289,7 @@ export default function FakerGenerator() {
                 <h3 className="text-base sm:text-lg font-semibold text-gray-800">选择地区</h3>
                 <button
                   onClick={() => setShowCountrySelect(false)}
-                  className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100/50 transition-colors"
+                  className="text-gray-400 p-2 rounded-lg transition-colors active:bg-gray-100/50 active:text-gray-600"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -320,7 +313,7 @@ export default function FakerGenerator() {
                     setShowCountrySelect(false);
                     setSearchQuery('');
                   }}
-                  className="w-full flex items-center gap-2.5 sm:gap-3 px-4 sm:px-5 py-3 sm:py-3.5 hover:bg-gray-50/80 active:bg-gray-100/80 border-b border-gray-100/50 transition-colors"
+                  className="w-full flex items-center gap-2.5 sm:gap-3 px-4 sm:px-5 py-3 sm:py-3.5 border-b border-gray-100/50 transition-colors active:bg-gray-50/80"
                 >
                   <span className="text-xl sm:text-2xl flex-shrink-0">{country.flag}</span>
                   <div className="flex-1 text-left min-w-0">
@@ -354,20 +347,20 @@ export default function FakerGenerator() {
 
 function DataField({ label, value, icon, mono = false, onCopy }: any) {
   return (
-    <div className="bg-white/60 backdrop-blur-md border border-white/50 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all group">
+    <div className="bg-white/60 backdrop-blur-md border border-white/50 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-sm transition-all">
       <div className="flex items-center justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-lg">{icon}</span>
-            <span className="text-xs text-gray-500 font-medium">{label}</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-1.5">
+            <span className="text-base sm:text-lg">{icon}</span>
+            <span className="text-[10px] sm:text-xs text-gray-500 font-medium">{label}</span>
           </div>
-          <div className={`text-gray-800 truncate ${mono ? 'font-mono text-sm' : 'text-base'}`}>
+          <div className={`text-gray-800 truncate ${mono ? 'font-mono text-xs sm:text-sm' : 'text-sm sm:text-base'}`}>
             {value}
           </div>
         </div>
         <button
           onClick={onCopy}
-          className="opacity-0 group-hover:opacity-100 transition-opacity p-2.5 bg-white/80 hover:bg-white border border-white/50 rounded-xl"
+          className="p-2 sm:p-2.5 bg-white/80 border border-white/50 rounded-lg sm:rounded-xl transition-all active:scale-95 active:bg-white"
         >
           <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
