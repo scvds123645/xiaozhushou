@@ -90,15 +90,28 @@ export default function FakerGenerator() {
 
   const generate = () => {
     const name = generateName(selectedCountry.code);
+    const birthday = generateBirthday();
+    const phone = generatePhone(selectedCountry);
+    const password = generatePassword();
+    const email = generateEmail(name.firstName, name.lastName);
+    
     const newData = {
       firstName: name.firstName,
       lastName: name.lastName,
-      birthday: generateBirthday(),
-      phone: generatePhone(selectedCountry),
-      password: generatePassword(),
-      email: generateEmail(name.firstName, name.lastName),
+      birthday: birthday,
+      phone: phone,
+      password: password,
+      email: email,
     };
-    setUserInfo(newData);
+    
+    console.log('生成新数据:', newData); // 调试日志
+    
+    // 使用函数式更新确保状态正确设置
+    setUserInfo(prev => {
+      console.log('上一个状态:', prev);
+      console.log('新状态:', newData);
+      return newData;
+    });
   };
 
   useEffect(() => {
@@ -198,7 +211,7 @@ export default function FakerGenerator() {
         </div>
 
         {/* 数据展示区 */}
-        <div className="space-y-2.5 sm:space-y-3">
+        <div className="space-y-2.5 sm:space-y-3" key={userInfo.email}>
           <DataField label="姓氏" value={userInfo.lastName} icon="👤" onCopy={() => copyToClipboard(userInfo.lastName, '姓氏')} />
           <DataField label="名字" value={userInfo.firstName} icon="👤" onCopy={() => copyToClipboard(userInfo.firstName, '名字')} />
           <DataField label="生日" value={userInfo.birthday} icon="🎂" onCopy={() => copyToClipboard(userInfo.birthday, '生日')} />
@@ -213,14 +226,15 @@ export default function FakerGenerator() {
                   <span className="text-base sm:text-lg">📧</span>
                   <span className="text-[10px] sm:text-xs text-gray-500 font-medium">邮箱</span>
                 </div>
-                <div className="text-gray-800 text-xs sm:text-sm break-all font-mono leading-relaxed">
-                  {userInfo.email}
+                <div className="text-gray-800 text-xs sm:text-sm break-all font-mono leading-relaxed min-h-[2.5rem] sm:min-h-[3rem] flex items-center">
+                  {userInfo.email || '请点击生成按钮'}
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => copyToClipboard(userInfo.email, '邮箱')}
-                  className="flex-1 px-3 py-2 bg-white/80 hover:bg-white active:bg-white border border-white/50 rounded-lg sm:rounded-xl transition-all flex items-center justify-center gap-1.5"
+                  disabled={!userInfo.email}
+                  className="flex-1 px-3 py-2 bg-white/80 hover:bg-white active:bg-white border border-white/50 rounded-lg sm:rounded-xl transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -229,7 +243,8 @@ export default function FakerGenerator() {
                 </button>
                 <button
                   onClick={() => copyToClipboard(`https://yopmail.com?${userInfo.email}`, '接码地址')}
-                  className="flex-1 px-3 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 active:bg-indigo-500/30 border border-indigo-500/20 rounded-lg sm:rounded-xl transition-all flex items-center justify-center gap-1.5"
+                  disabled={!userInfo.email}
+                  className="flex-1 px-3 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 active:bg-indigo-500/30 border border-indigo-500/20 rounded-lg sm:rounded-xl transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
