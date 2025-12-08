@@ -50,7 +50,7 @@ export default function FakerGenerator() {
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     const id = ++toastIdRef.current;
     setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 2500);
   };
 
   const copyToClipboard = async (text: string, label: string) => {
@@ -125,8 +125,8 @@ export default function FakerGenerator() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-3 border-gray-200 border-t-indigo-400 rounded-full animate-spin mx-auto mb-3"></div>
-          <p className="text-gray-600 text-sm">加载中...</p>
+          <div className="w-10 h-10 border-3 border-gray-200 border-t-indigo-400 rounded-full animate-spin mx-auto mb-2"></div>
+          <p className="text-gray-600 text-xs">加载中...</p>
         </div>
       </div>
     );
@@ -137,52 +137,48 @@ export default function FakerGenerator() {
       
       {/* 背景装饰 */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-purple-200/30 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-200/30 rounded-full blur-3xl"></div>
+        <div className="absolute top-0 right-0 w-72 h-72 bg-purple-200/20 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-indigo-200/20 rounded-full blur-3xl"></div>
       </div>
 
       {/* Header */}
       <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/40 border-b border-white/50 shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
+        <div className="max-w-5xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between gap-3">
             <div className="flex-shrink-0">
-              <h1 className="text-lg sm:text-2xl font-bold text-gray-800">
-                脸书小助手
-              </h1>
-              <p className="text-gray-500 text-[10px] sm:text-xs mt-0.5">@fang180</p>
+              <h1 className="text-xl font-bold text-gray-800">脸书小助手</h1>
+              <p className="text-gray-500 text-xs mt-0.5">@fang180</p>
             </div>
             {ipInfo && (
-              <div className="flex items-center gap-1.5 sm:gap-2 bg-white/60 backdrop-blur-md px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border border-white/50 shadow-sm flex-shrink-0">
-                <div className={`w-1.5 h-1.5 rounded-full ${ipInfo.accurate ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
-                <span className="text-[10px] sm:text-xs text-gray-600 max-w-[80px] sm:max-w-none truncate">{ipInfo.ip}</span>
-                <div className="w-px h-2.5 sm:h-3 bg-gray-300 hidden sm:block"></div>
-                <span className="text-[10px] sm:text-xs text-gray-500 hidden sm:inline">{ipInfo.countryName}</span>
+              <div className="flex items-center gap-2 bg-white/60 backdrop-blur-md px-2.5 py-1.5 rounded-full border border-white/50 shadow-sm flex-shrink-0">
+                <div className={`w-2 h-2 rounded-full ${ipInfo.accurate ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+                <span className="text-xs text-gray-600 max-w-[90px] truncate">{ipInfo.ip}</span>
               </div>
             )}
           </div>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-8 relative z-10 pb-20 sm:pb-8">
+      <main className="max-w-5xl mx-auto px-4 py-4 relative z-10 pb-20">
         
         {/* 控制面板 */}
-        <div className="grid grid-cols-1 gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <div className="grid grid-cols-2 gap-3 mb-4">
           
           {/* 国家选择 */}
           <div>
-            <label className="block text-[10px] sm:text-xs text-gray-500 mb-1.5 sm:mb-2 font-medium px-1">地区</label>
+            <label className="block text-xs text-gray-500 mb-1.5 font-medium px-0.5">地区</label>
             <button
               onClick={() => setShowCountrySelect(true)}
-              className="w-full bg-white/60 backdrop-blur-md border border-white/50 rounded-xl sm:rounded-2xl p-2.5 sm:p-3 flex items-center justify-between transition-all shadow-sm active:scale-[0.98] active:bg-white/80"
+              className="w-full bg-white/60 backdrop-blur-md border border-white/50 rounded-xl p-2.5 flex items-center justify-between transition-all shadow-sm active:scale-[0.98] active:bg-white/80"
             >
-              <div className="flex items-center gap-2 sm:gap-2.5">
-                <span className="text-xl sm:text-2xl flex-shrink-0">{selectedCountry.flag}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl flex-shrink-0">{selectedCountry.flag}</span>
                 <div className="text-left min-w-0">
-                  <div className="font-medium text-gray-800 text-sm sm:text-sm truncate">{selectedCountry.name}</div>
-                  <div className="text-[10px] sm:text-xs text-gray-500">{selectedCountry.code}</div>
+                  <div className="font-medium text-gray-800 text-sm truncate">{selectedCountry.name}</div>
+                  <div className="text-xs text-gray-500">{selectedCountry.code}</div>
                 </div>
               </div>
-              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
@@ -190,12 +186,12 @@ export default function FakerGenerator() {
 
           {/* 生成按钮 */}
           <div>
-            <label className="block text-[10px] sm:text-xs text-gray-500 mb-1.5 sm:mb-2 font-medium px-1">操作</label>
+            <label className="block text-xs text-gray-500 mb-1.5 font-medium px-0.5">操作</label>
             <button
               onClick={generate}
-              className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl sm:rounded-2xl px-4 sm:px-5 py-3 sm:py-3 font-medium text-sm sm:text-base transition-all shadow-md flex items-center justify-center gap-2 active:scale-[0.97] active:from-indigo-600 active:to-purple-600"
+              className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl px-4 py-2.5 font-medium text-sm transition-all shadow-md flex items-center justify-center gap-2 active:scale-[0.97] active:from-indigo-600 active:to-purple-600 h-[58px]"
             >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
               随机生成
@@ -204,7 +200,7 @@ export default function FakerGenerator() {
         </div>
 
         {/* 数据展示区 */}
-        <div className="space-y-2.5 sm:space-y-3" key={userInfo.email}>
+        <div className="space-y-2.5" key={userInfo.email}>
           <DataField label="姓氏" value={userInfo.lastName} icon="👤" onCopy={() => copyToClipboard(userInfo.lastName, '姓氏')} />
           <DataField label="名字" value={userInfo.firstName} icon="👤" onCopy={() => copyToClipboard(userInfo.firstName, '名字')} />
           <DataField label="生日" value={userInfo.birthday} icon="🎂" onCopy={() => copyToClipboard(userInfo.birthday, '生日')} />
@@ -212,14 +208,14 @@ export default function FakerGenerator() {
           <DataField label="密码" value={userInfo.password} icon="🔑" mono onCopy={() => copyToClipboard(userInfo.password, '密码')} />
           
           {/* 邮箱字段 */}
-          <div className="bg-white/60 backdrop-blur-md border border-white/50 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-sm">
-            <div className="flex flex-col gap-2.5 sm:gap-3">
+          <div className="bg-white/60 backdrop-blur-md border border-white/50 rounded-xl p-3 shadow-sm">
+            <div className="flex flex-col gap-2.5">
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-1.5">
-                  <span className="text-base sm:text-lg">📧</span>
-                  <span className="text-[10px] sm:text-xs text-gray-500 font-medium">邮箱</span>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-lg">📧</span>
+                  <span className="text-xs text-gray-500 font-medium">邮箱</span>
                 </div>
-                <div className="text-gray-800 text-xs sm:text-sm break-all font-mono leading-relaxed min-h-[2.5rem] sm:min-h-[3rem] flex items-center">
+                <div className="text-gray-800 text-sm break-all font-mono leading-relaxed">
                   {userInfo.email || '请点击生成按钮'}
                 </div>
               </div>
@@ -227,9 +223,9 @@ export default function FakerGenerator() {
                 <button
                   onClick={() => copyToClipboard(userInfo.email, '邮箱')}
                   disabled={!userInfo.email}
-                  className="flex-1 px-3 py-2.5 bg-white/80 border border-white/50 rounded-lg sm:rounded-xl transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.97] active:bg-white"
+                  className="flex-1 px-3 py-2.5 bg-white/80 border border-white/50 rounded-xl transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.97] active:bg-white"
                 >
-                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                   </svg>
                   <span className="text-xs font-medium text-gray-700">复制邮箱</span>
@@ -237,9 +233,9 @@ export default function FakerGenerator() {
                 <button
                   onClick={() => copyToClipboard(`https://yopmail.com?${userInfo.email}`, '接码地址')}
                   disabled={!userInfo.email}
-                  className="flex-1 px-3 py-2.5 bg-indigo-500/10 border border-indigo-500/20 rounded-lg sm:rounded-xl transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.97] active:bg-indigo-500/20"
+                  className="flex-1 px-3 py-2.5 bg-indigo-500/10 border border-indigo-500/20 rounded-xl transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.97] active:bg-indigo-500/20"
                 >
-                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg className="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                   </svg>
                   <span className="text-xs font-medium text-indigo-600">接码地址</span>
@@ -250,43 +246,43 @@ export default function FakerGenerator() {
         </div>
 
         {/* Footer */}
-        <div className="mt-6 sm:mt-8 text-center">
+        <div className="mt-6 text-center">
           <a
             href="https://t.me/fang180"
             target="_blank"
-            className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-2.5 bg-[#0088CC] text-white rounded-xl font-medium text-sm sm:text-base transition-all shadow-md active:scale-[0.97] active:bg-[#006BA8]"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0088CC] text-white rounded-xl font-medium text-sm transition-all shadow-md active:scale-[0.97] active:bg-[#006BA8]"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .24z"/>
             </svg>
-            加入 Telegram 频道
+            Telegram 频道
           </a>
-          <p className="text-gray-400 text-[10px] sm:text-xs mt-2.5 sm:mt-3">版本 1.0 • @fang180</p>
+          <p className="text-gray-400 text-xs mt-2.5">版本 1.0 • @fang180</p>
         </div>
       </main>
 
       {/* Toast 通知 */}
-      <div className="fixed top-3 sm:top-4 right-3 sm:right-4 z-50 space-y-2 max-w-[calc(100vw-1.5rem)] sm:max-w-sm">
+      <div className="fixed top-3 right-3 z-50 space-y-2 max-w-[calc(100vw-1.5rem)]">
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className="bg-white/90 backdrop-blur-xl border border-white/50 px-3 sm:px-4 py-2 sm:py-3 rounded-lg sm:rounded-xl shadow-lg flex items-center gap-2 animate-slide-in"
+            className="bg-white/90 backdrop-blur-xl border border-white/50 px-3 py-2.5 rounded-xl shadow-lg flex items-center gap-2 animate-slide-in"
           >
-            {toast.type === 'success' && <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-green-500 flex-shrink-0"></div>}
-            {toast.type === 'error' && <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500 flex-shrink-0"></div>}
-            <span className="text-gray-700 text-xs sm:text-sm truncate">{toast.message}</span>
+            {toast.type === 'success' && <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></div>}
+            {toast.type === 'error' && <div className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></div>}
+            <span className="text-gray-700 text-sm truncate">{toast.message}</span>
           </div>
         ))}
       </div>
 
       {/* 国家选择弹窗 */}
       {showCountrySelect && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center">
           <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={() => setShowCountrySelect(false)}></div>
-          <div className="relative w-full sm:max-w-xl bg-white/90 backdrop-blur-2xl rounded-t-3xl sm:rounded-3xl shadow-2xl border border-white/50 overflow-hidden max-h-[80vh] sm:max-h-[85vh] flex flex-col">
-            <div className="p-4 sm:p-5 border-b border-gray-200/50 flex-shrink-0">
+          <div className="relative w-full bg-white/90 backdrop-blur-2xl rounded-t-2xl shadow-2xl border border-white/50 overflow-hidden max-h-[75vh] flex flex-col">
+            <div className="p-4 border-b border-gray-200/50 flex-shrink-0">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-base sm:text-lg font-semibold text-gray-800">选择地区</h3>
+                <h3 className="text-base font-semibold text-gray-800">选择地区</h3>
                 <button
                   onClick={() => setShowCountrySelect(false)}
                   className="text-gray-400 p-2 rounded-lg transition-colors active:bg-gray-100/50 active:text-gray-600"
@@ -299,7 +295,7 @@ export default function FakerGenerator() {
               <input
                 type="text"
                 placeholder="搜索国家..."
-                className="w-full bg-white/60 border border-gray-200 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+                className="w-full bg-white/60 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -313,9 +309,9 @@ export default function FakerGenerator() {
                     setShowCountrySelect(false);
                     setSearchQuery('');
                   }}
-                  className="w-full flex items-center gap-2.5 sm:gap-3 px-4 sm:px-5 py-3 sm:py-3.5 border-b border-gray-100/50 transition-colors active:bg-gray-50/80"
+                  className="w-full flex items-center gap-2.5 px-4 py-3 border-b border-gray-100/50 transition-colors active:bg-gray-50/80"
                 >
-                  <span className="text-xl sm:text-2xl flex-shrink-0">{country.flag}</span>
+                  <span className="text-2xl flex-shrink-0">{country.flag}</span>
                   <div className="flex-1 text-left min-w-0">
                     <div className="font-medium text-gray-800 text-sm truncate">{country.name}</div>
                     <div className="text-xs text-gray-500">{country.phonePrefix}</div>
@@ -347,20 +343,20 @@ export default function FakerGenerator() {
 
 function DataField({ label, value, icon, mono = false, onCopy }: any) {
   return (
-    <div className="bg-white/60 backdrop-blur-md border border-white/50 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-sm transition-all">
+    <div className="bg-white/60 backdrop-blur-md border border-white/50 rounded-xl p-3 shadow-sm transition-all">
       <div className="flex items-center justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-1.5">
-            <span className="text-base sm:text-lg">{icon}</span>
-            <span className="text-[10px] sm:text-xs text-gray-500 font-medium">{label}</span>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">{icon}</span>
+            <span className="text-xs text-gray-500 font-medium">{label}</span>
           </div>
-          <div className={`text-gray-800 truncate ${mono ? 'font-mono text-xs sm:text-sm' : 'text-sm sm:text-base'}`}>
+          <div className={`text-gray-800 truncate ${mono ? 'font-mono text-sm' : 'text-sm'}`}>
             {value}
           </div>
         </div>
         <button
           onClick={onCopy}
-          className="p-2 sm:p-2.5 bg-white/80 border border-white/50 rounded-lg sm:rounded-xl transition-all active:scale-95 active:bg-white"
+          className="p-2.5 bg-white/80 border border-white/50 rounded-xl transition-all active:scale-95 active:bg-white flex-shrink-0"
         >
           <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
