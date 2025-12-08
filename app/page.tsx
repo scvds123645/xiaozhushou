@@ -223,9 +223,9 @@ export default function FakerGenerator() {
               </div>
             </div>
             {ipInfo && (
-              <div className="flex items-center gap-2 bg-gray-100 px-2 py-1 rounded-full">
-                <div className={`w-2 h-2 rounded-full ${ipInfo.accurate ? 'bg-green-500' : 'bg-amber-500'}`}></div>
-                <span className="text-xs text-gray-700 font-mono max-w-[80px] truncate">{ipInfo.ip}</span>
+              <div className="flex items-center gap-1.5 bg-gray-100 px-2.5 py-1.5 rounded-full">
+                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${ipInfo.accurate ? 'bg-green-500' : 'bg-amber-500'}`}></div>
+                <span className="text-xs text-gray-700 font-mono whitespace-nowrap">{ipInfo.ip}</span>
               </div>
             )}
           </div>
