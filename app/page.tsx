@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import * as FlagIcons from 'country-flag-icons/react/3x2';
 import { 
   generateName, 
   generateBirthday, 
@@ -34,6 +35,25 @@ interface IPInfo {
   region: string;
   accurate: boolean;
 }
+
+// 国旗组件
+const FlagIcon = ({ countryCode }: { countryCode: string }) => {
+  const Flag = (FlagIcons as any)[countryCode];
+  
+  if (!Flag) {
+    return (
+      <div className="w-8 h-6 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-600 font-bold">
+        {countryCode}
+      </div>
+    );
+  }
+  
+  return (
+    <div className="w-8 h-6 rounded overflow-hidden border border-gray-200 shadow-sm">
+      <Flag className="w-full h-full object-cover" />
+    </div>
+  );
+};
 
 export default function FakerGenerator() {
   const [selectedCountry, setSelectedCountry] = useState<CountryConfig>(countries[0]);
@@ -165,7 +185,7 @@ export default function FakerGenerator() {
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200/50">
                 <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
               <div>
@@ -197,7 +217,9 @@ export default function FakerGenerator() {
               className="w-full bg-white/90 backdrop-blur-xl border border-gray-200/80 rounded-2xl p-3.5 flex items-center justify-between transition-all shadow-sm hover:shadow-md hover:border-indigo-300/60 active:scale-[0.98] touch-manipulation group"
             >
               <div className="flex items-center gap-3">
-                <div className="text-3xl flex-shrink-0 transform group-hover:scale-110 transition-transform">{selectedCountry.flag}</div>
+                <div className="flex-shrink-0 transform group-hover:scale-110 transition-transform">
+                  <FlagIcon countryCode={selectedCountry.code} />
+                </div>
                 <div className="text-left min-w-0">
                   <div className="font-semibold text-gray-900 text-sm truncate">{selectedCountry.name}</div>
                   <div className="text-xs text-gray-500 font-medium mt-0.5">{selectedCountry.code}</div>
@@ -225,18 +247,20 @@ export default function FakerGenerator() {
         </div>
 
         <div className="space-y-3">
-          <DataField label="姓氏" value={userInfo.lastName} icon="👤" color="indigo" onCopy={() => copyToClipboard(userInfo.lastName, '姓氏')} />
-          <DataField label="名字" value={userInfo.firstName} icon="👤" color="purple" onCopy={() => copyToClipboard(userInfo.firstName, '名字')} />
-          <DataField label="生日" value={userInfo.birthday} icon="🎂" color="pink" onCopy={() => copyToClipboard(userInfo.birthday, '生日')} />
-          <DataField label="手机号" value={userInfo.phone} icon="📱" color="blue" mono onCopy={() => copyToClipboard(userInfo.phone, '手机号')} />
-          <DataField label="密码" value={userInfo.password} icon="🔑" color="emerald" mono onCopy={() => copyToClipboard(userInfo.password, '密码')} />
+          <DataField label="姓氏" value={userInfo.lastName} color="indigo" onCopy={() => copyToClipboard(userInfo.lastName, '姓氏')} />
+          <DataField label="名字" value={userInfo.firstName} color="purple" onCopy={() => copyToClipboard(userInfo.firstName, '名字')} />
+          <DataField label="生日" value={userInfo.birthday} color="pink" onCopy={() => copyToClipboard(userInfo.birthday, '生日')} />
+          <DataField label="手机号" value={userInfo.phone} color="blue" mono onCopy={() => copyToClipboard(userInfo.phone, '手机号')} />
+          <DataField label="密码" value={userInfo.password} color="emerald" mono onCopy={() => copyToClipboard(userInfo.password, '密码')} />
           
           <div className="bg-gradient-to-br from-white/95 to-white/80 backdrop-blur-2xl border border-gray-200/80 rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all">
             <div className="flex flex-col gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2.5 mb-2">
                   <div className="w-8 h-8 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shadow-md">
-                    <span className="text-lg">📧</span>
+                    <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
                   </div>
                   <span className="text-xs text-gray-600 font-bold uppercase tracking-wider">临时邮箱</span>
                 </div>
@@ -337,7 +361,9 @@ export default function FakerGenerator() {
                     index !== filteredCountries.length - 1 ? 'border-b border-gray-100/80' : ''
                   }`}
                 >
-                  <div className="text-3xl flex-shrink-0 transform group-hover:scale-110 transition-transform">{country.flag}</div>
+                  <div className="flex-shrink-0 transform group-hover:scale-110 transition-transform">
+                    <FlagIcon countryCode={country.code} />
+                  </div>
                   <div className="flex-1 text-left min-w-0">
                     <div className="font-semibold text-gray-900 text-sm truncate group-hover:text-indigo-700 transition-colors">{country.name}</div>
                     <div className="text-xs text-gray-500 font-medium mt-0.5">{country.phonePrefix}</div>
@@ -373,13 +399,12 @@ export default function FakerGenerator() {
 interface DataFieldProps {
   label: string;
   value: string;
-  icon: string;
   color?: 'indigo' | 'purple' | 'pink' | 'blue' | 'emerald';
   mono?: boolean;
   onCopy: () => void;
 }
 
-const DataField = ({ label, value, icon, color = 'indigo', mono = false, onCopy }: DataFieldProps) => {
+const DataField = ({ label, value, color = 'indigo', mono = false, onCopy }: DataFieldProps) => {
   const colorClasses: Record<string, string> = {
     indigo: 'from-indigo-400 to-indigo-600 shadow-indigo-200/50',
     purple: 'from-purple-400 to-purple-600 shadow-purple-200/50',
@@ -389,6 +414,34 @@ const DataField = ({ label, value, icon, color = 'indigo', mono = false, onCopy 
   };
   
   const selectedColor = colorClasses[color] || colorClasses.indigo;
+  
+  const icons: Record<string, JSX.Element> = {
+    indigo: (
+      <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+      </svg>
+    ),
+    purple: (
+      <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+      </svg>
+    ),
+    pink: (
+      <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
+    ),
+blue: (
+      <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+      </svg>
+    ),
+    emerald: (
+      <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+      </svg>
+    ),
+  };
 
   return (
     <div className="bg-gradient-to-br from-white/95 to-white/80 backdrop-blur-2xl border border-gray-200/80 rounded-2xl p-4 shadow-md hover:shadow-lg transition-all group">
@@ -396,7 +449,7 @@ const DataField = ({ label, value, icon, color = 'indigo', mono = false, onCopy 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2.5 mb-2">
             <div className={`w-8 h-8 bg-gradient-to-br ${selectedColor} rounded-xl flex items-center justify-center shadow-md transform group-hover:scale-110 transition-transform`}>
-              <span className="text-lg">{icon}</span>
+              {icons[color]}
             </div>
             <span className="text-xs text-gray-600 font-bold uppercase tracking-wider">{label}</span>
           </div>
