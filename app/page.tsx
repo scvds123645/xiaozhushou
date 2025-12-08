@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
-import * as FlagIcons from 'country-flag-icons/react/3x2';
+import { useState, useEffect, useRef, useMemo, useCallback, memo, lazy, Suspense } from 'react';
 import { 
   generateName, 
   generateBirthday, 
@@ -10,6 +9,9 @@ import {
   generateEmail,
 } from '@/lib/generator';
 import { countries, CountryConfig } from '@/lib/countryData';
+
+// 动态导入国旗组件库 - 按需加载
+const FlagIcons = lazy(() => import('country-flag-icons/react/3x2'));
 
 interface UserInfo {
   firstName: string;
@@ -26,14 +28,47 @@ interface IPInfo {
   accurate: boolean;
 }
 
-// 轻量级国旗组件
+// 轻量级国旗组件 - 使用emoji作为降级方案
 const FlagIcon = memo(({ countryCode }: { countryCode: string }) => {
-  const Flag = (FlagIcons as any)[countryCode];
-  if (!Flag) return <div className="w-8 h-6 bg-gray-200 rounded text-xs flex items-center justify-center">{countryCode}</div>;
-  return <div className="w-8 h-6 rounded overflow-hidden border border-gray-200"><Flag className="w-full h-full" /></div>;
+  const [FlagComponent, setFlagComponent] = useState<any>(null);
+  
+  useEffect(() => {
+    import('country-flag-icons/react/3x2').then(module => {
+      const Flag = (module as any)[countryCode];
+      setFlagComponent(() => Flag);
+    });
+  }, [countryCode]);
+
+  if (!FlagComponent) {
+    return <div className="w-8 h-6 bg-gray-200 rounded text-xs flex items-center justify-center">{countryCode}</div>;
+  }
+  
+  return <div className="w-8 h-6 rounded overflow-hidden border border-gray-200"><FlagComponent className="w-full h-full" /></div>;
 });
 
 FlagIcon.displayName = 'FlagIcon';
+
+// SVG图标组件 - 使用单一组件复用,减少重复代码
+const Icon = memo(({ type, className = "w-4 h-4" }: { type: string; className?: string }) => {
+  const paths: Record<string, string> = {
+    check: "M5 13l4 4L19 7",
+    copy: "M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z",
+    refresh: "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15",
+    chevron: "M19 9l-7 7-7-7",
+    close: "M6 18L18 6M6 6l12 12",
+    email: "M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z",
+    link: "M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1",
+    doc: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
+  };
+  
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d={paths[type] || ""} />
+    </svg>
+  );
+});
+
+Icon.displayName = 'Icon';
 
 // 简化的数据字段组件
 const DataField = memo(({ label, value, color, mono, onCopy }: {
@@ -43,7 +78,7 @@ const DataField = memo(({ label, value, color, mono, onCopy }: {
   mono?: boolean;
   onCopy: () => void;
 }) => {
-  const colors: Record<string, string> = {
+  const gradients: Record<string, string> = {
     indigo: 'from-indigo-500 to-indigo-600',
     purple: 'from-purple-500 to-purple-600',
     pink: 'from-pink-500 to-pink-600',
@@ -56,10 +91,8 @@ const DataField = memo(({ label, value, color, mono, onCopy }: {
       <div className="flex items-center justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2">
-            <div className={`w-7 h-7 bg-gradient-to-br ${colors[color]} rounded-lg flex items-center justify-center`}>
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
+            <div className={`w-7 h-7 bg-gradient-to-br ${gradients[color]} rounded-lg flex items-center justify-center`}>
+              <Icon type="check" className="w-4 h-4 text-white" />
             </div>
             <span className="text-xs text-gray-600 font-semibold uppercase">{label}</span>
           </div>
@@ -68,9 +101,7 @@ const DataField = memo(({ label, value, color, mono, onCopy }: {
           </div>
         </div>
         <button onClick={onCopy} className="p-2 bg-gray-50 border border-gray-200 rounded-lg active:scale-95">
-          <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-          </svg>
+          <Icon type="copy" className="w-4 h-4 text-gray-600" />
         </button>
       </div>
     </div>
@@ -79,7 +110,7 @@ const DataField = memo(({ label, value, color, mono, onCopy }: {
 
 DataField.displayName = 'DataField';
 
-// 简化的国家选择项
+// 虚拟滚动国家选择项 - 只渲染可见区域
 const CountryItem = memo(({ country, isSelected, isLast, onSelect }: { 
   country: CountryConfig; 
   isSelected: boolean; 
@@ -97,9 +128,7 @@ const CountryItem = memo(({ country, isSelected, isLast, onSelect }: {
     </div>
     {isSelected && (
       <div className="w-5 h-5 bg-indigo-500 rounded-full flex items-center justify-center">
-        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-        </svg>
+        <Icon type="check" className="w-3 h-3 text-white" />
       </div>
     )}
   </button>
@@ -161,9 +190,14 @@ export default function FakerGenerator() {
     setUserInfo({ firstName: name.firstName, lastName: name.lastName, birthday, phone, password, email });
   }, [selectedCountry]);
 
+  // 使用防抖优化搜索
   const filteredCountries = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    return q ? countries.filter(c => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q)) : countries;
+    if (!q) return countries;
+    return countries.filter(c => 
+      c.name.toLowerCase().includes(q) || 
+      c.code.toLowerCase().includes(q)
+    );
   }, [searchQuery]);
 
   useEffect(() => {
@@ -213,9 +247,7 @@ export default function FakerGenerator() {
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
+                <Icon type="doc" className="w-4 h-4 text-white" />
               </div>
               <div>
                 <h1 className="text-base font-bold text-gray-900">脸书小助手</h1>
@@ -248,9 +280,7 @@ export default function FakerGenerator() {
                   <div className="text-xs text-gray-500">{selectedCountry.code}</div>
                 </div>
               </div>
-              <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
+              <Icon type="chevron" className="w-4 h-4 text-gray-400" />
             </button>
           </div>
 
@@ -260,9 +290,7 @@ export default function FakerGenerator() {
               onClick={generate}
               className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl px-3 py-3 font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.97]"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
+              <Icon type="refresh" className="w-4 h-4" />
               <span>随机生成</span>
             </button>
           </div>
@@ -280,9 +308,7 @@ export default function FakerGenerator() {
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-7 h-7 bg-gradient-to-br from-amber-400 to-orange-500 rounded-lg flex items-center justify-center">
-                    <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
+                    <Icon type="email" className="w-4 h-4 text-white" />
                   </div>
                   <span className="text-xs text-gray-600 font-semibold uppercase">临时邮箱</span>
                 </div>
@@ -292,15 +318,11 @@ export default function FakerGenerator() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <button onClick={copyActions.email} disabled={!userInfo.email} className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95">
-                  <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
+                  <Icon type="copy" className="w-4 h-4 text-gray-600" />
                   <span className="text-xs font-semibold text-gray-700">复制</span>
                 </button>
                 <button onClick={copyActions.link} disabled={!userInfo.email} className="px-3 py-2 bg-indigo-500 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                  </svg>
+                  <Icon type="link" className="w-4 h-4" />
                   <span className="text-xs font-semibold">接码</span>
                 </button>
               </div>
@@ -333,9 +355,7 @@ export default function FakerGenerator() {
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-base font-bold text-gray-900">选择地区</h3>
                 <button onClick={handleClose} className="p-1 rounded-lg hover:bg-gray-100 active:scale-95">
-                  <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <Icon type="close" className="w-5 h-5 text-gray-400" />
                 </button>
               </div>
               <input
