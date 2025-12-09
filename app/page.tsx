@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, memo, useRef } from 'react';
+import { useState, useEffect, useCallback, memo, useRef, useMemo } from 'react';
 import { countries, CountryConfig } from '@/lib/countryData';
 import {
   generateName,
@@ -21,23 +21,25 @@ interface UserInfo {
   email: string;
 }
 
+// 优化：将图标路径提取为静态常量，避免每次渲染都重新创建对象
+const ICON_PATHS: Record<string, React.ReactElement> = {
+  refresh: <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>,
+  copy: <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>,
+  check: <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>,
+  location: <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>,
+  email: <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>,
+  link: <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/>,
+  expand: <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>,
+  close: <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>,
+  sparkles: <path d="M7 11v2l-4 1 4 1v2l1-4-1-4zm5-7v4l-3 1 3 1v4l2-5-2-5zm5.66 2.94L15 6.26l.66-2.94L18.34 6l2.66.68-2.66.68-.68 2.58-.66-2.94zM15 18l-2-3 2-3 2 3-2 3z"/>,
+};
+
 const Icon = memo(({ name, className = "w-6 h-6" }: { name: string; className?: string }) => {
-    const icons: Record<string, React.ReactElement> = {
-      refresh: <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>,
-      copy: <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>,
-      check: <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>,
-      location: <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>,
-      email: <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>,
-      link: <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/>,
-      expand: <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>,
-      close: <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>,
-      sparkles: <path d="M7 11v2l-4 1 4 1v2l1-4-1-4zm5-7v4l-3 1 3 1v4l2-5-2-5zm5.66 2.94L15 6.26l.66-2.94L18.34 6l2.66.68-2.66.68-.68 2.58-.66-2.94zM15 18l-2-3 2-3 2 3-2 3z"/>,
-    };
-    return (<svg className={className} viewBox="0 0 24 24" fill="currentColor">{icons[name]}</svg>);
+    return (<svg className={className} viewBox="0 0 24 24" fill="currentColor">{ICON_PATHS[name]}</svg>);
 });
 Icon.displayName = 'Icon';
 
-const haptic = () => { if ('vibrate' in navigator) { navigator.vibrate(10); } };
+const haptic = () => { if (typeof navigator !== 'undefined' && 'vibrate' in navigator) { navigator.vibrate(10); } };
 
 const InfoRow = memo(({ label, value, onCopy }: {
   label: string;
@@ -130,7 +132,6 @@ export default function AppleStylePage() {
       const phone = generatePhone(selectedCountry);
       const password = generatePassword();
       
-      // 根据选择的域名生成邮箱
       const customDomain = selectedDomain === 'random' ? undefined : selectedDomain;
       const email = generateEmail(firstName, lastName, customDomain);
       
@@ -209,10 +210,14 @@ export default function AppleStylePage() {
   const allDomains = getAllDomains();
   const displayDomain = selectedDomain === 'random' ? '随机域名' : selectedDomain;
 
-  // ✨ 域名搜索过滤
-  const filteredDomains = allDomains.filter(domain => 
-    domain.toLowerCase().includes(domainSearchQuery.toLowerCase())
-  );
+  // 优化：使用 useMemo 缓存过滤结果，避免每次渲染都进行数组过滤
+  const filteredDomains = useMemo(() => {
+    if (!domainSearchQuery) return allDomains;
+    const lowerQuery = domainSearchQuery.toLowerCase();
+    return allDomains.filter(domain => 
+      domain.toLowerCase().includes(lowerQuery)
+    );
+  }, [allDomains, domainSearchQuery]);
 
   return (
     <div className="min-h-screen bg-sf-gray-50 font-sf">
@@ -286,7 +291,6 @@ export default function AppleStylePage() {
                 </div>
               </button>
               
-              {/* ✨ 新增：域名选择器 */}
               <button
                 onClick={() => { haptic(); setShowDomainSheet(true); }}
                 className="w-full flex justify-between items-center bg-white rounded-xl shadow-sm border border-sf-gray-100 p-4 active:bg-sf-gray-50 transition-colors"
@@ -382,7 +386,7 @@ export default function AppleStylePage() {
         </div>
       )}
 
-      {/* ✨ 域名选择器 - 带搜索功能 */}
+      {/* 域名选择器 */}
       {showDomainSheet && (
         <div className="fixed inset-0 z-50 flex items-end">
           <div 
@@ -401,7 +405,6 @@ export default function AppleStylePage() {
                 {domainSearchQuery ? `找到 ${filteredDomains.length} 个域名` : `共 ${allDomains.length + 1} 个选项`}
               </p>
               
-              {/* 搜索框 */}
               <div className="mt-3 relative">
                 <input
                   type="text"
@@ -423,7 +426,6 @@ export default function AppleStylePage() {
             
             <div className="flex-1 overflow-y-auto">
               <div className="m-4 bg-white rounded-xl overflow-hidden">
-                {/* 随机选项 - 仅在无搜索时显示 */}
                 {!domainSearchQuery && (
                   <button
                     onClick={() => {
@@ -447,7 +449,6 @@ export default function AppleStylePage() {
                   </button>
                 )}
                 
-                {/* 域名列表 */}
                 {filteredDomains.length > 0 ? (
                   filteredDomains.map((domain) => (
                     <button
