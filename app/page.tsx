@@ -285,7 +285,6 @@ export default function FakerGenerator() {
                 className="w-20 h-20 mx-auto mb-4"
                 dangerouslySetInnerHTML={{ __html: facebookIcon }}
               />
-              <h2 className="text-2xl font-bold text-gray-900">欢迎使用脸书小助手</h2>
             </div>
             
             <div className="w-full max-w-sm">
