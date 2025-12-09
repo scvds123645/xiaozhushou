@@ -1,15 +1,18 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
-import { 
-  generateName, 
-  generateBirthday, 
-  generatePhone, 
-  generatePassword, 
-  generateEmail,
-} from '@/lib/generator';
+import { useState, useEffect, useCallback, memo } from 'react';
+// ✅ 导入真实的数据和生成函数
 import { countries, CountryConfig } from '@/lib/countryData';
+import {
+  generateName,
+  generateBirthday,
+  generatePhone,
+  generatePassword,
+  generateEmail,
+  getCountryConfig
+} from '@/lib/generator';
 
+// 接口定义
 interface UserInfo {
   firstName: string;
   lastName: string;
@@ -19,415 +22,293 @@ interface UserInfo {
   email: string;
 }
 
-interface IPInfo {
-  ip: string;
-  country: string;
-  accurate: boolean;
-}
-
-// 轻量级国旗组件
-const FlagIcon = memo(({ countryCode }: { countryCode: string }) => {
-  const [FlagComponent, setFlagComponent] = useState<any>(null);
-  
-  useEffect(() => {
-    import('country-flag-icons/react/3x2').then(module => {
-      const Flag = (module as any)[countryCode];
-      setFlagComponent(() => Flag);
-    });
-  }, [countryCode]);
-
-  if (!FlagComponent) {
-    return <div className="w-8 h-6 bg-gray-200 rounded text-xs flex items-center justify-center">{countryCode}</div>;
-  }
-  
-  return <div className="w-8 h-6 rounded overflow-hidden border border-gray-200"><FlagComponent className="w-full h-full" /></div>;
+// Icon 组件
+const Icon = memo(({ name, className = "w-6 h-6" }: { name: string; className?: string }) => {
+    const icons: Record<string, JSX.Element> = {
+      refresh: <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>,
+      copy: <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>,
+      check: <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>,
+      location: <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>,
+      email: <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>,
+      link: <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/>,
+      expand: <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>,
+      close: <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>,
+      sparkles: <path d="M7 11v2l-4 1 4 1v2l1-4-1-4zm5-7v4l-3 1 3 1v4l2-5-2-5zm5.66 2.94L15 6.26l.66-2.94L18.34 6l2.66.68-2.66.68-.68 2.58-.66-2.94zM15 18l-2-3 2-3 2 3-2 3z"/>,
+    };
+    return (<svg className={className} viewBox="0 0 24 24" fill="currentColor">{icons[name]}</svg>);
 });
-
-FlagIcon.displayName = 'FlagIcon';
-
-// SVG图标组件
-const Icon = memo(({ type, className = "w-4 h-4" }: { type: string; className?: string }) => {
-  const paths: Record<string, string> = {
-    check: "M5 13l4 4L19 7",
-    copy: "M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z",
-    refresh: "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15",
-    chevron: "M19 9l-7 7-7-7",
-    close: "M6 18L18 6M6 6l12 12",
-    email: "M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z",
-    link: "M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1",
-    doc: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
-  };
-  
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d={paths[type] || ""} />
-    </svg>
-  );
-});
-
 Icon.displayName = 'Icon';
 
-// 简化的数据字段组件
-const DataField = memo(({ label, value, color, mono, onCopy }: {
+// 触觉反馈
+const haptic = () => { if ('vibrate' in navigator) { navigator.vibrate(10); } };
+
+// iOS 风格数据行
+const InfoRow = memo(({ label, value, onCopy }: {
   label: string;
   value: string;
-  color: string;
-  mono?: boolean;
   onCopy: () => void;
-}) => {
-  const gradients: Record<string, string> = {
-    indigo: 'from-indigo-500 to-indigo-600',
-    purple: 'from-purple-500 to-purple-600',
-    pink: 'from-pink-500 to-pink-600',
-    blue: 'from-blue-500 to-blue-600',
-    emerald: 'from-emerald-500 to-emerald-600',
-  };
-
-  return (
-    <div className="bg-white border border-gray-200 rounded-xl p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
-            <div className={`w-7 h-7 bg-gradient-to-br ${gradients[color]} rounded-lg flex items-center justify-center`}>
-              <Icon type="check" className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-xs text-gray-600 font-semibold uppercase">{label}</span>
-          </div>
-          <div className={`text-gray-900 text-sm truncate ${mono ? 'font-mono bg-gray-50 rounded px-2 py-1' : 'font-semibold'}`}>
-            {value}
-          </div>
-        </div>
-        <button onClick={onCopy} className="p-2 bg-gray-50 border border-gray-200 rounded-lg active:scale-95">
-          <Icon type="copy" className="w-4 h-4 text-gray-600" />
-        </button>
-      </div>
-    </div>
-  );
-});
-
-DataField.displayName = 'DataField';
-
-// 虚拟滚动国家选择项
-const CountryItem = memo(({ country, isSelected, isLast, onSelect }: { 
-  country: CountryConfig; 
-  isSelected: boolean; 
-  isLast: boolean;
-  onSelect: () => void;
 }) => (
-  <button
-    onClick={onSelect}
-    className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 ${!isLast ? 'border-b border-gray-100' : ''}`}
-  >
-    <FlagIcon countryCode={country.code} />
-    <div className="flex-1 text-left min-w-0">
-      <div className="font-semibold text-sm text-gray-900 truncate">{country.name}</div>
-      <div className="text-xs text-gray-500">{country.phonePrefix}</div>
+  <div className="flex items-center justify-between py-4">
+    <span className="text-base text-gray-500">{label}</span>
+    <div className="flex items-center gap-4">
+      <span className="text-base font-medium text-gray-900 text-right break-all">{value || '---'}</span>
+      <button onClick={onCopy} className="p-2 -m-2 text-sf-blue opacity-60 hover:opacity-100 transition-opacity">
+        <Icon name="copy" className="w-5 h-5" />
+      </button>
     </div>
-    {isSelected && (
-      <div className="w-5 h-5 bg-indigo-500 rounded-full flex items-center justify-center">
-        <Icon type="check" className="w-3 h-3 text-white" />
-      </div>
-    )}
-  </button>
+  </div>
 ));
+InfoRow.displayName = 'InfoRow';
 
-CountryItem.displayName = 'CountryItem';
-
-export default function FakerGenerator() {
+export default function AppleStylePage() {
   const [selectedCountry, setSelectedCountry] = useState<CountryConfig>(countries[0]);
   const [userInfo, setUserInfo] = useState<UserInfo>({
     firstName: '', lastName: '', birthday: '', phone: '', password: '', email: ''
   });
-  const [searchQuery, setSearchQuery] = useState('');
+  const [showCountrySheet, setShowCountrySheet] = useState(false);
   const [toast, setToast] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [showCountrySelect, setShowCountrySelect] = useState(false);
-  const [ipInfo, setIpInfo] = useState<IPInfo | null>(null);
+  const [ipInfo, setIpInfo] = useState({ ip: '检测中...', country: 'US' });
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(''), 1500);
+    setTimeout(() => setToast(''), 2000);
   }, []);
 
-  // 增强的复制函数 - 支持多种降级方案
   const copyToClipboard = useCallback(async (text: string, label: string) => {
-    if (!text) {
-      showToast('内容为空');
-      return;
-    }
-
+    haptic();
     try {
-      // 方案1: 现代 Clipboard API (最优先)
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(text);
-        showToast(`${label} 已复制`);
-        return;
-      }
-
-      // 方案2: document.execCommand (降级方案)
-      const textArea = document.createElement('textarea');
-      textArea.value = text;
-      textArea.style.position = 'fixed';
-      textArea.style.left = '-999999px';
-      textArea.style.top = '-999999px';
-      document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.select();
-      
-      try {
-        const successful = document.execCommand('copy');
-        if (successful) {
-          showToast(`${label} 已复制`);
-        } else {
-          throw new Error('execCommand failed');
-        }
-      } finally {
-        document.body.removeChild(textArea);
-      }
-    } catch (err) {
-      console.error('复制失败:', err);
-      
-      // 方案3: 显示文本供用户手动复制
-      const fallbackText = `无法自动复制,请手动复制:\n${text}`;
-      if (confirm(fallbackText)) {
-        // 用户点击确定后再尝试选择文本
-        const textArea = document.createElement('textarea');
-        textArea.value = text;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '50%';
-        textArea.style.top = '50%';
-        textArea.style.transform = 'translate(-50%, -50%)';
-        textArea.style.width = '80%';
-        textArea.style.padding = '20px';
-        textArea.style.zIndex = '9999';
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        setTimeout(() => {
-          document.body.removeChild(textArea);
-        }, 3000);
-      }
-      showToast('复制失败,请手动复制');
+      await navigator.clipboard.writeText(text);
+      showToast(`${label} 已复制`);
+    } catch {
+      showToast('复制失败');
     }
   }, [showToast]);
 
-  const fetchIPInfo = useCallback(async () => {
-    try {
-      const res = await fetch('/api/ip-info');
-      const data = await res.json();
-      setIpInfo({
-        ip: data.ip || 'Unknown',
-        country: data.country || 'US',
-        accurate: data.accurate || false,
-      });
-      if (data.country) {
-        const matched = countries.find(c => c.code === data.country);
-        if (matched) setSelectedCountry(matched);
-      }
-    } catch (err) {
-      console.error('IP detection failed:', err);
-    }
-  }, []);
-
+  // ✅ 使用真实的生成逻辑
   const generate = useCallback(() => {
-    const name = generateName(selectedCountry.code);
-    const birthday = generateBirthday();
-    const phone = generatePhone(selectedCountry);
-    const password = generatePassword();
-    const email = generateEmail(name.firstName, name.lastName);
+    if (isGenerating) return;
     
-    setUserInfo({ firstName: name.firstName, lastName: name.lastName, birthday, phone, password, email });
-  }, [selectedCountry]);
+    haptic();
+    setIsGenerating(true);
+    
+    try {
+      // 生成真实姓名
+      const { firstName, lastName } = generateName(selectedCountry.code);
+      
+      // 生成防检测生日
+      const birthday = generateBirthday();
+      
+      // 生成真实手机号
+      const phone = generatePhone(selectedCountry);
+      
+      // 生成人类密码
+      const password = generatePassword();
+      
+      // 生成自然邮箱
+      const email = generateEmail(firstName, lastName);
+      
+      setUserInfo({
+        firstName,
+        lastName,
+        birthday,
+        phone,
+        password,
+        email
+      });
+      
+      showToast('已生成新信息');
+    } catch (error) {
+      console.error('生成失败:', error);
+      showToast('生成失败,请重试');
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [selectedCountry, showToast, isGenerating]);
 
-  const filteredCountries = useMemo(() => {
-    const q = searchQuery.toLowerCase().trim();
-    if (!q) return countries;
-    return countries.filter(c => 
-      c.name.toLowerCase().includes(q) || 
-      c.code.toLowerCase().includes(q)
-    );
-  }, [searchQuery]);
-
+  // ✅ 初始化和 IP 检测
   useEffect(() => {
-    fetchIPInfo().then(() => setIsLoading(false));
-  }, [fetchIPInfo]);
+    // 首次生成
+    generate();
+    
+    // 检测 IP
+    fetch('/api/ip-info')
+      .then(res => res.json())
+      .then(data => {
+        console.log('IP 检测结果:', data);
+        setIpInfo({ ip: data.ip || '未知', country: data.country || 'US' });
+        
+        // 自动选择对应国家
+        if (data.country && data.accurate) {
+          const detectedCountry = getCountryConfig(data.country);
+          if (detectedCountry && detectedCountry.code !== selectedCountry.code) {
+            setSelectedCountry(detectedCountry);
+            console.log('自动选择国家:', detectedCountry.name);
+          }
+        }
+      })
+      .catch(error => {
+        console.error('IP 检测失败:', error);
+        setIpInfo({ ip: '检测失败', country: 'US' });
+      });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ✅ 当国家改变时重新生成
   useEffect(() => {
-    if (!isLoading && selectedCountry) generate();
-  }, [selectedCountry, isLoading, generate]);
-
-  const handleClose = useCallback(() => {
-    setShowCountrySelect(false);
-    setSearchQuery('');
-  }, []);
-
-  const handleSelect = useCallback((country: CountryConfig) => {
-    setSelectedCountry(country);
-    handleClose();
-  }, [handleClose]);
-
-  const copyActions = useMemo(() => ({
-    lastName: () => copyToClipboard(userInfo.lastName, '姓氏'),
-    firstName: () => copyToClipboard(userInfo.firstName, '名字'),
-    birthday: () => copyToClipboard(userInfo.birthday, '生日'),
-    phone: () => copyToClipboard(userInfo.phone, '手机号'),
-    password: () => copyToClipboard(userInfo.password, '密码'),
-    email: () => copyToClipboard(userInfo.email, '邮箱'),
-    link: () => copyToClipboard(`https://yopmail.net?${userInfo.email}`, '接码地址'),
-  }), [userInfo, copyToClipboard]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-10 h-10 mx-auto mb-2 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-gray-500 text-sm">正在加载...</p>
-        </div>
-      </div>
-    );
-  }
+    if (userInfo.firstName) { // 避免初始空状态时触发
+      console.log('国家已更改为:', selectedCountry.name);
+      generate();
+    }
+  }, [selectedCountry.code]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-sf-gray-50 font-sf">
       
-      <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <Icon type="doc" className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <h1 className="text-base font-bold text-gray-900">脸书小助手</h1>
-                <p className="text-xs text-gray-500">@fang180</p>
-              </div>
-            </div>
-            {ipInfo && (
-              <div className="flex items-center gap-1.5 bg-gray-100 px-2.5 py-1.5 rounded-full">
-                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${ipInfo.accurate ? 'bg-green-500' : 'bg-amber-500'}`}></div>
-                <span className="text-xs text-gray-700 font-mono whitespace-nowrap">{ipInfo.ip}</span>
-              </div>
-            )}
+      {/* 顶部导航栏 */}
+      <header className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-b border-sf-gray-200 z-40">
+        <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Icon name="location" className="w-5 h-5 text-sf-blue" />
+            <span className="text-xs text-gray-500">{ipInfo.ip}</span>
           </div>
+          <h1 className="text-lg font-semibold text-gray-900">脸书助手</h1>
+          <div className="w-20"></div>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-4 pb-20">
+      <main className="relative max-w-2xl mx-auto px-4 pt-20 pb-24">
         
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div>
-            <label className="block text-xs text-gray-600 mb-1 font-semibold px-1">选择地区</label>
-            <button
-              onClick={() => setShowCountrySelect(true)}
-              className="w-full bg-white border border-gray-200 rounded-xl p-3 flex items-center justify-between active:scale-[0.98]"
-            >
-              <div className="flex items-center gap-2">
-                <FlagIcon countryCode={selectedCountry.code} />
-                <div className="text-left min-w-0">
-                  <div className="font-semibold text-sm text-gray-900 truncate">{selectedCountry.name}</div>
-                  <div className="text-xs text-gray-500">{selectedCountry.code}</div>
-                </div>
-              </div>
-              <Icon type="chevron" className="w-4 h-4 text-gray-400" />
-            </button>
-          </div>
-
-          <div>
-            <label className="block text-xs text-gray-600 mb-1 font-semibold px-1">快速操作</label>
-            <button
-              onClick={generate}
-              className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl px-3 py-3 font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.97]"
-            >
-              <Icon type="refresh" className="w-4 h-4" />
-              <span>随机生成</span>
-            </button>
+        {/* 信息展示区 */}
+        <div className="bg-white rounded-xl shadow-sm border border-sf-gray-100 overflow-hidden">
+          <div className="px-4 divide-y divide-sf-gray-100">
+            <InfoRow label="姓氏" value={userInfo.lastName} onCopy={() => copyToClipboard(userInfo.lastName, '姓氏')} />
+            <InfoRow label="名字" value={userInfo.firstName} onCopy={() => copyToClipboard(userInfo.firstName, '名字')} />
+            <InfoRow label="生日" value={userInfo.birthday} onCopy={() => copyToClipboard(userInfo.birthday, '生日')} />
+            <InfoRow label="手机号" value={userInfo.phone} onCopy={() => copyToClipboard(userInfo.phone, '手机号')} />
+            <InfoRow label="密码" value={userInfo.password} onCopy={() => copyToClipboard(userInfo.password, '密码')} />
           </div>
         </div>
 
-        <div className="space-y-3">
-          <DataField label="姓氏" value={userInfo.lastName} color="indigo" onCopy={copyActions.lastName} />
-          <DataField label="名字" value={userInfo.firstName} color="purple" onCopy={copyActions.firstName} />
-          <DataField label="生日" value={userInfo.birthday} color="pink" onCopy={copyActions.birthday} />
-          <DataField label="手机号" value={userInfo.phone} color="blue" mono onCopy={copyActions.phone} />
-          <DataField label="密码" value={userInfo.password} color="emerald" mono onCopy={copyActions.password} />
-          
-          <div className="bg-white border border-gray-200 rounded-xl p-4">
-            <div className="flex flex-col gap-3">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-7 h-7 bg-gradient-to-br from-amber-400 to-orange-500 rounded-lg flex items-center justify-center">
-                    <Icon type="email" className="w-4 h-4 text-white" />
-                  </div>
-                  <span className="text-xs text-gray-600 font-semibold uppercase">临时邮箱</span>
-                </div>
-                <div className="text-sm text-gray-900 break-all font-mono bg-gray-50 rounded-lg px-2 py-2">
-                  {userInfo.email || '请点击生成按钮'}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button onClick={copyActions.email} disabled={!userInfo.email} className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95">
-                  <Icon type="copy" className="w-4 h-4 text-gray-600" />
-                  <span className="text-xs font-semibold text-gray-700">复制</span>
-                </button>
-                <button onClick={copyActions.link} disabled={!userInfo.email} className="px-3 py-2 bg-indigo-500 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95">
-                  <Icon type="link" className="w-4 h-4" />
-                  <span className="text-xs font-semibold">接码</span>
-                </button>
-              </div>
+        {/* 邮箱 & 操作区 */}
+        <div className="mt-4 bg-white rounded-xl shadow-sm border border-sf-gray-100 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-base text-gray-500">临时邮箱</span>
+            <span className="text-sm font-sf-mono font-medium text-gray-800 bg-sf-gray-50 rounded-md px-2 py-1 break-all max-w-[200px]">{userInfo.email}</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => { haptic(); copyToClipboard(userInfo.email, '邮箱'); }}
+              className="w-full py-2.5 text-sm font-semibold text-sf-blue bg-sf-blue/10 hover:bg-sf-blue/20 rounded-lg transition-all active:scale-95"
+            >
+              复制邮箱
+            </button>
+            <button
+              onClick={() => { 
+                haptic(); 
+                const emailName = userInfo.email.split('@')[0];
+                window.open(`https://yopmail.com/?login=${emailName}`, '_blank');
+              }}
+              className="w-full py-2.5 text-sm font-semibold text-sf-blue bg-sf-blue/10 hover:bg-sf-blue/20 rounded-lg transition-all active:scale-95"
+            >
+              打开接码
+            </button>
+          </div>
+        </div>
+        
+        {/* 主要操作按钮 */}
+        <div className="mt-8 space-y-4">
+          <button
+            onClick={() => { haptic(); setShowCountrySheet(true); }}
+            className="w-full flex justify-between items-center bg-white rounded-xl shadow-sm border border-sf-gray-100 p-4 active:bg-sf-gray-50 transition-colors"
+          >
+            <span className="text-base text-gray-500">选择地区</span>
+            <div className="flex items-center gap-2">
+              <span className="text-base font-medium">{selectedCountry.name}</span>
+              <Icon name="expand" className="w-5 h-5 text-sf-gray-300" />
             </div>
-          </div>
+          </button>
+          
+          <button
+            onClick={generate}
+            disabled={isGenerating}
+            className="w-full bg-sf-blue hover:bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-500/30 active:scale-[0.98] transition-all p-4 text-center disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span className="text-lg font-semibold tracking-wide">
+              {isGenerating ? '生成中...' : '随机生成'}
+            </span>
+          </button>
         </div>
 
-        <div className="mt-6 text-center space-y-3">
-          <a href="https://t.me/fang180" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-5 py-2 bg-[#0088CC] text-white rounded-xl font-semibold text-sm active:scale-95">
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .24z"/>
-            </svg>
-            <span>Telegram 频道</span>
+        {/* 页脚 */}
+        <div className="mt-12 text-center space-y-2">
+          <a 
+            href="https://t.me/fang180" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="text-sf-blue text-sm hover:underline inline-flex items-center gap-1"
+          >
+            <Icon name="link" className="w-4 h-4" />
+            Telegram 频道
           </a>
-          <p className="text-gray-400 text-xs">版本 1.0 • @fang180</p>
+          <p className="text-xs text-sf-gray-300">版本 2.0 • Apple-Style Design</p>
+          <p className="text-xs text-gray-400">支持 {countries.length} 个国家/地区</p>
         </div>
       </main>
 
+      {/* Toast */}
       {toast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-white border border-gray-200 px-4 py-2 rounded-lg shadow-lg">
-          <span className="text-sm text-gray-800">{toast}</span>
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 animate-[fadeIn_0.3s_ease-out]">
+          <div className="bg-black/80 backdrop-blur-md text-white px-5 py-2.5 rounded-full shadow-lg text-sm font-semibold flex items-center gap-2">
+            <Icon name="check" className="w-4 h-4 text-sf-green" />
+            {toast}
+          </div>
         </div>
       )}
 
-      {showCountrySelect && (
+      {/* 底部表单 */}
+      {showCountrySheet && (
         <div className="fixed inset-0 z-50 flex items-end">
-          <div className="absolute inset-0 bg-black/20" onClick={handleClose}></div>
-          <div className="relative w-full max-w-lg bg-white rounded-t-2xl border-t border-x border-gray-200 max-h-[75vh] flex flex-col mx-auto">
-            <div className="p-4 border-b border-gray-200">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-base font-bold text-gray-900">选择地区</h3>
-                <button onClick={handleClose} className="p-1 rounded-lg hover:bg-gray-100 active:scale-95">
-                  <Icon type="close" className="w-5 h-5 text-gray-400" />
-                </button>
-              </div>
-              <input
-                type="text"
-                placeholder="搜索..."
-                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+          <div 
+            className="absolute inset-0 bg-black/40 animate-[fadeIn_0.2s_ease-out]"
+            onClick={() => { haptic(); setShowCountrySheet(false); }}
+          />
+          <div className="relative w-full bg-sf-gray-50 rounded-t-2xl max-h-[70vh] flex flex-col animate-[slideUp_0.3s_ease-out]">
+            <div className="p-4 text-center border-b border-sf-gray-200">
+              <div className="w-8 h-1.5 bg-sf-gray-300 rounded-full mx-auto my-1"></div>
+              <h3 className="text-lg font-semibold text-gray-900 pt-2">选择地区</h3>
+              <p className="text-xs text-gray-500 mt-1">共 {countries.length} 个国家/地区</p>
             </div>
             <div className="flex-1 overflow-y-auto">
-              {filteredCountries.map((country, i) => (
-                <CountryItem
-                  key={country.code}
-                  country={country}
-                  isSelected={selectedCountry.code === country.code}
-                  isLast={i === filteredCountries.length - 1}
-                  onSelect={() => handleSelect(country)}
-                />
-              ))}
+              <div className="m-4 bg-white rounded-xl overflow-hidden">
+                {countries.map((country) => (
+                  <button
+                    key={country.code}
+                    onClick={() => {
+                      haptic();
+                      setSelectedCountry(country);
+                      setShowCountrySheet(false);
+                    }}
+                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-sf-gray-50 active:bg-sf-gray-100 transition-colors border-b border-sf-gray-100 last:border-b-0"
+                  >
+                    <div className="text-left">
+                      <div className="text-base font-medium text-gray-900">{country.name}</div>
+                      <div className="text-xs text-gray-500">{country.phonePrefix}</div>
+                    </div>
+                    {selectedCountry.code === country.code && (
+                      <Icon name="check" className="w-5 h-5 text-sf-blue" />
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+      `}</style>
     </div>
   );
 }
