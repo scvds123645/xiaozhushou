@@ -156,7 +156,7 @@ export default function AppleStylePage() {
             <Icon name="location" className="w-5 h-5 text-sf-blue" />
             <span className="text-xs text-gray-500">{ipInfo.ip}</span>
           </div>
-          <h1 className="text-lg font-semibold text-gray-900">脸书助手</h1>
+          <h1 className="text-lg font-semibold text-gray-900">脸书小助手</h1>
           <div className="w-20"></div>
         </div>
       </header>
