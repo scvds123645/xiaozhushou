@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
+import { useState, useCallback, useMemo, memo } from 'react';
 import { 
   generateName, 
   generateBirthday, 
@@ -9,6 +9,7 @@ import {
   generateEmail,
 } from '@/lib/generator';
 import { countries, CountryConfig } from '@/lib/countryData';
+import { getCountryFlag, facebookIcon, docIcon } from '@/svg/tubiao';
 
 interface UserInfo {
   firstName: string;
@@ -27,20 +28,14 @@ interface IPInfo {
 
 // 轻量级国旗组件
 const FlagIcon = memo(({ countryCode }: { countryCode: string }) => {
-  const [FlagComponent, setFlagComponent] = useState<any>(null);
+  const svgContent = getCountryFlag(countryCode);
   
-  useEffect(() => {
-    import('country-flag-icons/react/3x2').then(module => {
-      const Flag = (module as any)[countryCode];
-      setFlagComponent(() => Flag);
-    });
-  }, [countryCode]);
-
-  if (!FlagComponent) {
-    return <div className="w-8 h-6 bg-gray-200 rounded text-xs flex items-center justify-center">{countryCode}</div>;
-  }
-  
-  return <div className="w-8 h-6 rounded overflow-hidden border border-gray-200"><FlagComponent className="w-full h-full" /></div>;
+  return (
+    <div 
+      className="w-8 h-6 rounded overflow-hidden border border-gray-200" 
+      dangerouslySetInnerHTML={{ __html: svgContent }}
+    />
+  );
 });
 
 FlagIcon.displayName = 'FlagIcon';
@@ -56,6 +51,7 @@ const Icon = memo(({ type, className = "w-4 h-4" }: { type: string; className?: 
     email: "M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z",
     link: "M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1",
     doc: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
+    play: "M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
   };
   
   return (
@@ -140,16 +136,16 @@ export default function FakerGenerator() {
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
   const [showCountrySelect, setShowCountrySelect] = useState(false);
   const [ipInfo, setIpInfo] = useState<IPInfo | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [hasGenerated, setHasGenerated] = useState(false);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(''), 1500);
   }, []);
 
-  // 增强的复制函数 - 支持多种降级方案
   const copyToClipboard = useCallback(async (text: string, label: string) => {
     if (!text) {
       showToast('内容为空');
@@ -157,14 +153,12 @@ export default function FakerGenerator() {
     }
 
     try {
-      // 方案1: 现代 Clipboard API (最优先)
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(text);
         showToast(`${label} 已复制`);
         return;
       }
 
-      // 方案2: document.execCommand (降级方案)
       const textArea = document.createElement('textarea');
       textArea.value = text;
       textArea.style.position = 'fixed';
@@ -186,27 +180,6 @@ export default function FakerGenerator() {
       }
     } catch (err) {
       console.error('复制失败:', err);
-      
-      // 方案3: 显示文本供用户手动复制
-      const fallbackText = `无法自动复制,请手动复制:\n${text}`;
-      if (confirm(fallbackText)) {
-        // 用户点击确定后再尝试选择文本
-        const textArea = document.createElement('textarea');
-        textArea.value = text;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '50%';
-        textArea.style.top = '50%';
-        textArea.style.transform = 'translate(-50%, -50%)';
-        textArea.style.width = '80%';
-        textArea.style.padding = '20px';
-        textArea.style.zIndex = '9999';
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        setTimeout(() => {
-          document.body.removeChild(textArea);
-        }, 3000);
-      }
       showToast('复制失败,请手动复制');
     }
   }, [showToast]);
@@ -229,7 +202,15 @@ export default function FakerGenerator() {
     }
   }, []);
 
-  const generate = useCallback(() => {
+  const generate = useCallback(async () => {
+    setIsGenerating(true);
+    
+    // 首次生成时检测IP
+    if (!hasGenerated) {
+      await fetchIPInfo();
+      setHasGenerated(true);
+    }
+    
     const name = generateName(selectedCountry.code);
     const birthday = generateBirthday();
     const phone = generatePhone(selectedCountry);
@@ -237,7 +218,8 @@ export default function FakerGenerator() {
     const email = generateEmail(name.firstName, name.lastName);
     
     setUserInfo({ firstName: name.firstName, lastName: name.lastName, birthday, phone, password, email });
-  }, [selectedCountry]);
+    setIsGenerating(false);
+  }, [selectedCountry, hasGenerated, fetchIPInfo]);
 
   const filteredCountries = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
@@ -247,14 +229,6 @@ export default function FakerGenerator() {
       c.code.toLowerCase().includes(q)
     );
   }, [searchQuery]);
-
-  useEffect(() => {
-    fetchIPInfo().then(() => setIsLoading(false));
-  }, [fetchIPInfo]);
-
-  useEffect(() => {
-    if (!isLoading && selectedCountry) generate();
-  }, [selectedCountry, isLoading, generate]);
 
   const handleClose = useCallback(() => {
     setShowCountrySelect(false);
@@ -276,17 +250,6 @@ export default function FakerGenerator() {
     link: () => copyToClipboard(`https://yopmail.net?${userInfo.email}`, '接码地址'),
   }), [userInfo, copyToClipboard]);
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-10 h-10 mx-auto mb-2 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-gray-500 text-sm">正在加载...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       
@@ -294,9 +257,10 @@ export default function FakerGenerator() {
         <div className="max-w-5xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <Icon type="doc" className="w-4 h-4 text-white" />
-              </div>
+              <div 
+                className="w-9 h-9 rounded-lg overflow-hidden"
+                dangerouslySetInnerHTML={{ __html: facebookIcon }}
+              />
               <div>
                 <h1 className="text-base font-bold text-gray-900">脸书小助手</h1>
                 <p className="text-xs text-gray-500">@fang180</p>
@@ -314,69 +278,113 @@ export default function FakerGenerator() {
 
       <main className="max-w-5xl mx-auto px-4 py-4 pb-20">
         
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div>
-            <label className="block text-xs text-gray-600 mb-1 font-semibold px-1">选择地区</label>
-            <button
-              onClick={() => setShowCountrySelect(true)}
-              className="w-full bg-white border border-gray-200 rounded-xl p-3 flex items-center justify-between active:scale-[0.98]"
-            >
-              <div className="flex items-center gap-2">
-                <FlagIcon countryCode={selectedCountry.code} />
-                <div className="text-left min-w-0">
-                  <div className="font-semibold text-sm text-gray-900 truncate">{selectedCountry.name}</div>
-                  <div className="text-xs text-gray-500">{selectedCountry.code}</div>
-                </div>
-              </div>
-              <Icon type="chevron" className="w-4 h-4 text-gray-400" />
-            </button>
+        {!hasGenerated ? (
+          <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+            <div className="text-center space-y-3">
+              <div 
+                className="w-20 h-20 mx-auto mb-4"
+                dangerouslySetInnerHTML={{ __html: facebookIcon }}
+              />
+              <h2 className="text-2xl font-bold text-gray-900">欢迎使用脸书小助手</h2>
+            </div>
+            
+            <div className="w-full max-w-sm">
+              <button
+                onClick={generate}
+                disabled={isGenerating}
+                className="w-full bg-[#1877F2] hover:bg-[#166FE5] text-white rounded-xl px-6 py-4 font-semibold text-base flex items-center justify-center gap-2 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                {isGenerating ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>创号中...</span>
+                  </>
+                ) : (
+                  <>
+                    <Icon type="play" className="w-5 h-5" />
+                    <span>开始创号</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
-
-          <div>
-            <label className="block text-xs text-gray-600 mb-1 font-semibold px-1">快速操作</label>
-            <button
-              onClick={generate}
-              className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl px-3 py-3 font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.97]"
-            >
-              <Icon type="refresh" className="w-4 h-4" />
-              <span>随机生成</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <DataField label="姓氏" value={userInfo.lastName} color="indigo" onCopy={copyActions.lastName} />
-          <DataField label="名字" value={userInfo.firstName} color="purple" onCopy={copyActions.firstName} />
-          <DataField label="生日" value={userInfo.birthday} color="pink" onCopy={copyActions.birthday} />
-          <DataField label="手机号" value={userInfo.phone} color="blue" mono onCopy={copyActions.phone} />
-          <DataField label="密码" value={userInfo.password} color="emerald" mono onCopy={copyActions.password} />
-          
-          <div className="bg-white border border-gray-200 rounded-xl p-4">
-            <div className="flex flex-col gap-3">
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-3 mb-4">
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-7 h-7 bg-gradient-to-br from-amber-400 to-orange-500 rounded-lg flex items-center justify-center">
-                    <Icon type="email" className="w-4 h-4 text-white" />
+                <label className="block text-xs text-gray-600 mb-1 font-semibold px-1">选择地区</label>
+                <button
+                  onClick={() => setShowCountrySelect(true)}
+                  className="w-full bg-white border border-gray-200 rounded-xl p-3 flex items-center justify-between active:scale-[0.98]"
+                >
+                  <div className="flex items-center gap-2">
+                    <FlagIcon countryCode={selectedCountry.code} />
+                    <div className="text-left min-w-0">
+                      <div className="font-semibold text-sm text-gray-900 truncate">{selectedCountry.name}</div>
+                      <div className="text-xs text-gray-500">{selectedCountry.code}</div>
+                    </div>
                   </div>
-                  <span className="text-xs text-gray-600 font-semibold uppercase">临时邮箱</span>
-                </div>
-                <div className="text-sm text-gray-900 break-all font-mono bg-gray-50 rounded-lg px-2 py-2">
-                  {userInfo.email || '请点击生成按钮'}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button onClick={copyActions.email} disabled={!userInfo.email} className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95">
-                  <Icon type="copy" className="w-4 h-4 text-gray-600" />
-                  <span className="text-xs font-semibold text-gray-700">复制</span>
+                  <Icon type="chevron" className="w-4 h-4 text-gray-400" />
                 </button>
-                <button onClick={copyActions.link} disabled={!userInfo.email} className="px-3 py-2 bg-indigo-500 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95">
-                  <Icon type="link" className="w-4 h-4" />
-                  <span className="text-xs font-semibold">接码</span>
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-600 mb-1 font-semibold px-1">快速操作</label>
+                <button
+                  onClick={generate}
+                  disabled={isGenerating}
+                  className="w-full bg-[#1877F2] hover:bg-[#166FE5] text-white rounded-xl px-3 py-3 font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.97] disabled:opacity-50 transition-all"
+                >
+                  {isGenerating ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>生成中</span>
+                    </>
+                  ) : (
+                    <>
+                      <Icon type="refresh" className="w-4 h-4" />
+                      <span>随机生成</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
-          </div>
-        </div>
+
+            <div className="space-y-3">
+              <DataField label="姓氏" value={userInfo.lastName} color="indigo" onCopy={copyActions.lastName} />
+              <DataField label="名字" value={userInfo.firstName} color="purple" onCopy={copyActions.firstName} />
+              <DataField label="生日" value={userInfo.birthday} color="pink" onCopy={copyActions.birthday} />
+              <DataField label="手机号" value={userInfo.phone} color="blue" mono onCopy={copyActions.phone} />
+              <DataField label="密码" value={userInfo.password} color="emerald" mono onCopy={copyActions.password} />
+              
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <div className="flex flex-col gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-7 h-7 bg-gradient-to-br from-amber-400 to-orange-500 rounded-lg flex items-center justify-center">
+                        <Icon type="email" className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="text-xs text-gray-600 font-semibold uppercase">临时邮箱</span>
+                    </div>
+                    <div className="text-sm text-gray-900 break-all font-mono bg-gray-50 rounded-lg px-2 py-2">
+                      {userInfo.email || '请点击生成按钮'}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button onClick={copyActions.email} disabled={!userInfo.email} className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95">
+                      <Icon type="copy" className="w-4 h-4 text-gray-600" />
+                      <span className="text-xs font-semibold text-gray-700">复制</span>
+                    </button>
+                    <button onClick={copyActions.link} disabled={!userInfo.email} className="px-3 py-2 bg-[#1877F2] hover:bg-[#166FE5] text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95 transition-all">
+                      <Icon type="link" className="w-4 h-4" />
+                      <span className="text-xs font-semibold">接码</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
 
         <div className="mt-6 text-center space-y-3">
           <a href="https://t.me/fang180" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-5 py-2 bg-[#0088CC] text-white rounded-xl font-semibold text-sm active:scale-95">
