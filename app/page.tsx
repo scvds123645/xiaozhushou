@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, memo } from 'react';
-// ✅ 导入真实的数据和生成函数
 import { countries, CountryConfig } from '@/lib/countryData';
 import {
   generateName,
@@ -22,9 +21,9 @@ interface UserInfo {
   email: string;
 }
 
-// Icon 组件
+// Icon 组件 - 修复 JSX 类型
 const Icon = memo(({ name, className = "w-6 h-6" }: { name: string; className?: string }) => {
-    const icons: Record<string, JSX.Element> = {
+    const icons: Record<string, React.ReactElement> = {
       refresh: <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>,
       copy: <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>,
       check: <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>,
@@ -85,7 +84,6 @@ export default function AppleStylePage() {
     }
   }, [showToast]);
 
-  // ✅ 使用真实的生成逻辑
   const generate = useCallback(() => {
     if (isGenerating) return;
     
@@ -93,19 +91,10 @@ export default function AppleStylePage() {
     setIsGenerating(true);
     
     try {
-      // 生成真实姓名
       const { firstName, lastName } = generateName(selectedCountry.code);
-      
-      // 生成防检测生日
       const birthday = generateBirthday();
-      
-      // 生成真实手机号
       const phone = generatePhone(selectedCountry);
-      
-      // 生成人类密码
       const password = generatePassword();
-      
-      // 生成自然邮箱
       const email = generateEmail(firstName, lastName);
       
       setUserInfo({
@@ -126,19 +115,15 @@ export default function AppleStylePage() {
     }
   }, [selectedCountry, showToast, isGenerating]);
 
-  // ✅ 初始化和 IP 检测
   useEffect(() => {
-    // 首次生成
     generate();
     
-    // 检测 IP
     fetch('/api/ip-info')
       .then(res => res.json())
       .then(data => {
         console.log('IP 检测结果:', data);
         setIpInfo({ ip: data.ip || '未知', country: data.country || 'US' });
         
-        // 自动选择对应国家
         if (data.country && data.accurate) {
           const detectedCountry = getCountryConfig(data.country);
           if (detectedCountry && detectedCountry.code !== selectedCountry.code) {
@@ -151,20 +136,20 @@ export default function AppleStylePage() {
         console.error('IP 检测失败:', error);
         setIpInfo({ ip: '检测失败', country: 'US' });
       });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // ✅ 当国家改变时重新生成
   useEffect(() => {
-    if (userInfo.firstName) { // 避免初始空状态时触发
+    if (userInfo.firstName) {
       console.log('国家已更改为:', selectedCountry.name);
       generate();
     }
-  }, [selectedCountry.code]); // eslint-disable-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCountry.code]);
 
   return (
     <div className="min-h-screen bg-sf-gray-50 font-sf">
       
-      {/* 顶部导航栏 */}
       <header className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-b border-sf-gray-200 z-40">
         <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -178,7 +163,6 @@ export default function AppleStylePage() {
 
       <main className="relative max-w-2xl mx-auto px-4 pt-20 pb-24">
         
-        {/* 信息展示区 */}
         <div className="bg-white rounded-xl shadow-sm border border-sf-gray-100 overflow-hidden">
           <div className="px-4 divide-y divide-sf-gray-100">
             <InfoRow label="姓氏" value={userInfo.lastName} onCopy={() => copyToClipboard(userInfo.lastName, '姓氏')} />
@@ -189,7 +173,6 @@ export default function AppleStylePage() {
           </div>
         </div>
 
-        {/* 邮箱 & 操作区 */}
         <div className="mt-4 bg-white rounded-xl shadow-sm border border-sf-gray-100 p-4 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-base text-gray-500">临时邮箱</span>
@@ -215,7 +198,6 @@ export default function AppleStylePage() {
           </div>
         </div>
         
-        {/* 主要操作按钮 */}
         <div className="mt-8 space-y-4">
           <button
             onClick={() => { haptic(); setShowCountrySheet(true); }}
@@ -239,7 +221,6 @@ export default function AppleStylePage() {
           </button>
         </div>
 
-        {/* 页脚 */}
         <div className="mt-12 text-center space-y-2">
           <a 
             href="https://t.me/fang180" 
@@ -255,7 +236,6 @@ export default function AppleStylePage() {
         </div>
       </main>
 
-      {/* Toast */}
       {toast && (
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 animate-[fadeIn_0.3s_ease-out]">
           <div className="bg-black/80 backdrop-blur-md text-white px-5 py-2.5 rounded-full shadow-lg text-sm font-semibold flex items-center gap-2">
@@ -265,7 +245,6 @@ export default function AppleStylePage() {
         </div>
       )}
 
-      {/* 底部表单 */}
       {showCountrySheet && (
         <div className="fixed inset-0 z-50 flex items-end">
           <div 
