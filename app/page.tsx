@@ -64,6 +64,7 @@ export default function AppleStylePage() {
   });
   const [showCountrySheet, setShowCountrySheet] = useState(false);
   const [showDomainSheet, setShowDomainSheet] = useState(false);
+  const [domainSearchQuery, setDomainSearchQuery] = useState('');
   const [toast, setToast] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
   const [ipInfo, setIpInfo] = useState({ ip: '检测中...', country: 'US' });
@@ -207,6 +208,11 @@ export default function AppleStylePage() {
 
   const allDomains = getAllDomains();
   const displayDomain = selectedDomain === 'random' ? '随机域名' : selectedDomain;
+
+  // ✨ 域名搜索过滤
+  const filteredDomains = allDomains.filter(domain => 
+    domain.toLowerCase().includes(domainSearchQuery.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-sf-gray-50 font-sf">
@@ -376,61 +382,101 @@ export default function AppleStylePage() {
         </div>
       )}
 
-      {/* ✨ 新增：域名选择器 */}
+      {/* ✨ 域名选择器 - 带搜索功能 */}
       {showDomainSheet && (
         <div className="fixed inset-0 z-50 flex items-end">
           <div 
             className="absolute inset-0 bg-black/40 animate-[fadeIn_0.2s_ease-out]"
-            onClick={() => { haptic(); setShowDomainSheet(false); }}
+            onClick={() => { 
+              haptic(); 
+              setShowDomainSheet(false);
+              setDomainSearchQuery('');
+            }}
           />
-          <div className="relative w-full bg-sf-gray-50 rounded-t-2xl max-h-[70vh] flex flex-col animate-[slideUp_0.3s_ease-out]">
-            <div className="p-4 text-center border-b border-sf-gray-200">
-              <div className="w-8 h-1.5 bg-sf-gray-300 rounded-full mx-auto my-1"></div>
-              <h3 className="text-lg font-semibold text-gray-900 pt-2">选择邮箱域名</h3>
-              <p className="text-xs text-gray-500 mt-1">共 {allDomains.length + 1} 个选项</p>
+          <div className="relative w-full bg-sf-gray-50 rounded-t-2xl max-h-[75vh] flex flex-col animate-[slideUp_0.3s_ease-out]">
+            <div className="p-4 border-b border-sf-gray-200">
+              <div className="w-8 h-1.5 bg-sf-gray-300 rounded-full mx-auto mb-3"></div>
+              <h3 className="text-lg font-semibold text-gray-900 text-center">选择邮箱域名</h3>
+              <p className="text-xs text-gray-500 text-center mt-1">
+                {domainSearchQuery ? `找到 ${filteredDomains.length} 个域名` : `共 ${allDomains.length + 1} 个选项`}
+              </p>
+              
+              {/* 搜索框 */}
+              <div className="mt-3 relative">
+                <input
+                  type="text"
+                  value={domainSearchQuery}
+                  onChange={(e) => setDomainSearchQuery(e.target.value)}
+                  placeholder="搜索域名 (例如: gmail, yahoo)"
+                  className="w-full px-4 py-2.5 bg-white border border-sf-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sf-blue/20 focus:border-sf-blue transition-all"
+                />
+                {domainSearchQuery && (
+                  <button
+                    onClick={() => setDomainSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-sf-gray-100 rounded-full transition-colors"
+                  >
+                    <Icon name="close" className="w-4 h-4 text-gray-400" />
+                  </button>
+                )}
+              </div>
             </div>
+            
             <div className="flex-1 overflow-y-auto">
               <div className="m-4 bg-white rounded-xl overflow-hidden">
-                {/* 随机选项 */}
-                <button
-                  onClick={() => {
-                    haptic();
-                    setSelectedDomain('random');
-                    setShowDomainSheet(false);
-                  }}
-                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-sf-gray-50 active:bg-sf-gray-100 transition-colors border-b border-sf-gray-100"
-                >
-                  <div className="text-left">
-                    <div className="text-base font-medium text-gray-900 flex items-center gap-2">
-                      <Icon name="sparkles" className="w-4 h-4 text-sf-orange" />
-                      随机域名
-                    </div>
-                    <div className="text-xs text-gray-500">每次生成时随机选择域名</div>
-                  </div>
-                  {selectedDomain === 'random' && (
-                    <Icon name="check" className="w-5 h-5 text-sf-blue" />
-                  )}
-                </button>
-                
-                {/* 域名列表 */}
-                {allDomains.map((domain) => (
+                {/* 随机选项 - 仅在无搜索时显示 */}
+                {!domainSearchQuery && (
                   <button
-                    key={domain}
                     onClick={() => {
                       haptic();
-                      setSelectedDomain(domain);
+                      setSelectedDomain('random');
                       setShowDomainSheet(false);
+                      setDomainSearchQuery('');
                     }}
-                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-sf-gray-50 active:bg-sf-gray-100 transition-colors border-b border-sf-gray-100 last:border-b-0"
+                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-sf-gray-50 active:bg-sf-gray-100 transition-colors border-b border-sf-gray-100"
                   >
                     <div className="text-left">
-                      <div className="text-base font-medium text-gray-900">{domain}</div>
+                      <div className="text-base font-medium text-gray-900 flex items-center gap-2">
+                        <Icon name="sparkles" className="w-4 h-4 text-sf-orange" />
+                        随机域名
+                      </div>
+                      <div className="text-xs text-gray-500">每次生成时随机选择域名</div>
                     </div>
-                    {selectedDomain === domain && (
+                    {selectedDomain === 'random' && (
                       <Icon name="check" className="w-5 h-5 text-sf-blue" />
                     )}
                   </button>
-                ))}
+                )}
+                
+                {/* 域名列表 */}
+                {filteredDomains.length > 0 ? (
+                  filteredDomains.map((domain) => (
+                    <button
+                      key={domain}
+                      onClick={() => {
+                        haptic();
+                        setSelectedDomain(domain);
+                        setShowDomainSheet(false);
+                        setDomainSearchQuery('');
+                      }}
+                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-sf-gray-50 active:bg-sf-gray-100 transition-colors border-b border-sf-gray-100 last:border-b-0"
+                    >
+                      <div className="text-left">
+                        <div className="text-base font-medium text-gray-900">{domain}</div>
+                      </div>
+                      {selectedDomain === domain && (
+                        <Icon name="check" className="w-5 h-5 text-sf-blue" />
+                      )}
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-4 py-12 text-center">
+                    <div className="text-gray-400 mb-2">
+                      <Icon name="email" className="w-12 h-12 mx-auto opacity-30" />
+                    </div>
+                    <p className="text-sm text-gray-500">未找到匹配的域名</p>
+                    <p className="text-xs text-gray-400 mt-1">试试其他关键词</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
