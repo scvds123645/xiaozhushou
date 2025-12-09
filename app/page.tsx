@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, memo, useRef } from 'react';
 import { countries, CountryConfig } from '@/lib/countryData';
 import {
   generateName,
@@ -66,13 +66,55 @@ export default function AppleStylePage() {
   });
   const [showCountrySheet, setShowCountrySheet] = useState(false);
   const [toast, setToast] = useState('');
+  const [toastVisible, setToastVisible] = useState(false);
   const [ipInfo, setIpInfo] = useState({ ip: '检测中...', country: 'US' });
   const [isGenerating, setIsGenerating] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  
+  // 使用 ref 来管理 toast 的 timeout
+  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // ✅ 优化后的 showToast - 支持快速点击时立即替换消息
   const showToast = useCallback((msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(''), 2000);
+    // 清除之前的定时器
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+    
+    // 如果已经有 toast 显示,先隐藏
+    if (toastVisible) {
+      setToastVisible(false);
+      // 等待退出动画完成后再显示新消息
+      setTimeout(() => {
+        setToast(msg);
+        setToastVisible(true);
+        
+        // 设置新的自动隐藏定时器
+        toastTimerRef.current = setTimeout(() => {
+          setToastVisible(false);
+          setTimeout(() => setToast(''), 300); // 等待退出动画完成
+        }, 2000);
+      }, 150); // 等待退出动画
+    } else {
+      // 如果没有 toast,直接显示
+      setToast(msg);
+      setToastVisible(true);
+      
+      // 设置自动隐藏定时器
+      toastTimerRef.current = setTimeout(() => {
+        setToastVisible(false);
+        setTimeout(() => setToast(''), 300); // 等待退出动画完成
+      }, 2000);
+    }
+  }, [toastVisible]);
+
+  // 清理定时器
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
   }, []);
 
   const copyToClipboard = useCallback(async (text: string, label: string) => {
@@ -158,7 +200,7 @@ export default function AppleStylePage() {
 
   useEffect(() => {
     if (isInitialized && !userInfo.firstName) {
-      console.log('首次生成，使用国家:', selectedCountry.name);
+      console.log('首次生成,使用国家:', selectedCountry.name);
       generate();
     }
   }, [isInitialized, selectedCountry.code, userInfo.firstName, generate]);
@@ -270,8 +312,15 @@ export default function AppleStylePage() {
         )}
       </main>
 
+      {/* ✅ 优化后的 Toast - 使用 toastVisible 控制动画 */}
       {toast && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 animate-[fadeIn_0.3s_ease-out]">
+        <div 
+          className={`fixed bottom-20 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ease-out ${
+            toastVisible 
+              ? 'opacity-100 translate-y-0' 
+              : 'opacity-0 translate-y-2'
+          }`}
+        >
           <div className="bg-black/80 backdrop-blur-md text-white px-5 py-2.5 rounded-full shadow-lg text-sm font-semibold flex items-center gap-2">
             <Icon name="check" className="w-4 h-4 text-sf-green" />
             {toast}
