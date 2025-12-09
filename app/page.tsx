@@ -11,7 +11,7 @@ import {
   getCountryConfig
 } from '@/lib/generator';
 
-// 接口定义
+// ✅ 接口定义
 interface UserInfo {
   firstName: string;
   lastName: string;
@@ -21,7 +21,7 @@ interface UserInfo {
   email: string;
 }
 
-// Icon 组件 - 修复 JSX 类型
+// ✅ Icon 组件
 const Icon = memo(({ name, className = "w-6 h-6" }: { name: string; className?: string }) => {
     const icons: Record<string, React.ReactElement> = {
       refresh: <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>,
@@ -38,10 +38,10 @@ const Icon = memo(({ name, className = "w-6 h-6" }: { name: string; className?: 
 });
 Icon.displayName = 'Icon';
 
-// 触觉反馈
+// ✅ 触觉反馈
 const haptic = () => { if ('vibrate' in navigator) { navigator.vibrate(10); } };
 
-// iOS 风格数据行
+// ✅ iOS 风格数据行
 const InfoRow = memo(({ label, value, onCopy }: {
   label: string;
   value: string;
@@ -68,6 +68,7 @@ export default function AppleStylePage() {
   const [toast, setToast] = useState('');
   const [ipInfo, setIpInfo] = useState({ ip: '检测中...', country: 'US' });
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -116,36 +117,58 @@ export default function AppleStylePage() {
   }, [selectedCountry, showToast, isGenerating]);
 
   useEffect(() => {
-    generate();
+    let isMounted = true;
     
-    fetch('/api/ip-info')
-      .then(res => res.json())
-      .then(data => {
+    const initializeApp = async () => {
+      try {
+        const response = await fetch('/api/ip-info');
+        const data = await response.json();
+        
+        if (!isMounted) return;
+        
         console.log('IP 检测结果:', data);
         setIpInfo({ ip: data.ip || '未知', country: data.country || 'US' });
         
         if (data.country && data.accurate) {
           const detectedCountry = getCountryConfig(data.country);
-          if (detectedCountry && detectedCountry.code !== selectedCountry.code) {
-            setSelectedCountry(detectedCountry);
+          if (detectedCountry) {
             console.log('自动选择国家:', detectedCountry.name);
+            setSelectedCountry(detectedCountry);
+            await new Promise(resolve => setTimeout(resolve, 100));
           }
         }
-      })
-      .catch(error => {
+        
+        setIsInitialized(true);
+        
+      } catch (error) {
         console.error('IP 检测失败:', error);
-        setIpInfo({ ip: '检测失败', country: 'US' });
-      });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+        if (isMounted) {
+          setIpInfo({ ip: '检测失败', country: 'US' });
+          setIsInitialized(true);
+        }
+      }
+    };
+    
+    initializeApp();
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
-    if (userInfo.firstName) {
+    if (isInitialized && !userInfo.firstName) {
+      console.log('首次生成，使用国家:', selectedCountry.name);
+      generate();
+    }
+  }, [isInitialized, selectedCountry.code, userInfo.firstName, generate]);
+
+  useEffect(() => {
+    if (isInitialized && userInfo.firstName) {
       console.log('国家已更改为:', selectedCountry.name);
       generate();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCountry.code]);
+  }, [selectedCountry.code]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="min-h-screen bg-sf-gray-50 font-sf">
@@ -156,84 +179,95 @@ export default function AppleStylePage() {
             <Icon name="location" className="w-5 h-5 text-sf-blue" />
             <span className="text-xs text-gray-500">{ipInfo.ip}</span>
           </div>
-          <h1 className="text-lg font-semibold text-gray-900">脸书小助手</h1>
+          <h1 className="text-lg font-semibold text-gray-900">脸书助手</h1>
           <div className="w-20"></div>
         </div>
       </header>
 
       <main className="relative max-w-2xl mx-auto px-4 pt-20 pb-24">
         
-        <div className="bg-white rounded-xl shadow-sm border border-sf-gray-100 overflow-hidden">
-          <div className="px-4 divide-y divide-sf-gray-100">
-            <InfoRow label="姓氏" value={userInfo.lastName} onCopy={() => copyToClipboard(userInfo.lastName, '姓氏')} />
-            <InfoRow label="名字" value={userInfo.firstName} onCopy={() => copyToClipboard(userInfo.firstName, '名字')} />
-            <InfoRow label="生日" value={userInfo.birthday} onCopy={() => copyToClipboard(userInfo.birthday, '生日')} />
-            <InfoRow label="手机号" value={userInfo.phone} onCopy={() => copyToClipboard(userInfo.phone, '手机号')} />
-            <InfoRow label="密码" value={userInfo.password} onCopy={() => copyToClipboard(userInfo.password, '密码')} />
-          </div>
-        </div>
-
-        <div className="mt-4 bg-white rounded-xl shadow-sm border border-sf-gray-100 p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-base text-gray-500">临时邮箱</span>
-            <span className="text-sm font-sf-mono font-medium text-gray-800 bg-sf-gray-50 rounded-md px-2 py-1 break-all max-w-[200px]">{userInfo.email}</span>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => { haptic(); copyToClipboard(userInfo.email, '邮箱'); }}
-              className="w-full py-2.5 text-sm font-semibold text-sf-blue bg-sf-blue/10 hover:bg-sf-blue/20 rounded-lg transition-all active:scale-95"
-            >
-              复制邮箱
-            </button>
-            <button
-              onClick={() => { 
-                haptic(); 
-                const emailName = userInfo.email.split('@')[0];
-                window.open(`https://yopmail.com/?login=${emailName}`, '_blank');
-              }}
-              className="w-full py-2.5 text-sm font-semibold text-sf-blue bg-sf-blue/10 hover:bg-sf-blue/20 rounded-lg transition-all active:scale-95"
-            >
-              打开接码
-            </button>
-          </div>
-        </div>
-        
-        <div className="mt-8 space-y-4">
-          <button
-            onClick={() => { haptic(); setShowCountrySheet(true); }}
-            className="w-full flex justify-between items-center bg-white rounded-xl shadow-sm border border-sf-gray-100 p-4 active:bg-sf-gray-50 transition-colors"
-          >
-            <span className="text-base text-gray-500">选择地区</span>
-            <div className="flex items-center gap-2">
-              <span className="text-base font-medium">{selectedCountry.name}</span>
-              <Icon name="expand" className="w-5 h-5 text-sf-gray-300" />
+        {!isInitialized ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center space-y-3">
+              <div className="w-12 h-12 border-4 border-sf-blue border-t-transparent rounded-full animate-spin mx-auto"></div>
+              <p className="text-sm text-gray-500">正在检测位置...</p>
             </div>
-          </button>
-          
-          <button
-            onClick={generate}
-            disabled={isGenerating}
-            className="w-full bg-sf-blue hover:bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-500/30 active:scale-[0.98] transition-all p-4 text-center disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <span className="text-lg font-semibold tracking-wide">
-              {isGenerating ? '生成中...' : '随机生成'}
-            </span>
-          </button>
-        </div>
+          </div>
+        ) : (
+          <>
+            <div className="bg-white rounded-xl shadow-sm border border-sf-gray-100 overflow-hidden">
+              <div className="px-4 divide-y divide-sf-gray-100">
+                <InfoRow label="姓氏" value={userInfo.lastName} onCopy={() => copyToClipboard(userInfo.lastName, '姓氏')} />
+                <InfoRow label="名字" value={userInfo.firstName} onCopy={() => copyToClipboard(userInfo.firstName, '名字')} />
+                <InfoRow label="生日" value={userInfo.birthday} onCopy={() => copyToClipboard(userInfo.birthday, '生日')} />
+                <InfoRow label="手机号" value={userInfo.phone} onCopy={() => copyToClipboard(userInfo.phone, '手机号')} />
+                <InfoRow label="密码" value={userInfo.password} onCopy={() => copyToClipboard(userInfo.password, '密码')} />
+              </div>
+            </div>
 
-        <div className="mt-12 text-center space-y-2">
-          <a 
-            href="https://t.me/fang180" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="text-sf-blue text-sm hover:underline inline-flex items-center gap-1"
-          >
-            <Icon name="link" className="w-4 h-4" />
-            Telegram 频道
-          </a>
-          <p className="text-xs text-sf-gray-300">版本 2.0 • Apple-Style Design</p>
-          <p className="text-xs text-gray-400">支持 {countries.length} 个国家/地区</p>
-        </div>
+            <div className="mt-4 bg-white rounded-xl shadow-sm border border-sf-gray-100 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-base text-gray-500">临时邮箱</span>
+                <span className="text-sm font-sf-mono font-medium text-gray-800 bg-sf-gray-50 rounded-md px-2 py-1 break-all max-w-[200px]">{userInfo.email}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => { haptic(); copyToClipboard(userInfo.email, '邮箱'); }}
+                  className="w-full py-2.5 text-sm font-semibold text-sf-blue bg-sf-blue/10 hover:bg-sf-blue/20 rounded-lg transition-all active:scale-95"
+                >
+                  复制邮箱
+                </button>
+                <button
+                  onClick={() => { 
+                    haptic(); 
+                    const emailName = userInfo.email.split('@')[0];
+                    window.open(`https://yopmail.com/?login=${emailName}`, '_blank');
+                  }}
+                  className="w-full py-2.5 text-sm font-semibold text-sf-blue bg-sf-blue/10 hover:bg-sf-blue/20 rounded-lg transition-all active:scale-95"
+                >
+                  打开接码
+                </button>
+              </div>
+            </div>
+            
+            <div className="mt-8 space-y-4">
+              <button
+                onClick={() => { haptic(); setShowCountrySheet(true); }}
+                className="w-full flex justify-between items-center bg-white rounded-xl shadow-sm border border-sf-gray-100 p-4 active:bg-sf-gray-50 transition-colors"
+              >
+                <span className="text-base text-gray-500">选择地区</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-base font-medium">{selectedCountry.name}</span>
+                  <Icon name="expand" className="w-5 h-5 text-sf-gray-300" />
+                </div>
+              </button>
+              
+              <button
+                onClick={generate}
+                disabled={isGenerating}
+                className="w-full bg-sf-blue hover:bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-500/30 active:scale-[0.98] transition-all p-4 text-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span className="text-lg font-semibold tracking-wide">
+                  {isGenerating ? '生成中...' : '随机生成'}
+                </span>
+              </button>
+            </div>
+
+            <div className="mt-12 text-center space-y-2">
+              <a 
+                href="https://t.me/fang180" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-sf-blue text-sm hover:underline inline-flex items-center gap-1"
+              >
+                <Icon name="link" className="w-4 h-4" />
+                Telegram 频道
+              </a>
+              <p className="text-xs text-sf-gray-300">版本 2.0 • Apple-Style Design</p>
+              <p className="text-xs text-gray-400">支持 {countries.length} 个国家/地区</p>
+            </div>
+          </>
+        )}
       </main>
 
       {toast && (
