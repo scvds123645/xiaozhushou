@@ -89,75 +89,7 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // 方案 1: ipwho.is
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
-    const response = await fetch(`https://ipwho.is/${ip}`, {
-      headers: COMMON_HEADERS,
-      signal: controller.signal
-    });
-    
-    clearTimeout(timeoutId);
-    
-    if (response.ok) {
-      const data: IPWhoIsResponse = await response.json();
-      
-      if (data.success && data.country_code) {
-        return NextResponse.json({
-          source: 'ipwhois',
-          ip: data.ip || ip,
-          country: data.country_code,
-          countryName: data.country,
-          city: data.city || '',
-          region: data.region || '',
-          timezone: data.timezone?.id || '',
-          latitude: data.latitude || null,
-          longitude: data.longitude || null,
-          accurate: true
-        });
-      }
-    }
-  } catch (error) {
-    console.error('ipwho.is 请求失败:', error);
-  }
-
-  // 方案 2: ip-api.com
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
-    const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,countryCode,region,regionName,city,zip,lat,lon,timezone,query`, {
-      headers: COMMON_HEADERS,
-      signal: controller.signal
-    });
-    
-    clearTimeout(timeoutId);
-    
-    if (response.ok) {
-      const data: IPApiResponse = await response.json();
-      
-      if (data.status === 'success' && data.countryCode) {
-        return NextResponse.json({
-          source: 'ip-api',
-          ip: data.query || ip,
-          country: data.countryCode,
-          countryName: data.country,
-          city: data.city || '',
-          region: data.regionName || data.region || '',
-          timezone: data.timezone || '',
-          latitude: data.lat || null,
-          longitude: data.lon || null,
-          accurate: true
-        });
-      }
-    }
-  } catch (error) {
-    console.error('ip-api.com 请求失败:', error);
-  }
-
-  // 方案 3: ipapi.co
+  // 方案 1: ipapi.co (第一优先级)
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -191,7 +123,7 @@ export async function GET(request: NextRequest) {
     console.error('ipapi.co 请求失败:', error);
   }
 
-  // 方案 4: ipinfo.io
+  // 方案 2: ipinfo.io (第二优先级)
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -225,6 +157,74 @@ export async function GET(request: NextRequest) {
     }
   } catch (error) {
     console.error('ipinfo.io 请求失败:', error);
+  }
+
+  // 方案 3: ipwho.is (第三优先级)
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const response = await fetch(`https://ipwho.is/${ip}`, {
+      headers: COMMON_HEADERS,
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (response.ok) {
+      const data: IPWhoIsResponse = await response.json();
+      
+      if (data.success && data.country_code) {
+        return NextResponse.json({
+          source: 'ipwhois',
+          ip: data.ip || ip,
+          country: data.country_code,
+          countryName: data.country,
+          city: data.city || '',
+          region: data.region || '',
+          timezone: data.timezone?.id || '',
+          latitude: data.latitude || null,
+          longitude: data.longitude || null,
+          accurate: true
+        });
+      }
+    }
+  } catch (error) {
+    console.error('ipwho.is 请求失败:', error);
+  }
+
+  // 方案 4: ip-api.com (第四优先级/兜底)
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,countryCode,region,regionName,city,zip,lat,lon,timezone,query`, {
+      headers: COMMON_HEADERS,
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (response.ok) {
+      const data: IPApiResponse = await response.json();
+      
+      if (data.status === 'success' && data.countryCode) {
+        return NextResponse.json({
+          source: 'ip-api',
+          ip: data.query || ip,
+          country: data.countryCode,
+          countryName: data.country,
+          city: data.city || '',
+          region: data.regionName || data.region || '',
+          timezone: data.timezone || '',
+          latitude: data.lat || null,
+          longitude: data.lon || null,
+          accurate: true
+        });
+      }
+    }
+  } catch (error) {
+    console.error('ip-api.com 请求失败:', error);
   }
 
   return NextResponse.json({
