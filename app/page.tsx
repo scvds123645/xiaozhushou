@@ -8,10 +8,10 @@ import {
   generatePhone,
   generatePassword,
   generateEmail,
-  getCountryConfig
+  getCountryConfig,
+  getAllDomains
 } from '@/lib/generator';
 
-// ✅ 接口定义
 interface UserInfo {
   firstName: string;
   lastName: string;
@@ -21,7 +21,6 @@ interface UserInfo {
   email: string;
 }
 
-// ✅ Icon 组件
 const Icon = memo(({ name, className = "w-6 h-6" }: { name: string; className?: string }) => {
     const icons: Record<string, React.ReactElement> = {
       refresh: <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>,
@@ -38,10 +37,8 @@ const Icon = memo(({ name, className = "w-6 h-6" }: { name: string; className?: 
 });
 Icon.displayName = 'Icon';
 
-// ✅ 触觉反馈
 const haptic = () => { if ('vibrate' in navigator) { navigator.vibrate(10); } };
 
-// ✅ iOS 风格数据行
 const InfoRow = memo(({ label, value, onCopy }: {
   label: string;
   value: string;
@@ -61,54 +58,47 @@ InfoRow.displayName = 'InfoRow';
 
 export default function AppleStylePage() {
   const [selectedCountry, setSelectedCountry] = useState<CountryConfig>(countries[0]);
+  const [selectedDomain, setSelectedDomain] = useState<string>('random');
   const [userInfo, setUserInfo] = useState<UserInfo>({
     firstName: '', lastName: '', birthday: '', phone: '', password: '', email: ''
   });
   const [showCountrySheet, setShowCountrySheet] = useState(false);
+  const [showDomainSheet, setShowDomainSheet] = useState(false);
   const [toast, setToast] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
   const [ipInfo, setIpInfo] = useState({ ip: '检测中...', country: 'US' });
   const [isGenerating, setIsGenerating] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   
-  // 使用 ref 来管理 toast 的 timeout
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ✅ 优化后的 showToast - 支持快速点击时立即替换消息
   const showToast = useCallback((msg: string) => {
-    // 清除之前的定时器
     if (toastTimerRef.current) {
       clearTimeout(toastTimerRef.current);
     }
     
-    // 如果已经有 toast 显示,先隐藏
     if (toastVisible) {
       setToastVisible(false);
-      // 等待退出动画完成后再显示新消息
       setTimeout(() => {
         setToast(msg);
         setToastVisible(true);
         
-        // 设置新的自动隐藏定时器
         toastTimerRef.current = setTimeout(() => {
           setToastVisible(false);
-          setTimeout(() => setToast(''), 300); // 等待退出动画完成
+          setTimeout(() => setToast(''), 300);
         }, 2000);
-      }, 150); // 等待退出动画
+      }, 150);
     } else {
-      // 如果没有 toast,直接显示
       setToast(msg);
       setToastVisible(true);
       
-      // 设置自动隐藏定时器
       toastTimerRef.current = setTimeout(() => {
         setToastVisible(false);
-        setTimeout(() => setToast(''), 300); // 等待退出动画完成
+        setTimeout(() => setToast(''), 300);
       }, 2000);
     }
   }, [toastVisible]);
 
-  // 清理定时器
   useEffect(() => {
     return () => {
       if (toastTimerRef.current) {
@@ -138,7 +128,10 @@ export default function AppleStylePage() {
       const birthday = generateBirthday();
       const phone = generatePhone(selectedCountry);
       const password = generatePassword();
-      const email = generateEmail(firstName, lastName);
+      
+      // 根据选择的域名生成邮箱
+      const customDomain = selectedDomain === 'random' ? undefined : selectedDomain;
+      const email = generateEmail(firstName, lastName, customDomain);
       
       setUserInfo({
         firstName,
@@ -156,7 +149,7 @@ export default function AppleStylePage() {
     } finally {
       setIsGenerating(false);
     }
-  }, [selectedCountry, showToast, isGenerating]);
+  }, [selectedCountry, selectedDomain, showToast, isGenerating]);
 
   useEffect(() => {
     let isMounted = true;
@@ -211,6 +204,9 @@ export default function AppleStylePage() {
       generate();
     }
   }, [selectedCountry.code]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const allDomains = getAllDomains();
+  const displayDomain = selectedDomain === 'random' ? '随机域名' : selectedDomain;
 
   return (
     <div className="min-h-screen bg-sf-gray-50 font-sf">
@@ -284,6 +280,18 @@ export default function AppleStylePage() {
                 </div>
               </button>
               
+              {/* ✨ 新增：域名选择器 */}
+              <button
+                onClick={() => { haptic(); setShowDomainSheet(true); }}
+                className="w-full flex justify-between items-center bg-white rounded-xl shadow-sm border border-sf-gray-100 p-4 active:bg-sf-gray-50 transition-colors"
+              >
+                <span className="text-base text-gray-500">邮箱域名</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-base font-medium">{displayDomain}</span>
+                  <Icon name="expand" className="w-5 h-5 text-sf-gray-300" />
+                </div>
+              </button>
+              
               <button
                 onClick={generate}
                 disabled={isGenerating}
@@ -305,14 +313,14 @@ export default function AppleStylePage() {
                 <Icon name="link" className="w-4 h-4" />
                 Telegram 频道
               </a>
-              <p className="text-xs text-sf-gray-300">版本 2.0 • Apple-Style Design</p>
-              <p className="text-xs text-gray-400">支持 {countries.length} 个国家/地区</p>
+              <p className="text-xs text-sf-gray-300">版本 2.1 • 支持自选域名</p>
+              <p className="text-xs text-gray-400">支持 {countries.length} 个国家 • {allDomains.length} 个域名</p>
             </div>
           </>
         )}
       </main>
 
-      {/* ✅ 优化后的 Toast - 使用 toastVisible 控制动画 */}
+      {/* Toast */}
       {toast && (
         <div 
           className={`fixed bottom-20 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ease-out ${
@@ -328,6 +336,7 @@ export default function AppleStylePage() {
         </div>
       )}
 
+      {/* 国家选择器 */}
       {showCountrySheet && (
         <div className="fixed inset-0 z-50 flex items-end">
           <div 
@@ -357,6 +366,67 @@ export default function AppleStylePage() {
                       <div className="text-xs text-gray-500">{country.phonePrefix}</div>
                     </div>
                     {selectedCountry.code === country.code && (
+                      <Icon name="check" className="w-5 h-5 text-sf-blue" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✨ 新增：域名选择器 */}
+      {showDomainSheet && (
+        <div className="fixed inset-0 z-50 flex items-end">
+          <div 
+            className="absolute inset-0 bg-black/40 animate-[fadeIn_0.2s_ease-out]"
+            onClick={() => { haptic(); setShowDomainSheet(false); }}
+          />
+          <div className="relative w-full bg-sf-gray-50 rounded-t-2xl max-h-[70vh] flex flex-col animate-[slideUp_0.3s_ease-out]">
+            <div className="p-4 text-center border-b border-sf-gray-200">
+              <div className="w-8 h-1.5 bg-sf-gray-300 rounded-full mx-auto my-1"></div>
+              <h3 className="text-lg font-semibold text-gray-900 pt-2">选择邮箱域名</h3>
+              <p className="text-xs text-gray-500 mt-1">共 {allDomains.length + 1} 个选项</p>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <div className="m-4 bg-white rounded-xl overflow-hidden">
+                {/* 随机选项 */}
+                <button
+                  onClick={() => {
+                    haptic();
+                    setSelectedDomain('random');
+                    setShowDomainSheet(false);
+                  }}
+                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-sf-gray-50 active:bg-sf-gray-100 transition-colors border-b border-sf-gray-100"
+                >
+                  <div className="text-left">
+                    <div className="text-base font-medium text-gray-900 flex items-center gap-2">
+                      <Icon name="sparkles" className="w-4 h-4 text-sf-orange" />
+                      随机域名
+                    </div>
+                    <div className="text-xs text-gray-500">每次生成时随机选择域名</div>
+                  </div>
+                  {selectedDomain === 'random' && (
+                    <Icon name="check" className="w-5 h-5 text-sf-blue" />
+                  )}
+                </button>
+                
+                {/* 域名列表 */}
+                {allDomains.map((domain) => (
+                  <button
+                    key={domain}
+                    onClick={() => {
+                      haptic();
+                      setSelectedDomain(domain);
+                      setShowDomainSheet(false);
+                    }}
+                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-sf-gray-50 active:bg-sf-gray-100 transition-colors border-b border-sf-gray-100 last:border-b-0"
+                  >
+                    <div className="text-left">
+                      <div className="text-base font-medium text-gray-900">{domain}</div>
+                    </div>
+                    {selectedDomain === domain && (
                       <Icon name="check" className="w-5 h-5 text-sf-blue" />
                     )}
                   </button>
