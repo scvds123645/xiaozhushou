@@ -32,24 +32,22 @@ export function generateName(countryCode: string) {
   return { firstName, lastName };
 }
 
-// 2. 生成生日
+// 2. 生成生日 - 年龄限制在 18-25 岁
 export function generateBirthday() {
   const currentDate = new Date();
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth() + 1;
   
+  // ✅ 年龄分布:18-25 岁(年轻用户群体)
   const ageDistribution = [
-    { min: 18, max: 21, weight: 0.12 },
-    { min: 22, max: 27, weight: 0.22 },
-    { min: 28, max: 34, weight: 0.25 },
-    { min: 35, max: 42, weight: 0.18 },
-    { min: 43, max: 51, weight: 0.13 },
-    { min: 52, max: 58, weight: 0.07 },
-    { min: 59, max: 65, weight: 0.03 },
+    { min: 18, max: 19, weight: 0.20 },  // 18-19岁: 20%
+    { min: 20, max: 21, weight: 0.25 },  // 20-21岁: 25%
+    { min: 22, max: 23, weight: 0.30 },  // 22-23岁: 30% (主力)
+    { min: 24, max: 25, weight: 0.25 },  // 24-25岁: 25%
   ];
   
   let random = Math.random();
-  let age = 25;
+  let age = 22; // 默认 22 岁
   
   for (const range of ageDistribution) {
     if (random < range.weight) {
@@ -200,8 +198,9 @@ export function generateEmail(firstName: string, lastName: string, customDomain?
   // 如果提供了自定义域名,使用它;否则随机选择
   const domain = customDomain || getAllDomains()[secureRandom(0, getAllDomains().length - 1)];
   
+  // ✅ 年龄范围:18-25 岁
   const currentYear = new Date().getFullYear();
-  const age = secureRandom(18, 65);
+  const age = secureRandom(18, 25);
   const birthYear = currentYear - age;
   const shortYear = birthYear.toString().slice(-2);
   
