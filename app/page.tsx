@@ -47,7 +47,7 @@ const haptic = (duration: number = 15) => {
   } 
 };
 
-// --- 组件: 信息行 (带内联反馈) ---
+// --- 组件: 信息行 (Glassmorphism Style) ---
 const InfoRow = memo(({ label, value, onCopy, isCopied, isLast = false }: {
   label: string;
   value: string;
@@ -59,16 +59,17 @@ const InfoRow = memo(({ label, value, onCopy, isCopied, isLast = false }: {
     <div 
       onClick={onCopy}
       className={`group relative flex items-center justify-between py-4 pl-5 pr-5 cursor-pointer transition-colors duration-200 touch-manipulation ${
-        isCopied ? 'bg-[#007AFF]/5' : 'bg-transparent hover:bg-gray-50/50 active:bg-gray-100'
+        isCopied ? 'bg-blue-500/10' : 'bg-transparent hover:bg-white/5 active:bg-white/10'
       }`}
     >
-      <span className="text-[15px] font-medium text-gray-400 w-20 shrink-0 tracking-tight">{label}</span>
+      {/* Label: Reduced opacity white */}
+      <span className="text-[15px] font-medium text-white/50 w-20 shrink-0 tracking-tight">{label}</span>
       
       <div className="flex items-center gap-3 min-w-0 flex-1 justify-end h-6 relative overflow-hidden">
-        {/* 正常数值 */}
+        {/* Value: High opacity white */}
         <span 
           className={`absolute right-0 text-[17px] font-medium truncate select-all tracking-tight transition-all duration-300 ${
-            isCopied ? 'opacity-0 translate-y-4 scale-95' : 'opacity-100 translate-y-0 scale-100 text-gray-900'
+            isCopied ? 'opacity-0 translate-y-4 scale-95' : 'opacity-100 translate-y-0 scale-100 text-white/90'
           }`}
         >
           {value || '---'}
@@ -80,20 +81,21 @@ const InfoRow = memo(({ label, value, onCopy, isCopied, isLast = false }: {
             isCopied ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-4 scale-90 pointer-events-none'
           }`}
         >
-          <div className="bg-[#34C759] rounded-full p-0.5">
+          <div className="bg-[#34C759] rounded-full p-0.5 shadow-[0_0_10px_rgba(52,199,89,0.4)]">
             <Icon name="check" className="w-3 h-3 text-white stroke-[3px]" />
           </div>
           <span className="text-[15px] font-semibold text-[#34C759]">已复制</span>
         </div>
       </div>
       
-      {!isLast && <div className="absolute bottom-0 left-5 right-0 h-[0.5px] bg-gray-200/80" />}
+      {/* Separator: Very subtle white line */}
+      {!isLast && <div className="absolute bottom-0 left-5 right-0 h-[0.5px] bg-white/10" />}
     </div>
   );
 });
 InfoRow.displayName = 'InfoRow';
 
-// --- 组件: 通用底部弹窗 (BottomSheet) ---
+// --- 组件: 通用底部弹窗 (Glassmorphism BottomSheet) ---
 const BottomSheet = memo(({ 
   isOpen, 
   onClose, 
@@ -110,24 +112,25 @@ const BottomSheet = memo(({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center isolate">
       <div 
-        className="absolute inset-0 bg-black/30 backdrop-blur-[2px] transition-opacity duration-300" 
+        className="absolute inset-0 bg-black/60 backdrop-blur-[2px] transition-opacity duration-300" 
         onClick={onClose} 
       />
       <div 
-        className="relative w-full max-w-md bg-[#F2F2F7] rounded-t-[24px] sm:rounded-[24px] max-h-[85vh] flex flex-col shadow-2xl animate-slide-up overflow-hidden ring-1 ring-white/20 will-change-transform transform-gpu"
+        className="relative w-full max-w-md bg-[#0f172a]/80 backdrop-blur-xl border border-white/10 rounded-t-[24px] sm:rounded-[24px] max-h-[85vh] flex flex-col shadow-2xl animate-slide-up overflow-hidden will-change-transform transform-gpu"
+        style={{ boxShadow: '0 -10px 40px rgba(0,0,0,0.5)' }}
       >
-        <div className="p-4 bg-white/80 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-10 shrink-0">
-          <div className="w-10 h-1.5 bg-gray-300/60 rounded-full mx-auto mb-4"></div>
+        <div className="p-4 border-b border-white/10 sticky top-0 z-10 shrink-0 bg-inherit">
+          <div className="w-10 h-1.5 bg-white/20 rounded-full mx-auto mb-4"></div>
           <div className="relative flex items-center justify-center min-h-[24px]">
-             <h3 className="text-[17px] font-semibold text-gray-900 tracking-tight">{title}</h3>
+             <h3 className="text-[17px] font-semibold text-white tracking-tight">{title}</h3>
              {rightAction ? (
                <div className="absolute right-0 top-1/2 -translate-y-1/2">{rightAction}</div>
              ) : (
                <button 
                  onClick={onClose}
-                 className="absolute right-0 top-1/2 -translate-y-1/2 bg-gray-200/80 p-1.5 rounded-full text-gray-500 hover:bg-gray-300 transition-colors"
+                 className="absolute right-0 top-1/2 -translate-y-1/2 bg-white/10 p-1.5 rounded-full text-white/60 hover:bg-white/20 transition-colors"
                >
                  <Icon name="close" className="w-4 h-4" />
                </button>
@@ -143,7 +146,7 @@ const BottomSheet = memo(({
 });
 BottomSheet.displayName = 'BottomSheet';
 
-// --- 组件: 列表项 (ListItem) ---
+// --- 组件: 列表项 (ListItem - Dark Mode) ---
 const ListItem = memo(({ 
   label, 
   isSelected, 
@@ -157,21 +160,21 @@ const ListItem = memo(({
 }) => (
   <button
     onClick={onClick}
-    className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl transition-all duration-200 active:scale-[0.98] touch-manipulation ${
+    className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl transition-all duration-200 active:scale-[0.98] touch-manipulation border ${
       isSelected 
-        ? 'bg-white shadow-sm text-[#007AFF] font-semibold ring-1 ring-black/5' 
-        : 'bg-white/50 text-gray-900 hover:bg-white active:bg-white'
+        ? 'bg-white/10 border-white/10 shadow-lg shadow-black/10 text-[#409CFF] font-semibold' 
+        : 'bg-transparent border-transparent text-white/80 hover:bg-white/5 active:bg-white/10'
     }`}
   >
     <div className="flex items-center gap-3">
       {icon && (
-        <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-[#007AFF]/10' : 'bg-gray-200'}`}>
-          <Icon name={icon} className={`w-4 h-4 ${isSelected ? 'text-[#007AFF]' : 'text-gray-500'}`} />
+        <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-[#007AFF]/20' : 'bg-white/10'}`}>
+          <Icon name={icon} className={`w-4 h-4 ${isSelected ? 'text-[#409CFF]' : 'text-white/50'}`} />
         </div>
       )}
       <span className="text-[16px] tracking-tight text-left">{label}</span>
     </div>
-    {isSelected && <Icon name="check" className="w-5 h-5" />}
+    {isSelected && <Icon name="check" className="w-5 h-5 text-[#409CFF]" />}
   </button>
 ));
 ListItem.displayName = 'ListItem';
@@ -221,21 +224,22 @@ const DomainList = memo(({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-4 pb-2 sticky top-0 z-10 bg-[#F2F2F7]">
+      {/* Search Bar - Glass Style */}
+      <div className="px-4 pb-2 sticky top-0 z-10 bg-inherit">
          <div className="relative group">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Icon name="search" className="w-4 h-4 text-gray-400" />
+              <Icon name="search" className="w-4 h-4 text-white/40" />
             </div>
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="搜索域名"
-              className="w-full pl-9 pr-8 py-2 bg-[#767680]/10 border-none rounded-[10px] text-[16px] text-gray-900 placeholder-gray-500 focus:ring-0 focus:bg-[#767680]/20 transition-colors caret-[#007AFF]"
+              className="w-full pl-9 pr-8 py-2 bg-black/20 border border-white/5 rounded-[10px] text-[16px] text-white placeholder-white/30 focus:ring-1 focus:ring-white/20 focus:bg-black/30 transition-colors caret-[#007AFF]"
             />
             {searchQuery && (
               <button onClick={() => setSearchQuery('')} className="absolute inset-y-0 right-0 pr-3 flex items-center touch-manipulation">
-                <div className="bg-gray-400 rounded-full p-0.5"><Icon name="close" className="w-3 h-3 text-white" /></div>
+                <div className="bg-white/20 rounded-full p-0.5"><Icon name="close" className="w-3 h-3 text-white" /></div>
               </button>
             )}
           </div>
@@ -259,7 +263,7 @@ const DomainList = memo(({
           />
         ))}
         {filteredDomains.length === 0 && (
-          <div className="text-center py-8 text-gray-400 text-sm">无匹配结果</div>
+          <div className="text-center py-8 text-white/30 text-sm">无匹配结果</div>
         )}
       </div>
     </div>
@@ -268,7 +272,7 @@ const DomainList = memo(({
 DomainList.displayName = 'DomainList';
 
 
-export default function AppleStylePage() {
+export default function GlassStylePage() {
   // --- State ---
   const [selectedCountry, setSelectedCountry] = useState<CountryConfig>(countries[0]);
   const [selectedDomain, setSelectedDomain] = useState<string>('random');
@@ -310,21 +314,15 @@ export default function AppleStylePage() {
   }, []);
 
   const triggerAnimation = useCallback(() => {
-    // 使用 Ref 直接操作 DOM 类名，避免 React 渲染周期的延迟
     const btn = buttonRef.current;
     const successEl = successContentRef.current;
     const normalEl = normalContentRef.current;
 
     if (btn && successEl && normalEl) {
-      // 1. 重置动画状态 (移除类名)
       btn.classList.remove('anim-bg-success');
       successEl.classList.remove('anim-slide-success');
       normalEl.classList.remove('anim-slide-normal');
-      
-      // 2. 强制浏览器回流 (Reflow) - 关键步骤，让浏览器意识到状态变化
       void btn.offsetWidth; 
-
-      // 3. 添加动画类名，触发新动画
       btn.classList.add('anim-bg-success');
       successEl.classList.add('anim-slide-success');
       normalEl.classList.add('anim-slide-normal');
@@ -333,14 +331,9 @@ export default function AppleStylePage() {
 
   const generate = useCallback(() => {
     haptic(50);
-    
-    // 清除复制状态
     setCopiedField(null);
-    
-    // 触发动画
     triggerAnimation();
 
-    // 立即生成数据
     try {
       const { firstName, lastName } = generateName(selectedCountry.code);
       const birthday = generateBirthday();
@@ -396,7 +389,6 @@ export default function AppleStylePage() {
     return () => { isMounted = false; };
   }, []);
 
-  // 初始生成
   useEffect(() => {
     if (isInitialized && !userInfo.firstName) {
         try {
@@ -411,7 +403,6 @@ export default function AppleStylePage() {
     }
   }, [isInitialized, userInfo.firstName, selectedCountry, selectedDomain]);
 
-  // 国家改变时自动生成
   useEffect(() => {
     if (isInitialized && userInfo.firstName) generate();
   }, [selectedCountry.code]);
@@ -419,7 +410,6 @@ export default function AppleStylePage() {
   const allDomains = useMemo(() => getAllDomains(), []);
   const displayDomain = selectedDomain === 'random' ? '随机' : selectedDomain;
 
-  // 处理 Sheet 选择
   const handleCountrySelect = useCallback((country: CountryConfig) => {
     haptic(20);
     setSelectedCountry(country);
@@ -434,15 +424,16 @@ export default function AppleStylePage() {
 
   // --- Render ---
   return (
-    <div className="min-h-screen bg-[#F2F2F7] font-sans text-slate-900 pb-10 selection:bg-blue-200/50 overflow-x-hidden touch-pan-y">
+    // Global Background: Dark Gradient
+    <div className="min-h-screen bg-gradient-to-br from-[#0f172a] via-[#1e1b4b] to-[#312e81] font-sans text-white pb-10 selection:bg-blue-400/30 overflow-x-hidden touch-pan-y">
       
-      {/* 顶部导航 */}
-      <header className="fixed top-0 left-0 right-0 h-[52px] bg-white/80 backdrop-blur-xl border-b border-gray-200/50 z-40 flex items-center justify-center transition-all duration-300 supports-[backdrop-filter]:bg-white/60">
-        <h1 className="text-[17px] font-semibold text-gray-900 tracking-tight">脸书小助手</h1>
+      {/* 顶部导航: Glass Effect */}
+      <header className="fixed top-0 left-0 right-0 h-[52px] bg-[#0f172a]/60 backdrop-blur-md border-b border-white/10 z-40 flex items-center justify-center transition-all duration-300 isolate">
+        <h1 className="text-[17px] font-semibold text-white/90 tracking-tight drop-shadow-md">脸书小助手</h1>
         
-        <div className="absolute right-4 flex items-center gap-1.5 pl-2 pr-2.5 py-1 rounded-full bg-white/50 border border-black/5 backdrop-blur-md shadow-sm">
-          <div className="w-1.5 h-1.5 rounded-full bg-[#34C759] shadow-[0_0_6px_rgba(52,199,89,0.4)]"></div>
-          <span className="text-[11px] font-semibold text-gray-500 font-mono tracking-tight">{ipInfo.ip}</span>
+        <div className="absolute right-4 flex items-center gap-1.5 pl-2 pr-2.5 py-1 rounded-full bg-white/10 border border-white/10 backdrop-blur-md shadow-sm">
+          <div className="w-1.5 h-1.5 rounded-full bg-[#34C759] shadow-[0_0_6px_rgba(52,199,89,0.8)]"></div>
+          <span className="text-[11px] font-semibold text-white/70 font-mono tracking-tight">{ipInfo.ip}</span>
         </div>
       </header>
 
@@ -450,12 +441,12 @@ export default function AppleStylePage() {
         
         {!isInitialized ? (
           <div className="flex flex-col items-center justify-center py-32 space-y-4">
-            <div className="w-8 h-8 border-[3px] border-gray-200 border-t-[#007AFF] rounded-full animate-spin"></div>
+            <div className="w-8 h-8 border-[3px] border-white/10 border-t-[#007AFF] rounded-full animate-spin"></div>
           </div>
         ) : (
           <>
-            {/* 核心信息卡片 */}
-            <section className="bg-white rounded-[20px] overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-1 ring-black/5 transform-gpu">
+            {/* 核心信息卡片: Glassmorphism */}
+            <section className="bg-white/5 backdrop-blur-md rounded-[20px] overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.2)] border border-white/10 transform-gpu isolate">
               <InfoRow label="姓氏" value={userInfo.lastName} onCopy={() => copyToClipboard(userInfo.lastName, '姓氏')} isCopied={copiedField === '姓氏'} />
               <InfoRow label="名字" value={userInfo.firstName} onCopy={() => copyToClipboard(userInfo.firstName, '名字')} isCopied={copiedField === '名字'} />
               <InfoRow label="生日" value={userInfo.birthday} onCopy={() => copyToClipboard(userInfo.birthday, '生日')} isCopied={copiedField === '生日'} />
@@ -468,12 +459,12 @@ export default function AppleStylePage() {
                   className="flex items-center justify-between mb-3 cursor-pointer touch-manipulation" 
                   onClick={() => copyToClipboard(userInfo.email, '邮箱')}
                 >
-                  <span className="text-[15px] font-medium text-gray-400 w-20 shrink-0 tracking-tight">邮箱</span>
+                  <span className="text-[15px] font-medium text-white/50 w-20 shrink-0 tracking-tight">邮箱</span>
                   
                   <div className="flex items-center gap-3 min-w-0 flex-1 justify-end h-6 relative overflow-hidden">
                     <span 
                       className={`absolute right-0 text-[17px] font-medium truncate select-all tracking-tight transition-all duration-300 ${
-                        copiedField === '邮箱' ? 'opacity-0 translate-y-4 scale-95' : 'opacity-100 translate-y-0 scale-100 text-gray-900'
+                        copiedField === '邮箱' ? 'opacity-0 translate-y-4 scale-95' : 'opacity-100 translate-y-0 scale-100 text-white/90'
                       }`}
                     >
                       {userInfo.email}
@@ -483,7 +474,7 @@ export default function AppleStylePage() {
                         copiedField === '邮箱' ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-4 scale-90 pointer-events-none'
                       }`}
                     >
-                      <div className="bg-[#34C759] rounded-full p-0.5">
+                      <div className="bg-[#34C759] rounded-full p-0.5 shadow-[0_0_10px_rgba(52,199,89,0.4)]">
                         <Icon name="check" className="w-3 h-3 text-white stroke-[3px]" />
                       </div>
                       <span className="text-[15px] font-semibold text-[#34C759]">已复制</span>
@@ -494,10 +485,10 @@ export default function AppleStylePage() {
                 <div className="flex justify-end pt-1">
                   <button
                     onClick={handleInboxClick}
-                    className={`inline-flex items-center gap-1.5 py-1.5 px-4 rounded-full text-[13px] font-semibold transition-all duration-300 active:scale-95 touch-manipulation overflow-hidden relative ${
+                    className={`inline-flex items-center gap-1.5 py-1.5 px-4 rounded-full text-[13px] font-semibold transition-all duration-300 active:scale-95 touch-manipulation overflow-hidden relative border ${
                         inboxStatus === 'opening' 
-                        ? 'bg-[#34C759]/10 text-[#34C759]' 
-                        : 'bg-[#007AFF]/10 hover:bg-[#007AFF]/20 text-[#007AFF] active:bg-[#007AFF]/25'
+                        ? 'bg-[#34C759]/20 border-[#34C759]/30 text-[#4ADE80]' 
+                        : 'bg-[#007AFF]/20 border-[#007AFF]/30 hover:bg-[#007AFF]/30 text-[#409CFF] active:bg-[#007AFF]/40'
                     }`}
                   >
                     <div className={`flex items-center gap-1.5 transition-all duration-300 ${inboxStatus === 'opening' ? '-translate-y-8 opacity-0' : 'translate-y-0 opacity-100'}`}>
@@ -513,14 +504,14 @@ export default function AppleStylePage() {
               </div>
             </section>
 
-            {/* 主要操作按钮 (使用 CSS Animation 优化连续点击) */}
+            {/* 主要操作按钮: Glassy Gradient */}
             <button
               ref={buttonRef}
               onClick={generate}
               disabled={!isInitialized}
-              className="w-full py-4 rounded-[18px] shadow-[0_4px_14px_rgba(0,0,0,0.1)] border-t border-white/20 flex items-center justify-center gap-2.5 transform-gpu touch-manipulation overflow-hidden relative active:scale-[0.96] active:brightness-90 bg-gradient-to-b from-[#007AFF] to-[#0062CC] hover:scale-[1.01] hover:brightness-105 transition-transform duration-100"
+              className="w-full py-4 rounded-[18px] shadow-[0_0_20px_rgba(0,122,255,0.3)] border border-white/20 flex items-center justify-center gap-2.5 transform-gpu touch-manipulation overflow-hidden relative active:scale-[0.96] active:brightness-90 bg-gradient-to-b from-[#007AFF] to-[#0055b3] hover:scale-[1.01] hover:brightness-110 transition-transform duration-100"
             >
-              {/* 正常状态内容: 初始状态居中 */}
+              {/* 正常状态内容 */}
               <div 
                 ref={normalContentRef}
                 className="absolute flex items-center gap-2.5 translate-y-0 opacity-100 scale-100"
@@ -531,7 +522,7 @@ export default function AppleStylePage() {
                   </span>
               </div>
 
-              {/* 成功状态内容: 初始状态在下方 (translate-y-8) 且透明 */}
+              {/* 成功状态内容 */}
               <div 
                 ref={successContentRef}
                 className="absolute flex items-center gap-2.5 translate-y-8 opacity-0 scale-100"
@@ -544,36 +535,36 @@ export default function AppleStylePage() {
                   </span>
               </div>
               
-              {/* 占位符保持高度 */}
+              {/* 占位符 */}
               <div className="opacity-0 pointer-events-none flex items-center gap-2.5">
                   <Icon name="sparkles" className="w-5 h-5" />
                   <span className="text-[17px] font-semibold">生成新身份</span>
               </div>
             </button>
 
-            {/* 设置区域 */}
+            {/* 设置区域: Glassmorphism */}
             <section>
-              <div className="pl-5 mb-2 text-[13px] font-medium text-gray-400 uppercase tracking-wide">生成设置</div>
-              <div className="bg-white rounded-[18px] overflow-hidden shadow-sm ring-1 ring-black/5 transform-gpu">
+              <div className="pl-5 mb-2 text-[13px] font-medium text-white/40 uppercase tracking-wide">生成设置</div>
+              <div className="bg-white/5 backdrop-blur-md rounded-[18px] overflow-hidden shadow-lg shadow-black/10 border border-white/10 transform-gpu isolate">
                 <button
                   onClick={() => { haptic(20); setShowCountrySheet(true); }}
-                  className="w-full flex items-center justify-between py-4 pl-5 pr-4 active:bg-blue-50/50 transition-colors duration-200 group touch-manipulation"
+                  className="w-full flex items-center justify-between py-4 pl-5 pr-4 hover:bg-white/5 active:bg-white/10 transition-colors duration-200 group touch-manipulation"
                 >
-                  <span className="text-[16px] font-medium text-gray-900 tracking-tight">选择地区</span>
+                  <span className="text-[16px] font-medium text-white/90 tracking-tight">选择地区</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-[16px] text-gray-500 tracking-tight">{selectedCountry.name}</span>
-                    <Icon name="chevronRight" className="w-4 h-4 text-gray-300 group-active:text-gray-400 transition-transform duration-300 group-active:rotate-90" />
+                    <span className="text-[16px] text-white/60 tracking-tight">{selectedCountry.name}</span>
+                    <Icon name="chevronRight" className="w-4 h-4 text-white/30 group-active:text-white/50 transition-transform duration-300 group-active:rotate-90" />
                   </div>
                 </button>
-                <div className="ml-5 h-[0.5px] bg-gray-200/80" />
+                <div className="ml-5 h-[0.5px] bg-white/10" />
                 <button
                   onClick={() => { haptic(20); setShowDomainSheet(true); }}
-                  className="w-full flex items-center justify-between py-4 pl-5 pr-4 active:bg-blue-50/50 transition-colors duration-200 group touch-manipulation"
+                  className="w-full flex items-center justify-between py-4 pl-5 pr-4 hover:bg-white/5 active:bg-white/10 transition-colors duration-200 group touch-manipulation"
                 >
-                  <span className="text-[16px] font-medium text-gray-900 tracking-tight">邮箱域名</span>
+                  <span className="text-[16px] font-medium text-white/90 tracking-tight">邮箱域名</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-[16px] text-gray-500 tracking-tight">{displayDomain}</span>
-                    <Icon name="chevronRight" className="w-4 h-4 text-gray-300 group-active:text-gray-400 transition-transform duration-300 group-active:rotate-90" />
+                    <span className="text-[16px] text-white/60 tracking-tight">{displayDomain}</span>
+                    <Icon name="chevronRight" className="w-4 h-4 text-white/30 group-active:text-white/50 transition-transform duration-300 group-active:rotate-90" />
                   </div>
                 </button>
               </div>
@@ -585,12 +576,12 @@ export default function AppleStylePage() {
                 href="https://t.me/fang180" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="inline-flex items-center gap-1.5 text-[14px] text-[#007AFF] hover:text-[#0056b3] font-medium transition-colors active:opacity-60 py-2 px-4 rounded-full hover:bg-blue-50/50 touch-manipulation"
+                className="inline-flex items-center gap-1.5 text-[14px] text-[#409CFF] hover:text-[#60aeff] font-medium transition-colors active:opacity-60 py-2 px-4 rounded-full hover:bg-white/5 touch-manipulation"
               >
                 <Icon name="link" className="w-4 h-4" />
                 加入 Telegram 频道
               </a>
-              <p className="text-[12px] text-gray-400 font-medium tracking-tight">
+              <p className="text-[12px] text-white/30 font-medium tracking-tight">
                 支持 {countries.length} 个国家 • {allDomains.length} 个域名
               </p>
             </footer>
@@ -617,7 +608,7 @@ export default function AppleStylePage() {
         onClose={() => setShowDomainSheet(false)} 
         title="选择域名"
         rightAction={
-          <button onClick={() => setShowDomainSheet(false)} className="text-[#007AFF] font-medium text-[15px] p-2 -mr-2 touch-manipulation">
+          <button onClick={() => setShowDomainSheet(false)} className="text-[#409CFF] font-medium text-[15px] p-2 -mr-2 touch-manipulation hover:text-white transition-colors">
             完成
           </button>
         }
@@ -639,35 +630,32 @@ export default function AppleStylePage() {
 
         /* --- 按钮动画 Keyframes --- */
         
-        /* 1. 按钮背景色动画 */
         @keyframes btn-bg-success {
-          0% { background-color: #34C759; box-shadow: none; }
-          70% { background-color: #34C759; box-shadow: none; }
+          0% { background-color: #34C759; box-shadow: 0 0 20px rgba(52,199,89,0.4); }
+          70% { background-color: #34C759; box-shadow: 0 0 20px rgba(52,199,89,0.4); }
           100% { background-color: #007AFF; } 
         }
         .anim-bg-success {
           animation: btn-bg-success 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-          background-image: none !important; /* 动画期间移除渐变 */
+          background-image: none !important;
         }
 
-        /* 2. 正常内容循环动画 (退出 -> 恢复) */
         @keyframes slide-normal-cycle {
           0% { transform: translateY(0) scale(1); opacity: 1; }
-          20% { transform: translateY(-20px) scale(0.95); opacity: 0; } /* 向上滑出 */
-          80% { transform: translateY(20px) scale(0.95); opacity: 0; }  /* 重置到下方 */
-          100% { transform: translateY(0) scale(1); opacity: 1; }       /* 从下方滑入恢复 */
+          20% { transform: translateY(-20px) scale(0.95); opacity: 0; }
+          80% { transform: translateY(20px) scale(0.95); opacity: 0; }
+          100% { transform: translateY(0) scale(1); opacity: 1; }
         }
         .anim-slide-normal {
           animation: slide-normal-cycle 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
         }
 
-        /* 3. 成功内容循环动画 (进入 -> 退出) */
         @keyframes slide-success-cycle {
-          0% { transform: translateY(20px) scale(0.9); opacity: 0; }    /* 初始在下方 */
-          25% { transform: translateY(0) scale(1.05); opacity: 1; }     /* 弹跳进入 (Overshoot) */
-          35% { transform: translateY(0) scale(1); opacity: 1; }        /* 稳定 */
-          75% { transform: translateY(0) scale(1); opacity: 1; }        /* 保持显示 */
-          100% { transform: translateY(-20px) scale(0.95); opacity: 0; }/* 向上滑出 */
+          0% { transform: translateY(20px) scale(0.9); opacity: 0; }
+          25% { transform: translateY(0) scale(1.05); opacity: 1; }
+          35% { transform: translateY(0) scale(1); opacity: 1; }
+          75% { transform: translateY(0) scale(1); opacity: 1; }
+          100% { transform: translateY(-20px) scale(0.95); opacity: 0; }
         }
         .anim-slide-success {
           animation: slide-success-cycle 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
