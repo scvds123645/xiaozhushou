@@ -8,7 +8,29 @@ const UPPERCASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const LOWERCASE = "abcdefghijklmnopqrstuvwxyz";
 const NUMBERS = "0123456789";
 const SPECIAL_CHARS = "!@#$%&*";
-const COMMON_SPECIAL = "!@#$"; // 更常用的特殊字符
+
+// 常见的真实密码词汇
+const COMMON_WORDS = [
+  'love', 'life', 'star', 'moon', 'king', 'cool', 'super', 'happy', 'lucky', 'smart',
+  'dream', 'angel', 'power', 'magic', 'light', 'dark', 'blue', 'fire', 'water', 'earth',
+  'smile', 'peace', 'hope', 'faith', 'trust', 'grace', 'brave', 'strong', 'free', 'wild',
+  'shine', 'gold', 'heart', 'soul', 'mind', 'time', 'wave', 'wind', 'rain', 'snow',
+  'sun', 'sky', 'sea', 'ocean', 'storm', 'cloud', 'thunder', 'flash', 'spark', 'flame'
+];
+
+const COMMON_NUMBERS = ['123', '456', '789', '000', '111', '222', '321', '666', '888', '999'];
+
+// 字符替换模式(leetspeak) - 真实用户常用
+const LEET_REPLACEMENTS: Record<string, string[]> = {
+  'a': ['@', '4'],
+  'e': ['3'],
+  'i': ['1', '!'],
+  'o': ['0'],
+  's': ['5', '$'],
+  't': ['7'],
+  'l': ['1'],
+  'g': ['9']
+};
 
 // 年龄分布权重
 const AGE_DISTRIBUTION = [
@@ -49,6 +71,10 @@ function secureRandom(min: number, max: number): number {
   return min + (randomBuffer[0] % range);
 }
 
+function randomChoice<T>(array: T[]): T {
+  return array[secureRandom(0, array.length - 1)];
+}
+
 function randomDigit(min: number = 0, max: number = 9): string {
   return secureRandom(min, max).toString();
 }
@@ -59,6 +85,39 @@ function randomDigits(length: number, min: number = 0, max: number = 9): string 
     result += randomDigit(min, max);
   }
   return result;
+}
+
+function applyLeetSpeak(word: string, intensity: number = 0.3): string {
+  let result = '';
+  for (const char of word.toLowerCase()) {
+    if (Math.random() < intensity && LEET_REPLACEMENTS[char]) {
+      result += randomChoice(LEET_REPLACEMENTS[char]);
+    } else {
+      result += char;
+    }
+  }
+  return result;
+}
+
+function capitalizeRandom(word: string): string {
+  const chars = word.split('');
+  const positions = [0]; // 至少首字母大写
+  
+  // 30% 概率随机大写其他位置
+  if (Math.random() < 0.3 && chars.length > 2) {
+    const pos = secureRandom(1, chars.length - 1);
+    positions.push(pos);
+  }
+  
+  return chars.map((c, i) => positions.includes(i) ? c.toUpperCase() : c).join('');
+}
+
+function generateRandomWord(length: number): string {
+  let word = '';
+  for (let i = 0; i < length; i++) {
+    word += LOWERCASE.charAt(secureRandom(0, LOWERCASE.length - 1));
+  }
+  return word;
 }
 
 // --- 导出函数 ---
@@ -145,136 +204,126 @@ export function generatePhone(country: CountryConfig) {
   }
 }
 
-// 改进版密码生成函数
-export function generatePassword() {
-  const formatRandom = Math.random();
+// 改进版密码生成函数 - 更贴近真实用户习惯
+export function generatePassword(): string {
+  const strategy = Math.random();
   
-  // 格式1: 常见模式 - 首字母大写+字母+数字 (35%)
-  if (formatRandom < 0.35) {
+  // 策略1: 常见词 + 年份 + 可选特殊字符 (28%)
+  // 例如: Love2000!, Happy1995, Star2002@
+  if (strategy < 0.28) {
+    const word = capitalizeRandom(randomChoice(COMMON_WORDS));
+    const year = secureRandom(1990, 2006).toString();
+    
+    // 40% 概率添加特殊字符
+    const special = Math.random() < 0.4 ? randomChoice(['!', '@', '#', '$', '&', '*']) : '';
+    
+    return word + year + special;
+  }
+  
+  // 策略2: 常见词 + 常见数字组合 (22%)
+  // 例如: Lucky123, Cool456!, Super789
+  if (strategy < 0.50) {
+    const word = capitalizeRandom(randomChoice(COMMON_WORDS));
+    const nums = randomChoice(COMMON_NUMBERS);
+    
+    // 35% 概率添加特殊字符
+    const special = Math.random() < 0.35 ? randomChoice(['!', '@', '#']) : '';
+    
+    return word + nums + special;
+  }
+  
+  // 策略3: Leetspeak风格 (18%)
+  // 例如: L0v3r123, Sm@rt456, C00l789!
+  if (strategy < 0.68) {
+    const word = randomChoice(COMMON_WORDS);
+    const leetWord = applyLeetSpeak(word, 0.4);
+    
+    // 首字母大写
+    const result = leetWord.charAt(0).toUpperCase() + leetWord.slice(1);
+    
+    // 添加数字
+    const numLength = secureRandom(2, 3);
+    let nums = '';
+    for (let i = 0; i < numLength; i++) {
+      nums += NUMBERS.charAt(secureRandom(0, NUMBERS.length - 1));
+    }
+    
+    // 30% 概率添加特殊字符
+    const special = Math.random() < 0.3 ? randomChoice(['!', '@', '#']) : '';
+    
+    return result + nums + special;
+  }
+  
+  // 策略4: 两个单词组合 (15%)
+  // 例如: LoveStar99, HappyLife2000, CoolKing123!
+  if (strategy < 0.83) {
+    const word1 = capitalizeRandom(randomChoice(COMMON_WORDS));
+    const word2 = randomChoice(COMMON_WORDS);
+    
+    // 第二个词有50%概率首字母大写
+    const finalWord2 = Math.random() < 0.5 ? 
+      word2.charAt(0).toUpperCase() + word2.slice(1) : word2;
+    
+    // 添加数字(2-4位)
+    const numLength = secureRandom(2, 4);
+    let nums = '';
+    for (let i = 0; i < numLength; i++) {
+      nums += NUMBERS.charAt(secureRandom(0, NUMBERS.length - 1));
+    }
+    
+    // 25% 概率添加特殊字符
+    const special = Math.random() < 0.25 ? randomChoice(['!', '@', '#']) : '';
+    
+    return word1 + finalWord2 + nums + special;
+  }
+  
+  // 策略5: 首字母大写 + 小写字母 + 数字 (12%)
+  // 例如: Abcdefgh12, Qwertyu789, Zxcvbnm23
+  if (strategy < 0.95) {
     let password = UPPERCASE.charAt(secureRandom(0, UPPERCASE.length - 1));
     
+    // 5-8个小写字母
     const letterLength = secureRandom(5, 8);
     for (let i = 0; i < letterLength; i++) {
       password += LOWERCASE.charAt(secureRandom(0, LOWERCASE.length - 1));
     }
     
-    const numberLength = secureRandom(2, 4);
-    for (let i = 0; i < numberLength; i++) {
+    // 2-3位数字
+    const numLength = secureRandom(2, 3);
+    for (let i = 0; i < numLength; i++) {
       password += NUMBERS.charAt(secureRandom(0, NUMBERS.length - 1));
     }
     
-    // 30% 概率添加特殊字符
-    if (Math.random() < 0.3) {
-      password += COMMON_SPECIAL.charAt(secureRandom(0, COMMON_SPECIAL.length - 1));
+    // 20% 概率添加特殊字符
+    if (Math.random() < 0.2) {
+      password += randomChoice(['!', '@', '#']);
     }
     
     return password;
   }
   
-  // 格式2: 单词+年份+特殊字符 (25%)
-  if (formatRandom < 0.60) {
-    let password = '';
-    
-    // 首字母大写
-    password += UPPERCASE.charAt(secureRandom(0, UPPERCASE.length - 1));
-    
-    // 5-7个小写字母
-    const wordLength = secureRandom(5, 7);
-    for (let i = 0; i < wordLength; i++) {
-      password += LOWERCASE.charAt(secureRandom(0, LOWERCASE.length - 1));
-    }
-    
-    // 年份 (1985-2006 更广的范围)
-    const year = secureRandom(1985, 2006);
-    password += Math.random() < 0.6 ? year.toString() : year.toString().slice(-2);
-    
-    // 50% 概率添加特殊字符
-    if (Math.random() < 0.5) {
-      password += COMMON_SPECIAL.charAt(secureRandom(0, COMMON_SPECIAL.length - 1));
-    }
-    
-    return password;
-  }
-  
-  // 格式3: 混合模式 - 字母数字混合,特殊字符插入中间 (20%)
-  if (formatRandom < 0.80) {
-    let password = '';
-    const totalLength = secureRandom(10, 14);
-    
-    // 首字母大写
-    password += UPPERCASE.charAt(secureRandom(0, UPPERCASE.length - 1));
-    
-    const specialPosition = secureRandom(3, totalLength - 3); // 特殊字符插入中间位置
-    
-    for (let i = 1; i < totalLength; i++) {
-      if (i === specialPosition && Math.random() < 0.4) {
-        password += COMMON_SPECIAL.charAt(secureRandom(0, COMMON_SPECIAL.length - 1));
-      } else if (Math.random() < 0.7) {
-        password += LOWERCASE.charAt(secureRandom(0, LOWERCASE.length - 1));
-      } else {
-        password += NUMBERS.charAt(secureRandom(0, NUMBERS.length - 1));
-      }
-    }
-    
-    // 确保至少有2个数字
-    let numCount = (password.match(/\d/g) || []).length;
-    if (numCount < 2) {
-      password = password.slice(0, -1) + NUMBERS.charAt(secureRandom(0, NUMBERS.length - 1));
-    }
-    
-    return password;
-  }
-  
-  // 格式4: 两个单词组合 (15%)
-  if (formatRandom < 0.95) {
-    let password = '';
-    
-    // 第一个单词 (首字母大写)
-    password += UPPERCASE.charAt(secureRandom(0, UPPERCASE.length - 1));
-    const word1Length = secureRandom(3, 5);
-    for (let i = 0; i < word1Length; i++) {
-      password += LOWERCASE.charAt(secureRandom(0, LOWERCASE.length - 1));
-    }
-    
-    // 数字分隔
-    const middleNumber = secureRandom(0, 99);
-    password += middleNumber.toString();
-    
-    // 第二个单词 (首字母可能大写)
-    if (Math.random() < 0.4) {
-      password += UPPERCASE.charAt(secureRandom(0, UPPERCASE.length - 1));
-    }
-    const word2Length = secureRandom(3, 5);
-    for (let i = 0; i < word2Length; i++) {
-      password += LOWERCASE.charAt(secureRandom(0, LOWERCASE.length - 1));
-    }
-    
-    // 40% 概率添加特殊字符
-    if (Math.random() < 0.4) {
-      password += COMMON_SPECIAL.charAt(secureRandom(0, COMMON_SPECIAL.length - 1));
-    }
-    
-    return password;
-  }
-  
-  // 格式5: 全小写+数字+特殊字符 (5%)
+  // 策略6: 混合随机模式 (5%) - 兜底方案
+  // 例如: Mk7p@ss2024, Tr5st!23, Hs9pe456
   let password = '';
-  const letterLength = secureRandom(6, 9);
-  for (let i = 0; i < letterLength; i++) {
-    password += LOWERCASE.charAt(secureRandom(0, LOWERCASE.length - 1));
-  }
+  const baseWord = generateRandomWord(secureRandom(4, 6));
+  password = capitalizeRandom(baseWord);
   
-  const numberLength = secureRandom(2, 3);
-  for (let i = 0; i < numberLength; i++) {
+  // 轻度leetspeak
+  password = applyLeetSpeak(password, 0.2);
+  
+  // 添加数字
+  const numLength = secureRandom(2, 4);
+  for (let i = 0; i < numLength; i++) {
     password += NUMBERS.charAt(secureRandom(0, NUMBERS.length - 1));
   }
   
-  // 60% 概率添加特殊字符
-  if (Math.random() < 0.6) {
-    password += SPECIAL_CHARS.charAt(secureRandom(0, SPECIAL_CHARS.length - 1));
+  // 30% 概率添加特殊字符
+  if (Math.random() < 0.3) {
+    const pos = secureRandom(1, password.length);
+    password = password.slice(0, pos) + randomChoice(['!', '@', '#']) + password.slice(pos);
   }
   
-  // 长度限制
+  // 长度检查
   if (password.length < 8) {
     password += NUMBERS.charAt(secureRandom(0, NUMBERS.length - 1));
     password += NUMBERS.charAt(secureRandom(0, NUMBERS.length - 1));
@@ -313,7 +362,6 @@ export function generateEmail(firstName: string, lastName: string, customDomain?
   
   const separator = Math.random() < 0.65 ? '.' : (Math.random() < 0.5 ? '_' : '');
   
-  // 逻辑保持不变，但使用了优化后的常量
   if (formatRandom < 0.28) {
     username = `${cleanFirstName}${separator}${cleanLastName}`;
   } else if (formatRandom < 0.45) {
