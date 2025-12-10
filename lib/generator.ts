@@ -695,27 +695,31 @@ export function generateEmail(firstName: string, lastName: string, customDomain?
   const formatRandom = Math.random();
   let username: string;
   
-  const separator = Math.random() < 0.65 ? '.' : (Math.random() < 0.5 ? '_' : '');
+  // 修改：强制使用分隔符，移除无分隔符的选项
+  const separator = Math.random() < 0.5 ? '.' : '_';
   
   if (formatRandom < 0.28) {
     username = `${cleanFirstName}${separator}${cleanLastName}`;
   } else if (formatRandom < 0.45) {
     username = `${cleanFirstName}${separator}${cleanLastName}${smallNum}`;
   } else if (formatRandom < 0.60) {
-    username = `${cleanFirstName}${Math.random() < 0.6 ? shortYear : birthYear}`;
+    // 修改：添加分隔符
+    username = `${cleanFirstName}${separator}${Math.random() < 0.6 ? shortYear : birthYear}`;
   } else if (formatRandom < 0.72) {
     username = `${cleanFirstName.charAt(0)}${separator}${cleanLastName}`;
   } else if (formatRandom < 0.82) {
-    username = `${cleanFirstName}${smallNum}`;
+    // 修改：添加分隔符
+    username = `${cleanFirstName}${separator}${smallNum}`;
   } else if (formatRandom < 0.90) {
     username = `${cleanFirstName}${separator}${cleanLastName}${shortYear}`;
   } else if (formatRandom < 0.95) {
     username = `${cleanLastName}${separator}${cleanFirstName}`;
   } else {
+    // 修改：确保使用分隔符
     if (Math.random() < 0.5) {
-      username = `${cleanFirstName}${cleanLastName}${smallNum}`;
+      username = `${cleanFirstName}${separator}${cleanLastName}${smallNum}`;
     } else {
-      username = `${cleanFirstName.charAt(0)}${cleanLastName}${smallNum}`;
+      username = `${cleanFirstName.charAt(0)}${separator}${cleanLastName}${smallNum}`;
     }
   }
   
@@ -724,14 +728,14 @@ export function generateEmail(firstName: string, lastName: string, customDomain?
   username = username.replace(/\.{2,}/g, '.').replace(/_{2,}/g, '_');
   
   if (/^[0-9]/.test(username)) {
-    username = cleanFirstName.charAt(0) + username;
+    username = cleanFirstName.charAt(0) + separator + username;
   }
   
   if (username.length < 6) {
-    username += smallNum;
+    username += separator + smallNum;
   }
-  if (username.length > 28) {
-    username = username.substring(0, 28);
+  if (username.length > 12) {
+    username = username.substring(0, 12);
   }
   
   username = username.replace(/[._]+$/, '');
