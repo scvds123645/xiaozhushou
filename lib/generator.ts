@@ -712,63 +712,35 @@ export function getAllDomains(): string[] {
 export function generateEmail(firstName: string, lastName: string, customDomain?: string) {
   const cleanFirstName = convertToLatinChars(firstName);
   const cleanLastName = convertToLatinChars(lastName);
-  
   const domain = customDomain || DOMAINS[secureRandom(0, DOMAINS.length - 1)];
-  
-  const currentYear = new Date().getFullYear();
-  const age = secureRandom(18, 25);
-  const birthYear = currentYear - age;
-  const shortYear = birthYear.toString().slice(-2);
-  
-  const smallNum = secureRandom(1, 99);
-  
-  const formatRandom = Math.random();
-  let username: string;
-  
-  // 修改：强制使用分隔符，移除无分隔符的选项
+
+  // 生成5位英文字母
+  // 如果组合后的名字长度不足5位，则补充随机字母，确保不使用固定的填充字符
+  let str1 = cleanFirstName + cleanLastName;
+  while (str1.length < 5) {
+    str1 += LATIN_CHARS.charAt(secureRandom(0, LATIN_CHARS.length - 1));
+  }
+  const part1 = str1.substring(0, 5);
+
+  let str2 = cleanLastName + cleanFirstName;
+  while (str2.length < 5) {
+    str2 += LATIN_CHARS.charAt(secureRandom(0, LATIN_CHARS.length - 1));
+  }
+  const part2 = str2.substring(0, 5);
+
+  // 随机选择分隔符
   const separator = Math.random() < 0.5 ? '.' : '_';
-  
-  if (formatRandom < 0.28) {
-    username = `${cleanFirstName}${separator}${cleanLastName}`;
-  } else if (formatRandom < 0.45) {
-    username = `${cleanFirstName}${separator}${cleanLastName}${smallNum}`;
-  } else if (formatRandom < 0.60) {
-    // 修改：添加分隔符
-    username = `${cleanFirstName}${separator}${Math.random() < 0.6 ? shortYear : birthYear}`;
-  } else if (formatRandom < 0.72) {
-    username = `${cleanFirstName.charAt(0)}${separator}${cleanLastName}`;
-  } else if (formatRandom < 0.82) {
-    // 修改：添加分隔符
-    username = `${cleanFirstName}${separator}${smallNum}`;
-  } else if (formatRandom < 0.90) {
-    username = `${cleanFirstName}${separator}${cleanLastName}${shortYear}`;
-  } else if (formatRandom < 0.95) {
-    username = `${cleanLastName}${separator}${cleanFirstName}`;
+
+  // 50% 概率选择格式1或格式2
+  let username: string;
+  if (Math.random() < 0.5) {
+    // 格式1: 5字母 + 分隔符 + 5字母
+    username = `${part1}${separator}${part2}`;
   } else {
-    // 修改：确保使用分隔符
-    if (Math.random() < 0.5) {
-      username = `${cleanFirstName}${separator}${cleanLastName}${smallNum}`;
-    } else {
-      username = `${cleanFirstName.charAt(0)}${separator}${cleanLastName}${smallNum}`;
-    }
+    // 格式2: 5字母 + 分隔符 + 5字母 + 2位数字
+    const twoDigits = secureRandom(10, 99);
+    username = `${part1}${separator}${part2}${twoDigits}`;
   }
-  
-  username = username.replace(/[^a-z0-9._]/g, '');
-  username = username.replace(/^[._]+|[._]+$/g, '');
-  username = username.replace(/\.{2,}/g, '.').replace(/_{2,}/g, '_');
-  
-  if (/^[0-9]/.test(username)) {
-    username = cleanFirstName.charAt(0) + separator + username;
-  }
-  
-  if (username.length < 6) {
-    username += separator + smallNum;
-  }
-  if (username.length > 12) {
-    username = username.substring(0, 12);
-  }
-  
-  username = username.replace(/[._]+$/, '');
-  
+
   return `${username}@${domain}`;
 }
