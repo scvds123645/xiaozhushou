@@ -26,7 +26,7 @@ interface UserInfo {
 const ICON_PATHS: Record<string, React.ReactElement> = {
   check: <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>,
   chevronRight: <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>,
-  close: <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>,
+  close: <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 17.59 13.41 12z"/>,
   sparkles: <path d="M7 11v2l-4 1 4 1v2l1-4-1-4zm5-7v4l-3 1 3 1v4l2-5-2-5zm5.66 2.94L15 6.26l.66-2.94L18.34 6l2.66.68-2.66.68-.68 2.58-.66-2.94zM15 18l-2-3 2-3 2 3-2 3z"/>,
   search: <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>,
   inbox: <path d="M19 3H4.99c-1.11 0-1.98.89-1.98 2L3 19c0 1.1.89 2 1.99 2H19c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 12h-4c0 1.66-1.35 3-3 3s-3-1.34-3-3H4.99V5H19v10z"/>,
@@ -631,13 +631,21 @@ export default function GlassStylePage() {
         /* --- 按钮动画 Keyframes --- */
         
         @keyframes btn-bg-success {
-          0% { background-color: #34C759; box-shadow: 0 0 20px rgba(52,199,89,0.4); }
-          70% { background-color: #34C759; box-shadow: 0 0 20px rgba(52,199,89,0.4); }
-          100% { background-color: #007AFF; } 
+          0% { 
+            background-image: linear-gradient(to bottom, #34C759, #28a745); 
+            box-shadow: 0 0 20px rgba(52,199,89,0.4); 
+          }
+          70% { 
+            background-image: linear-gradient(to bottom, #34C759, #28a745); 
+            box-shadow: 0 0 20px rgba(52,199,89,0.4); 
+          }
+          100% { 
+            background-image: linear-gradient(to bottom, #007AFF, #0055b3); 
+            box-shadow: 0 0 20px rgba(0,122,255,0.3);
+          }
         }
         .anim-bg-success {
           animation: btn-bg-success 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-          background-image: none !important;
         }
 
         @keyframes slide-normal-cycle {
