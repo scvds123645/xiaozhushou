@@ -334,6 +334,9 @@ export default function AppleStylePage() {
   const generate = useCallback(() => {
     haptic(50);
     
+    // 清除复制状态
+    setCopiedField(null);
+    
     // 触发动画
     triggerAnimation();
 
