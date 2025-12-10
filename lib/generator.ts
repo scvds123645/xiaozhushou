@@ -713,39 +713,42 @@ export function getAllDomains(): string[] {
 }
 
 export function generateEmail(firstName: string, lastName: string, customDomain?: string) {
-  // 1. 转换为拉丁字符并移除元音 (a, e, i, o, u)
-  const cleanFirstName = convertToLatinChars(firstName).replace(/[aeiou]/g, '');
-  const cleanLastName = convertToLatinChars(lastName).replace(/[aeiou]/g, '');
   const domain = customDomain || DOMAINS[secureRandom(0, DOMAINS.length - 1)];
 
-  // 2. 生成第一部分 (5位辅音)
-  // 组合名+姓，如果长度不足5位，用随机辅音填充
-  let str1 = cleanFirstName + cleanLastName;
-  while (str1.length < 5) {
-    str1 += CONSONANTS.charAt(secureRandom(0, CONSONANTS.length - 1));
-  }
-  const part1 = str1.substring(0, 5);
+  // 辅助函数：处理名字部分，确保长度在 4-6 之间，且保留元音
+  const processPart = (rawName: string) => {
+    // 1. 转换为拉丁字符，但不再移除元音，保留自然拼写
+    let clean = convertToLatinChars(rawName);
+    
+    // 随机目标长度 4-6
+    const targetLen = secureRandom(4, 6);
 
-  // 3. 生成第二部分 (5位辅音)
-  // 组合姓+名，如果长度不足5位，用随机辅音填充
-  let str2 = cleanLastName + cleanFirstName;
-  while (str2.length < 5) {
-    str2 += CONSONANTS.charAt(secureRandom(0, CONSONANTS.length - 1));
-  }
-  const part2 = str2.substring(0, 5);
+    // 如果名字过长，截取前 targetLen 位
+    if (clean.length > targetLen) {
+      return clean.substring(0, targetLen);
+    }
+    
+    // 如果名字过短，用随机字母填充（包含元音和辅音，保持自然）
+    while (clean.length < targetLen) {
+      clean += LATIN_CHARS.charAt(secureRandom(0, LATIN_CHARS.length - 1));
+    }
+    return clean;
+  };
+
+  // 2. 生成两部分
+  const part1 = processPart(firstName);
+  const part2 = processPart(lastName);
 
   // 随机选择分隔符
   const separator = Math.random() < 0.5 ? '.' : '_';
 
-  // 50% 概率选择格式1或格式2
-  let username: string;
+  // 组合基础用户名
+  let username = `${part1}${separator}${part2}`;
+
+  // 50% 概率在末尾添加2位数字
   if (Math.random() < 0.5) {
-    // 格式1: 5位辅音 + 分隔符 + 5位辅音
-    username = `${part1}${separator}${part2}`;
-  } else {
-    // 格式2: 5位辅音 + 分隔符 + 5位辅音 + 2位数字
     const twoDigits = secureRandom(10, 99);
-    username = `${part1}${separator}${part2}${twoDigits}`;
+    username += twoDigits;
   }
 
   return `${username}@${domain}`;
