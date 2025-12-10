@@ -21,7 +21,6 @@ interface UserInfo {
   email: string;
 }
 
-// 优化：将图标路径提取为静态常量，避免每次渲染都重新创建对象
 const ICON_PATHS: Record<string, React.ReactElement> = {
   refresh: <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>,
   copy: <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>,
@@ -210,7 +209,6 @@ export default function AppleStylePage() {
   const allDomains = getAllDomains();
   const displayDomain = selectedDomain === 'random' ? '随机域名' : selectedDomain;
 
-  // 优化：使用 useMemo 缓存过滤结果，避免每次渲染都进行数组过滤
   const filteredDomains = useMemo(() => {
     if (!domainSearchQuery) return allDomains;
     const lowerQuery = domainSearchQuery.toLowerCase();
@@ -280,6 +278,17 @@ export default function AppleStylePage() {
             </div>
             
             <div className="mt-8 space-y-4">
+              {/* 随机生成按钮移动到最上方 */}
+              <button
+                onClick={generate}
+                disabled={isGenerating}
+                className="w-full bg-sf-blue hover:bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-500/30 active:scale-[0.98] transition-all p-4 text-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span className="text-lg font-semibold tracking-wide">
+                  {isGenerating ? '生成中...' : '随机生成'}
+                </span>
+              </button>
+
               <button
                 onClick={() => { haptic(); setShowCountrySheet(true); }}
                 className="w-full flex justify-between items-center bg-white rounded-xl shadow-sm border border-sf-gray-100 p-4 active:bg-sf-gray-50 transition-colors"
@@ -300,16 +309,6 @@ export default function AppleStylePage() {
                   <span className="text-base font-medium">{displayDomain}</span>
                   <Icon name="expand" className="w-5 h-5 text-sf-gray-300" />
                 </div>
-              </button>
-              
-              <button
-                onClick={generate}
-                disabled={isGenerating}
-                className="w-full bg-sf-blue hover:bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-500/30 active:scale-[0.98] transition-all p-4 text-center disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <span className="text-lg font-semibold tracking-wide">
-                  {isGenerating ? '生成中...' : '随机生成'}
-                </span>
               </button>
             </div>
 
