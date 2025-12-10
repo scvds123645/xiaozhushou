@@ -8,6 +8,7 @@ const UPPERCASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const LOWERCASE = "abcdefghijklmnopqrstuvwxyz";
 const NUMBERS = "0123456789";
 const SPECIAL_CHARS = "!@#$%&*";
+const COMMON_SPECIAL = "!@#$"; // 更常用的特殊字符
 
 // 年龄分布权重
 const AGE_DISTRIBUTION = [
@@ -144,36 +145,139 @@ export function generatePhone(country: CountryConfig) {
   }
 }
 
+// 改进版密码生成函数
 export function generatePassword() {
-  let password = '';
+  const formatRandom = Math.random();
   
-  if (Math.random() < 0.6) {
-    password += UPPERCASE.charAt(secureRandom(0, UPPERCASE.length - 1));
-  } else {
-    password += LOWERCASE.charAt(secureRandom(0, LOWERCASE.length - 1));
-  }
-  
-  const bodyLength = secureRandom(5, 7);
-  for (let i = 0; i < bodyLength; i++) {
-    password += LOWERCASE.charAt(secureRandom(0, LOWERCASE.length - 1));
-  }
-  
-  const numLength = secureRandom(2, 3);
-  if (Math.random() < 0.4) {
-    const year = secureRandom(1980, 2005);
-    password += Math.random() < 0.5 ? year.toString() : year.toString().slice(-2);
-  } else {
-    for (let i = 0; i < numLength; i++) {
+  // 格式1: 常见模式 - 首字母大写+字母+数字 (35%)
+  if (formatRandom < 0.35) {
+    let password = UPPERCASE.charAt(secureRandom(0, UPPERCASE.length - 1));
+    
+    const letterLength = secureRandom(5, 8);
+    for (let i = 0; i < letterLength; i++) {
+      password += LOWERCASE.charAt(secureRandom(0, LOWERCASE.length - 1));
+    }
+    
+    const numberLength = secureRandom(2, 4);
+    for (let i = 0; i < numberLength; i++) {
       password += NUMBERS.charAt(secureRandom(0, NUMBERS.length - 1));
     }
+    
+    // 30% 概率添加特殊字符
+    if (Math.random() < 0.3) {
+      password += COMMON_SPECIAL.charAt(secureRandom(0, COMMON_SPECIAL.length - 1));
+    }
+    
+    return password;
   }
   
-  if (Math.random() < 0.5) {
+  // 格式2: 单词+年份+特殊字符 (25%)
+  if (formatRandom < 0.60) {
+    let password = '';
+    
+    // 首字母大写
+    password += UPPERCASE.charAt(secureRandom(0, UPPERCASE.length - 1));
+    
+    // 5-7个小写字母
+    const wordLength = secureRandom(5, 7);
+    for (let i = 0; i < wordLength; i++) {
+      password += LOWERCASE.charAt(secureRandom(0, LOWERCASE.length - 1));
+    }
+    
+    // 年份 (1985-2006 更广的范围)
+    const year = secureRandom(1985, 2006);
+    password += Math.random() < 0.6 ? year.toString() : year.toString().slice(-2);
+    
+    // 50% 概率添加特殊字符
+    if (Math.random() < 0.5) {
+      password += COMMON_SPECIAL.charAt(secureRandom(0, COMMON_SPECIAL.length - 1));
+    }
+    
+    return password;
+  }
+  
+  // 格式3: 混合模式 - 字母数字混合,特殊字符插入中间 (20%)
+  if (formatRandom < 0.80) {
+    let password = '';
+    const totalLength = secureRandom(10, 14);
+    
+    // 首字母大写
+    password += UPPERCASE.charAt(secureRandom(0, UPPERCASE.length - 1));
+    
+    const specialPosition = secureRandom(3, totalLength - 3); // 特殊字符插入中间位置
+    
+    for (let i = 1; i < totalLength; i++) {
+      if (i === specialPosition && Math.random() < 0.4) {
+        password += COMMON_SPECIAL.charAt(secureRandom(0, COMMON_SPECIAL.length - 1));
+      } else if (Math.random() < 0.7) {
+        password += LOWERCASE.charAt(secureRandom(0, LOWERCASE.length - 1));
+      } else {
+        password += NUMBERS.charAt(secureRandom(0, NUMBERS.length - 1));
+      }
+    }
+    
+    // 确保至少有2个数字
+    let numCount = (password.match(/\d/g) || []).length;
+    if (numCount < 2) {
+      password = password.slice(0, -1) + NUMBERS.charAt(secureRandom(0, NUMBERS.length - 1));
+    }
+    
+    return password;
+  }
+  
+  // 格式4: 两个单词组合 (15%)
+  if (formatRandom < 0.95) {
+    let password = '';
+    
+    // 第一个单词 (首字母大写)
+    password += UPPERCASE.charAt(secureRandom(0, UPPERCASE.length - 1));
+    const word1Length = secureRandom(3, 5);
+    for (let i = 0; i < word1Length; i++) {
+      password += LOWERCASE.charAt(secureRandom(0, LOWERCASE.length - 1));
+    }
+    
+    // 数字分隔
+    const middleNumber = secureRandom(0, 99);
+    password += middleNumber.toString();
+    
+    // 第二个单词 (首字母可能大写)
+    if (Math.random() < 0.4) {
+      password += UPPERCASE.charAt(secureRandom(0, UPPERCASE.length - 1));
+    }
+    const word2Length = secureRandom(3, 5);
+    for (let i = 0; i < word2Length; i++) {
+      password += LOWERCASE.charAt(secureRandom(0, LOWERCASE.length - 1));
+    }
+    
+    // 40% 概率添加特殊字符
+    if (Math.random() < 0.4) {
+      password += COMMON_SPECIAL.charAt(secureRandom(0, COMMON_SPECIAL.length - 1));
+    }
+    
+    return password;
+  }
+  
+  // 格式5: 全小写+数字+特殊字符 (5%)
+  let password = '';
+  const letterLength = secureRandom(6, 9);
+  for (let i = 0; i < letterLength; i++) {
+    password += LOWERCASE.charAt(secureRandom(0, LOWERCASE.length - 1));
+  }
+  
+  const numberLength = secureRandom(2, 3);
+  for (let i = 0; i < numberLength; i++) {
+    password += NUMBERS.charAt(secureRandom(0, NUMBERS.length - 1));
+  }
+  
+  // 60% 概率添加特殊字符
+  if (Math.random() < 0.6) {
     password += SPECIAL_CHARS.charAt(secureRandom(0, SPECIAL_CHARS.length - 1));
   }
   
+  // 长度限制
   if (password.length < 8) {
-    password += randomDigits(8 - password.length);
+    password += NUMBERS.charAt(secureRandom(0, NUMBERS.length - 1));
+    password += NUMBERS.charAt(secureRandom(0, NUMBERS.length - 1));
   }
   if (password.length > 16) {
     password = password.substring(0, 16);
