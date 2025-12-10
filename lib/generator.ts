@@ -433,7 +433,8 @@ export function generatePhone(country: CountryConfig) {
 
     case 'US':
     case 'CA':
-      const region = randomChoice(['east', 'central', 'west', 'south']);
+      const regionKeys = ['east', 'central', 'west', 'south'] as const;
+      const region = randomChoice([...regionKeys]);
       const areaCode = randomChoice(US_AREA_CODES[region]);
       const exchange = randomDigit(2, 9) + randomDigits(2);
       const subscriber = randomDigits(4);
