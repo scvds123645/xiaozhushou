@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, memo, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, memo, useRef, useMemo, useDeferredValue } from 'react';
 import { countries, CountryConfig } from '@/lib/countryData';
 import {
   generateName,
@@ -62,11 +62,9 @@ const InfoRow = memo(({ label, value, onCopy, isCopied, isLast = false }: {
         isCopied ? 'bg-blue-500/10' : 'bg-transparent hover:bg-white/5 active:bg-white/10'
       }`}
     >
-      {/* Label: Reduced opacity white */}
       <span className="text-[15px] font-medium text-white/50 w-20 shrink-0 tracking-tight">{label}</span>
       
       <div className="flex items-center gap-3 min-w-0 flex-1 justify-end h-6 relative overflow-hidden">
-        {/* Value: High opacity white */}
         <span 
           className={`absolute right-0 text-[17px] font-medium truncate select-all tracking-tight transition-all duration-300 ${
             isCopied ? 'opacity-0 translate-y-4 scale-95' : 'opacity-100 translate-y-0 scale-100 text-white/90'
@@ -75,7 +73,6 @@ const InfoRow = memo(({ label, value, onCopy, isCopied, isLast = false }: {
           {value || '---'}
         </span>
 
-        {/* 复制成功反馈 */}
         <div 
           className={`absolute right-0 flex items-center gap-1.5 transition-all duration-300 cubic-bezier-bounce ${
             isCopied ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-4 scale-90 pointer-events-none'
@@ -88,7 +85,6 @@ const InfoRow = memo(({ label, value, onCopy, isCopied, isLast = false }: {
         </div>
       </div>
       
-      {/* Separator: Very subtle white line */}
       {!isLast && <div className="absolute bottom-0 left-5 right-0 h-[0.5px] bg-white/10" />}
     </div>
   );
@@ -118,7 +114,7 @@ const BottomSheet = memo(({
         onClick={onClose} 
       />
       <div 
-        className="relative w-full max-w-md bg-[#0f172a]/80 backdrop-blur-xl border border-white/10 rounded-t-[24px] sm:rounded-[24px] max-h-[85vh] flex flex-col shadow-2xl animate-slide-up overflow-hidden will-change-transform transform-gpu"
+        className="relative w-full max-w-md bg-[#0f172a]/80 backdrop-blur-xl border border-white/10 rounded-t-[24px] sm:rounded-[24px] h-[85vh] max-h-[85vh] flex flex-col shadow-2xl animate-slide-up overflow-hidden will-change-transform transform-gpu"
         style={{ boxShadow: '0 -10px 40px rgba(0,0,0,0.5)' }}
       >
         <div className="p-4 border-b border-white/10 sticky top-0 z-10 shrink-0 bg-inherit">
@@ -137,7 +133,7 @@ const BottomSheet = memo(({
              )}
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto overscroll-contain">
+        <div className="flex-1 overflow-hidden relative">
           {children}
         </div>
       </div>
@@ -151,31 +147,35 @@ const ListItem = memo(({
   label, 
   isSelected, 
   onClick, 
-  icon 
+  icon,
+  style
 }: { 
   label: string; 
   isSelected: boolean; 
   onClick: () => void; 
-  icon?: string 
+  icon?: string;
+  style?: React.CSSProperties;
 }) => (
-  <button
-    onClick={onClick}
-    className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl transition-all duration-200 active:scale-[0.98] touch-manipulation border ${
-      isSelected 
-        ? 'bg-white/10 border-white/10 shadow-lg shadow-black/10 text-[#409CFF] font-semibold' 
-        : 'bg-transparent border-transparent text-white/80 hover:bg-white/5 active:bg-white/10'
-    }`}
-  >
-    <div className="flex items-center gap-3">
-      {icon && (
-        <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-[#007AFF]/20' : 'bg-white/10'}`}>
-          <Icon name={icon} className={`w-4 h-4 ${isSelected ? 'text-[#409CFF]' : 'text-white/50'}`} />
-        </div>
-      )}
-      <span className="text-[16px] tracking-tight text-left">{label}</span>
-    </div>
-    {isSelected && <Icon name="check" className="w-5 h-5 text-[#409CFF]" />}
-  </button>
+  <div style={style} className="px-4 py-1">
+    <button
+      onClick={onClick}
+      className={`w-full h-[46px] flex items-center justify-between px-4 rounded-xl transition-all duration-200 active:scale-[0.98] touch-manipulation border ${
+        isSelected 
+          ? 'bg-white/10 border-white/10 shadow-lg shadow-black/10 text-[#409CFF] font-semibold' 
+          : 'bg-transparent border-transparent text-white/80 hover:bg-white/5 active:bg-white/10'
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        {icon && (
+          <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-[#007AFF]/20' : 'bg-white/10'}`}>
+            <Icon name={icon} className={`w-4 h-4 ${isSelected ? 'text-[#409CFF]' : 'text-white/50'}`} />
+          </div>
+        )}
+        <span className="text-[16px] tracking-tight text-left truncate max-w-[240px]">{label}</span>
+      </div>
+      {isSelected && <Icon name="check" className="w-5 h-5 text-[#409CFF]" />}
+    </button>
+  </div>
 ));
 ListItem.displayName = 'ListItem';
 
@@ -190,21 +190,22 @@ const CountryList = memo(({
   onSelect: (c: CountryConfig) => void; 
 }) => {
   return (
-    <div className="p-4 space-y-2">
+    <div className="h-full overflow-y-auto p-4 pt-2 space-y-2">
       {countries.map((country) => (
-        <ListItem
-          key={country.code}
-          label={country.name}
-          isSelected={selectedCode === country.code}
-          onClick={() => onSelect(country)}
-        />
+        <div key={country.code} className="py-1">
+            <ListItem
+            label={country.name}
+            isSelected={selectedCode === country.code}
+            onClick={() => onSelect(country)}
+            />
+        </div>
       ))}
     </div>
   );
 });
 CountryList.displayName = 'CountryList';
 
-// --- 组件: 域名选择列表 ---
+// --- 组件: 域名选择列表 (优化版：虚拟滚动 + 防抖) ---
 const DomainList = memo(({ 
   allDomains, 
   selectedDomain, 
@@ -215,17 +216,49 @@ const DomainList = memo(({
   onSelect: (d: string) => void; 
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  // 使用 deferredValue 优化搜索输入响应，避免输入卡顿
+  const deferredQuery = useDeferredValue(searchQuery);
   
+  // 虚拟滚动状态
+  const [scrollTop, setScrollTop] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // 过滤逻辑
   const filteredDomains = useMemo(() => {
-    if (!searchQuery) return allDomains;
-    const lowerQuery = searchQuery.toLowerCase();
+    if (!deferredQuery) return allDomains;
+    const lowerQuery = deferredQuery.toLowerCase();
     return allDomains.filter(d => d.toLowerCase().includes(lowerQuery));
-  }, [allDomains, searchQuery]);
+  }, [allDomains, deferredQuery]);
+
+  // 当搜索结果变化时，重置滚动位置
+  useEffect(() => {
+    if (containerRef.current) {
+        containerRef.current.scrollTop = 0;
+        setScrollTop(0);
+    }
+  }, [deferredQuery]);
+
+  // 虚拟滚动计算
+  const ITEM_HEIGHT = 54; // 包含 padding 的每个列表项高度 (46px button + 8px padding)
+  const VISIBLE_COUNT = 15; // 可视区域内渲染的数量
+  const BUFFER = 5; // 上下缓冲数量
+
+  const totalHeight = filteredDomains.length * ITEM_HEIGHT;
+  const startIndex = Math.floor(scrollTop / ITEM_HEIGHT);
+  const renderStartIndex = Math.max(0, startIndex - BUFFER);
+  const renderEndIndex = Math.min(filteredDomains.length, startIndex + VISIBLE_COUNT + BUFFER);
+  
+  const visibleItems = filteredDomains.slice(renderStartIndex, renderEndIndex);
+  const offsetY = renderStartIndex * ITEM_HEIGHT;
+
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    setScrollTop(e.currentTarget.scrollTop);
+  }, []);
 
   return (
     <div className="flex flex-col h-full">
-      {/* Search Bar - Glass Style */}
-      <div className="px-4 pb-2 sticky top-0 z-10 bg-inherit">
+      {/* Search Bar */}
+      <div className="px-4 pb-2 pt-2 sticky top-0 z-20 bg-inherit shrink-0">
          <div className="relative group">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Icon name="search" className="w-4 h-4 text-white/40" />
@@ -245,26 +278,45 @@ const DomainList = memo(({
           </div>
       </div>
       
-      <div className="p-4 pt-2 space-y-2">
-        {!searchQuery && (
-          <ListItem
-            label="随机域名"
-            isSelected={selectedDomain === 'random'}
-            onClick={() => onSelect('random')}
-            icon="sparkles"
-          />
-        )}
-        {filteredDomains.map((domain) => (
-          <ListItem
-            key={domain}
-            label={domain}
-            isSelected={selectedDomain === domain}
-            onClick={() => onSelect(domain)}
-          />
-        ))}
-        {filteredDomains.length === 0 && (
-          <div className="text-center py-8 text-white/30 text-sm">无匹配结果</div>
-        )}
+      {/* Scrollable List Container */}
+      <div 
+        ref={containerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto overscroll-contain relative"
+      >
+        <div className="px-4 pb-4">
+            {/* 静态项：随机域名 (仅在无搜索时显示) */}
+            {!searchQuery && (
+            <div className="py-1 mb-1">
+                <ListItem
+                    label="随机域名"
+                    isSelected={selectedDomain === 'random'}
+                    onClick={() => onSelect('random')}
+                    icon="sparkles"
+                />
+            </div>
+            )}
+
+            {/* 虚拟滚动容器 */}
+            <div style={{ height: totalHeight, position: 'relative' }}>
+                <div style={{ transform: `translateY(${offsetY}px)` }}>
+                    {visibleItems.map((domain) => (
+                        <ListItem
+                            key={domain}
+                            label={domain}
+                            isSelected={selectedDomain === domain}
+                            onClick={() => onSelect(domain)}
+                            // 传递 style 确保高度一致性，虽然 ListItem 内部有 class，但这里可以做微调
+                            style={{ height: ITEM_HEIGHT }}
+                        />
+                    ))}
+                </div>
+            </div>
+
+            {filteredDomains.length === 0 && (
+                <div className="text-center py-8 text-white/30 text-sm">无匹配结果</div>
+            )}
+        </div>
       </div>
     </div>
   );
