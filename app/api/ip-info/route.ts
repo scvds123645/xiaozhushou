@@ -1,45 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// 优化1: 保持 Edge Runtime
+// 优化1: 使用 edge runtime 以获得更快的冷启动和全球分发
 export const runtime = 'edge';
 
-// --- 类型定义 ---
-
-interface GeoData {
-  source: string;
-  ip: string;
-  country: string;
-  countryName: string;
-  city: string;
-  region: string;
-  timezone: string;
-  latitude: number | null;
-  longitude: number | null;
-  accurate: boolean;
-  error?: string;
-}
-
-interface ServiceMetrics {
-  success: number;
-  failure: number;
-  totalTime: number;
-}
-
-// 外部 API 响应接口定义
-interface IpApiCoResponse {
-  ip?: string;
-  country_code?: string;
-  country_name?: string;
-  city?: string;
+interface IPApiResponse {
+  status?: string;
+  country?: string;
+  countryCode?: string;
   region?: string;
+  regionName?: string;
+  city?: string;
+  zip?: string;
+  lat?: number;
+  lon?: number;
   timezone?: string;
+  query?: string;
+}
+
+interface IPWhoIsResponse {
+  success?: boolean;
+  ip?: string;
+  country?: string;
+  country_code?: string;
+  region?: string;
+  city?: string;
   latitude?: number;
   longitude?: number;
-  error?: boolean;
-  reason?: string;
+  timezone?: {
+    id?: string;
+  };
 }
 
-interface IpInfoResponse {
+interface IPInfoResponse {
   ip?: string;
   city?: string;
   region?: string;
@@ -48,362 +40,216 @@ interface IpInfoResponse {
   timezone?: string;
 }
 
-interface IpWhoIsResponse {
-  success?: boolean;
-  ip?: string;
-  country_code?: string;
-  country?: string;
-  region?: string;
-  city?: string;
-  latitude?: number;
-  longitude?: number;
-  timezone?: { id: string };
-}
-
-// 新增: FreeIPAPI 响应接口
-interface FreeIpApiResponse {
-  ipVersion: number;
-  ipAddress: string;
-  latitude: number;
-  longitude: number;
-  countryName: string;
-  countryCode: string;
-  timeZone: string;
-  zipCode: string;
-  cityName: string;
-  regionName: string;
-  isProxy: boolean;
-}
-
-// --- 常量与正则 ---
-
-// 包含 IPv4 私有段, localhost, 以及 IPv6 私有/本地链路/唯一本地地址
+// 优化2: 使用静态正则,避免重复创建
 const PRIVATE_IP_RANGES = [
-  /^127\./,
   /^10\./,
   /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
   /^192\.168\./,
+  /^127\./,
+  /^localhost$/i,
   /^::1$/,
-  /^fd[0-9a-f]{2}:.+/i, // IPv6 Unique Local
-  /^fe80:.+/i,          // IPv6 Link Local
-  /^localhost$/i
+  /^fe80:/i
 ];
 
-const COMMON_HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (Edge-Runtime-GeoIP/1.0)',
+const isValidPublicIP = (ipAddr: string): boolean => {
+  if (ipAddr === '未知' || !ipAddr) return false;
+  return !PRIVATE_IP_RANGES.some(pattern => pattern.test(ipAddr));
+};
+
+const COMMON_HEADERS = { 
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
   'Accept': 'application/json'
 };
 
-// --- LRU 缓存实现 (优化1) ---
-
-class LRUCache<V> {
-  private cache: Map<string, { value: V; expiresAt: number }>;
-  private readonly maxEntries: number;
-  private readonly ttlMs: number;
-
-  constructor(maxEntries: number, ttlMs: number) {
-    this.cache = new Map();
-    this.maxEntries = maxEntries;
-    this.ttlMs = ttlMs;
-  }
-
-  get(key: string): V | null {
-    const entry = this.cache.get(key);
-    if (!entry) return null;
-
-    // 检查过期
-    if (Date.now() > entry.expiresAt) {
-      this.cache.delete(key);
-      return null;
-    }
-
-    // LRU 核心逻辑: 访问即刷新位置
-    // 删除并重新设置，使其移动到 Map 的末尾（最近使用）
-    this.cache.delete(key);
-    this.cache.set(key, entry);
-    
-    return entry.value;
-  }
-
-  set(key: string, value: V): void {
-    // 如果已存在，先删除以便更新位置
-    if (this.cache.has(key)) {
-      this.cache.delete(key);
-    } 
-    // 如果不存在且已满，淘汰最久未使用的（Map 的第一个元素）
-    else if (this.cache.size >= this.maxEntries) {
-      const firstKey = this.cache.keys().next().value;
-      if (firstKey) this.cache.delete(firstKey);
-    }
-
-    this.cache.set(key, {
-      value,
-      expiresAt: Date.now() + this.ttlMs
-    });
-  }
-}
-
-// --- 全局状态 ---
-
-// 优化1: 使用自定义 LRU 缓存 (Max 1000, 5分钟 TTL)
-const ipCache = new LRUCache<GeoData>(1000, 1000 * 60 * 5);
-
-// 请求去重 Map (存储正在进行的 Promise)
-const inflightRequests = new Map<string, Promise<GeoData>>();
-
-// 性能指标
-const metrics: Record<string, ServiceMetrics> = {};
-
-// --- 工具函数 ---
-
-const isValidPublicIP = (ip: string | null | undefined): boolean => {
-  if (!ip || ip === '未知') return false;
-  // 简单的格式校验，排除明显非 IP 的字符串
-  if (!ip.includes('.') && !ip.includes(':')) return false;
-  return !PRIVATE_IP_RANGES.some(pattern => pattern.test(ip));
-};
-
-const recordMetric = (source: string, timeMs: number, isSuccess: boolean) => {
-  if (!metrics[source]) {
-    metrics[source] = { success: 0, failure: 0, totalTime: 0 };
-  }
-  if (isSuccess) {
-    metrics[source].success++;
-    metrics[source].totalTime += timeMs;
-  } else {
-    metrics[source].failure++;
-  }
-};
-
-async function fetchService<T>(
-  sourceName: string,
-  url: string,
-  timeout: number = 3000
-): Promise<T | null> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-  const startTime = Date.now();
-
+// 优化3: 提取通用的 fetch 逻辑,减少代码重复
+async function fetchWithTimeout(
+  url: string, 
+  timeout: number = 5000
+): Promise<Response | null> {
   try {
-    const res = await fetch(url, {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    const response = await fetch(url, {
       headers: COMMON_HEADERS,
-      signal: controller.signal,
-      cache: 'no-store' 
+      signal: controller.signal
     });
     
-    if (!res.ok) throw new Error(`Status ${res.status}`);
-    
-    const data = await res.json() as T;
-    recordMetric(sourceName, Date.now() - startTime, true);
-    return data;
-  } catch (error) {
-    recordMetric(sourceName, Date.now() - startTime, false);
-    if (process.env.NODE_ENV === 'development') {
-      console.warn(`[GeoIP] ${sourceName} failed:`, error instanceof Error ? error.message : 'Unknown error');
-    }
-    return null;
-  } finally {
     clearTimeout(timeoutId);
+    return response.ok ? response : null;
+  } catch (error) {
+    console.error(`Fetch error for ${url}:`, error);
+    return null;
   }
 }
 
-function createResponse(data: GeoData, status: number = 200) {
-  return NextResponse.json(data, {
-    status,
-    headers: {
-      'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60',
-      'X-Geo-Source': data.source
-    }
+// 优化4: 创建标准化的响应格式函数
+function createIPResponse(data: {
+  source: string;
+  ip: string;
+  country: string;
+  countryName?: string;
+  city?: string;
+  region?: string;
+  timezone?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  accurate: boolean;
+  error?: string;
+}) {
+  return NextResponse.json({
+    source: data.source,
+    ip: data.ip,
+    country: data.country,
+    countryName: data.countryName || data.country,
+    city: data.city || '',
+    region: data.region || '',
+    timezone: data.timezone || '',
+    latitude: data.latitude || null,
+    longitude: data.longitude || null,
+    accurate: data.accurate,
+    ...(data.error && { error: data.error })
   });
 }
 
-// --- 服务提供商逻辑 ---
-
-async function queryIpApiCo(ip: string): Promise<GeoData> {
-  const data = await fetchService<IpApiCoResponse>('ipapi.co', `https://ipapi.co/${ip}/json/`);
-  if (!data || data.error || !data.country_code) throw new Error('Invalid response');
-  
-  return {
-    source: 'ipapi.co',
-    ip: data.ip || ip,
-    country: data.country_code,
-    countryName: data.country_name || data.country_code,
-    city: data.city || '',
-    region: data.region || '',
-    timezone: data.timezone || '',
-    latitude: data.latitude || null,
-    longitude: data.longitude || null,
-    accurate: true
-  };
-}
-
-async function queryIpInfo(ip: string): Promise<GeoData> {
-  const data = await fetchService<IpInfoResponse>('ipinfo', `https://ipinfo.io/${ip}/json`);
-  if (!data || !data.country) throw new Error('Invalid response');
-  
-  const [lat, lon] = data.loc ? data.loc.split(',').map(Number) : [null, null];
-  return {
-    source: 'ipinfo',
-    ip: data.ip || ip,
-    country: data.country,
-    countryName: data.country,
-    city: data.city || '',
-    region: data.region || '',
-    timezone: data.timezone || '',
-    latitude: lat,
-    longitude: lon,
-    accurate: true
-  };
-}
-
-async function queryIpWhoIs(ip: string): Promise<GeoData> {
-  const data = await fetchService<IpWhoIsResponse>('ipwhois', `https://ipwho.is/${ip}`);
-  if (!data || !data.success || !data.country_code) throw new Error('Invalid response');
-
-  return {
-    source: 'ipwhois',
-    ip: data.ip || ip,
-    country: data.country_code,
-    countryName: data.country || data.country_code,
-    city: data.city || '',
-    region: data.region || '',
-    timezone: data.timezone?.id || '',
-    latitude: data.latitude || null,
-    longitude: data.longitude || null,
-    accurate: true
-  };
-}
-
-// 优化2: 新的 HTTPS 兜底服务 (FreeIPAPI)
-async function queryFreeIpApi(ip: string): Promise<GeoData> {
-  const data = await fetchService<FreeIpApiResponse>('freeipapi', `https://freeipapi.com/api/json/${ip}`);
-  if (!data || !data.countryCode) throw new Error('Invalid response');
-
-  return {
-    source: 'freeipapi',
-    ip: data.ipAddress || ip,
-    country: data.countryCode,
-    countryName: data.countryName,
-    city: data.cityName,
-    region: data.regionName,
-    timezone: data.timeZone,
-    latitude: data.latitude,
-    longitude: data.longitude,
-    accurate: true
-  };
-}
-
-// --- 主逻辑 ---
-
 export async function GET(request: NextRequest) {
-  // IP 提取逻辑
-  let ip = '未知';
-  
-  const xff = request.headers.get('x-forwarded-for');
-  const cfIp = request.headers.get('cf-connecting-ip');
-  const realIp = request.headers.get('x-real-ip');
+  // 优化5: 简化 IP 提取逻辑
+  const ip = request.headers.get('cf-connecting-ip') || 
+             request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 
+             request.headers.get('x-real-ip') || 
+             '未知';
 
-  if (xff) {
-    const ips = xff.split(',').map(s => s.trim());
-    const publicIp = ips.find(i => isValidPublicIP(i));
-    if (publicIp) ip = publicIp;
-  }
-  
+  console.log('检测到的 IP 地址:', ip);
+
   if (!isValidPublicIP(ip)) {
-    if (isValidPublicIP(cfIp)) ip = cfIp!;
-    else if (isValidPublicIP(realIp)) ip = realIp!;
-  }
-
-  // 1. 校验 IP 有效性
-  if (!isValidPublicIP(ip)) {
-    console.error(JSON.stringify({
-      level: 'warn',
-      event: 'invalid_ip',
-      ip,
-      headers: { xff, cfIp, realIp },
-      timestamp: new Date().toISOString()
-    }));
-
-    return createResponse({
-      source: 'internal',
+    console.warn('检测到内网 IP 或无效 IP:', ip);
+    return createIPResponse({
+      source: 'header',
       ip,
       country: 'US',
       countryName: 'United States',
-      city: '',
-      region: '',
-      timezone: '',
-      latitude: null,
-      longitude: null,
       accurate: false,
-      error: 'Invalid or Private IP address detected'
-    }, 200);
-  }
-
-  // 2. 检查缓存 (LRU)
-  const cachedData = ipCache.get(ip);
-  if (cachedData) {
-    return createResponse({ ...cachedData, source: `${cachedData.source} (cache)` });
-  }
-
-  // 3. 检查是否有正在进行的请求 (去重)
-  let fetchPromise = inflightRequests.get(ip);
-
-  if (!fetchPromise) {
-    // 竞速策略
-    const strategies = [
-      queryIpApiCo(ip),
-      queryIpInfo(ip),
-      queryIpWhoIs(ip)
-    ];
-
-    fetchPromise = Promise.any(strategies)
-      .catch(async (aggregateError) => {
-        // 优化2: 替换为 HTTPS 兜底服务
-        console.warn(`[GeoIP] All primary services failed for ${ip}, trying fallback (freeipapi).`);
-        try {
-          return await queryFreeIpApi(ip);
-        } catch (e) {
-          throw aggregateError; // 如果兜底也失败，抛出原始错误
-        }
-      })
-      .then(data => {
-        // 写入 LRU 缓存
-        ipCache.set(ip, data);
-        return data;
-      })
-      .finally(() => {
-        // 请求结束，移除去重标记
-        inflightRequests.delete(ip);
-      });
-
-    inflightRequests.set(ip, fetchPromise);
-  }
-
-  try {
-    const result = await fetchPromise;
-    return createResponse(result);
-  } catch (error) {
-    console.error(JSON.stringify({
-      level: 'error',
-      event: 'geoip_lookup_failed',
-      ip,
-      error: error instanceof Error ? error.message : 'Unknown',
-      metrics: metrics,
-      timestamp: new Date().toISOString()
-    }));
-
-    return createResponse({
-      source: 'fallback',
-      ip,
-      country: 'US',
-      countryName: 'United States',
-      city: '',
-      region: '',
-      timezone: '',
-      latitude: null,
-      longitude: null,
-      accurate: false,
-      error: 'All IP geolocation services failed'
+      error: '无法检测到有效的公网 IP 地址 (可能在本地环境或内网)'
     });
   }
+
+  // 优化6: 使用 Promise.race 并行请求多个服务,取最快返回的结果
+  const servicePromises = [
+    // 服务1: ipapi.co
+    fetchWithTimeout(`https://ipapi.co/${ip}/json/`, 4000).then(async (response) => {
+      if (!response) return null;
+      const data: any = await response.json();
+      if (data.country_code && !data.error) {
+        return createIPResponse({
+          source: 'ipapi.co',
+          ip: data.ip || ip,
+          country: data.country_code,
+          countryName: data.country_name,
+          city: data.city,
+          region: data.region,
+          timezone: data.timezone,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          accurate: true
+        });
+      }
+      return null;
+    }),
+
+    // 服务2: ipinfo.io
+    fetchWithTimeout(`https://ipinfo.io/${ip}/json`, 4000).then(async (response) => {
+      if (!response) return null;
+      const data: IPInfoResponse = await response.json();
+      if (data.country) {
+        const [lat, lon] = data.loc?.split(',').map(Number) || [null, null];
+        return createIPResponse({
+          source: 'ipinfo',
+          ip: data.ip || ip,
+          country: data.country,
+          countryName: data.country,
+          city: data.city,
+          region: data.region,
+          timezone: data.timezone,
+          latitude: lat,
+          longitude: lon,
+          accurate: true
+        });
+      }
+      return null;
+    }),
+
+    // 服务3: ipwho.is
+    fetchWithTimeout(`https://ipwho.is/${ip}`, 4000).then(async (response) => {
+      if (!response) return null;
+      const data: IPWhoIsResponse = await response.json();
+      if (data.success && data.country_code) {
+        return createIPResponse({
+          source: 'ipwhois',
+          ip: data.ip || ip,
+          country: data.country_code,
+          countryName: data.country,
+          city: data.city,
+          region: data.region,
+          timezone: data.timezone?.id,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          accurate: true
+        });
+      }
+      return null;
+    })
+  ];
+
+  // 优化7: 使用 Promise.race 获取最快的成功响应
+  try {
+    const result = await Promise.race(
+      servicePromises.map(p => p.then(r => r ? Promise.resolve(r) : Promise.reject()))
+    );
+    if (result) return result;
+  } catch {
+    // 如果所有快速服务都失败,等待所有服务完成
+  }
+
+  // 如果 race 失败,等待所有服务
+  const results = await Promise.all(servicePromises);
+  const successResult = results.find(r => r !== null);
+  if (successResult) return successResult;
+
+  // 兜底: ip-api.com (HTTP)
+  try {
+    const response = await fetchWithTimeout(
+      `http://ip-api.com/json/${ip}?fields=status,country,countryCode,region,regionName,city,zip,lat,lon,timezone,query`,
+      5000
+    );
+    
+    if (response) {
+      const data: IPApiResponse = await response.json();
+      if (data.status === 'success' && data.countryCode) {
+        return createIPResponse({
+          source: 'ip-api',
+          ip: data.query || ip,
+          country: data.countryCode,
+          countryName: data.country,
+          city: data.city,
+          region: data.regionName || data.region,
+          timezone: data.timezone,
+          latitude: data.lat,
+          longitude: data.lon,
+          accurate: true
+        });
+      }
+    }
+  } catch (error) {
+    console.error('ip-api.com 请求失败:', error);
+  }
+
+  // 最终兜底
+  return createIPResponse({
+    source: 'fallback',
+    ip,
+    country: 'US',
+    countryName: 'United States',
+    accurate: false,
+    error: '所有 IP 检测服务暂时不可用,请稍后重试'
+  });
 }
