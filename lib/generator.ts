@@ -3,11 +3,14 @@ import { DOMAINS } from '@/lib/domains';
 
 // --- 静态常量定义 (内存优化：避免在函数调用时重复创建) ---
 
+
 const LATIN_CHARS = "abcdefghijklmnopqrstuvwxyz";
 const UPPERCASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const LOWERCASE = "abcdefghijklmnopqrstuvwxyz";
 const NUMBERS = "0123456789";
 const SPECIAL_CHARS = "!@#$%&*";
+// 新增:辅音常量定义
+const CONSONANTS = "bcdfghjklmnpqrstvwxyz";
 
 // 常见的真实密码词汇
 const COMMON_WORDS = [
@@ -710,21 +713,24 @@ export function getAllDomains(): string[] {
 }
 
 export function generateEmail(firstName: string, lastName: string, customDomain?: string) {
-  const cleanFirstName = convertToLatinChars(firstName);
-  const cleanLastName = convertToLatinChars(lastName);
+  // 1. 转换为拉丁字符并移除元音 (a, e, i, o, u)
+  const cleanFirstName = convertToLatinChars(firstName).replace(/[aeiou]/g, '');
+  const cleanLastName = convertToLatinChars(lastName).replace(/[aeiou]/g, '');
   const domain = customDomain || DOMAINS[secureRandom(0, DOMAINS.length - 1)];
 
-  // 生成5位英文字母
-  // 如果组合后的名字长度不足5位，则补充随机字母，确保不使用固定的填充字符
+  // 2. 生成第一部分 (5位辅音)
+  // 组合名+姓，如果长度不足5位，用随机辅音填充
   let str1 = cleanFirstName + cleanLastName;
   while (str1.length < 5) {
-    str1 += LATIN_CHARS.charAt(secureRandom(0, LATIN_CHARS.length - 1));
+    str1 += CONSONANTS.charAt(secureRandom(0, CONSONANTS.length - 1));
   }
   const part1 = str1.substring(0, 5);
 
+  // 3. 生成第二部分 (5位辅音)
+  // 组合姓+名，如果长度不足5位，用随机辅音填充
   let str2 = cleanLastName + cleanFirstName;
   while (str2.length < 5) {
-    str2 += LATIN_CHARS.charAt(secureRandom(0, LATIN_CHARS.length - 1));
+    str2 += CONSONANTS.charAt(secureRandom(0, CONSONANTS.length - 1));
   }
   const part2 = str2.substring(0, 5);
 
@@ -734,10 +740,10 @@ export function generateEmail(firstName: string, lastName: string, customDomain?
   // 50% 概率选择格式1或格式2
   let username: string;
   if (Math.random() < 0.5) {
-    // 格式1: 5字母 + 分隔符 + 5字母
+    // 格式1: 5位辅音 + 分隔符 + 5位辅音
     username = `${part1}${separator}${part2}`;
   } else {
-    // 格式2: 5字母 + 分隔符 + 5字母 + 2位数字
+    // 格式2: 5位辅音 + 分隔符 + 5位辅音 + 2位数字
     const twoDigits = secureRandom(10, 99);
     username = `${part1}${separator}${part2}${twoDigits}`;
   }
