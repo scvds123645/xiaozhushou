@@ -318,16 +318,16 @@ export default function AppleStylePage() {
     if (btn && successEl && normalEl) {
       // 1. 重置动画状态 (移除类名)
       btn.classList.remove('anim-bg-success');
-      successEl.classList.remove('anim-slide-in');
-      normalEl.classList.remove('anim-slide-out');
+      successEl.classList.remove('anim-slide-success');
+      normalEl.classList.remove('anim-slide-normal');
       
       // 2. 强制浏览器回流 (Reflow) - 关键步骤，让浏览器意识到状态变化
       void btn.offsetWidth; 
 
       // 3. 添加动画类名，触发新动画
       btn.classList.add('anim-bg-success');
-      successEl.classList.add('anim-slide-in');
-      normalEl.classList.add('anim-slide-out');
+      successEl.classList.add('anim-slide-success');
+      normalEl.classList.add('anim-slide-normal');
     }
   }, []);
 
@@ -517,7 +517,7 @@ export default function AppleStylePage() {
               disabled={!isInitialized}
               className="w-full py-4 rounded-[18px] shadow-[0_4px_14px_rgba(0,0,0,0.1)] border-t border-white/20 flex items-center justify-center gap-2.5 transform-gpu touch-manipulation overflow-hidden relative active:scale-[0.96] active:brightness-90 bg-gradient-to-b from-[#007AFF] to-[#0062CC] hover:scale-[1.01] hover:brightness-105 transition-transform duration-100"
             >
-              {/* 正常状态内容 */}
+              {/* 正常状态内容: 初始状态居中 */}
               <div 
                 ref={normalContentRef}
                 className="absolute flex items-center gap-2.5 translate-y-0 opacity-100 scale-100"
@@ -528,10 +528,10 @@ export default function AppleStylePage() {
                   </span>
               </div>
 
-              {/* 成功状态内容 */}
+              {/* 成功状态内容: 初始状态在下方 (translate-y-8) 且透明 */}
               <div 
                 ref={successContentRef}
-                className="absolute flex items-center gap-2.5 -translate-y-12 opacity-0 scale-150"
+                className="absolute flex items-center gap-2.5 translate-y-8 opacity-0 scale-100"
               >
                    <div className="bg-white/20 rounded-full p-1">
                       <Icon name="check" className="w-5 h-5 text-white stroke-[3px]" />
@@ -634,37 +634,40 @@ export default function AppleStylePage() {
           transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
-        /* --- 优化后的按钮动画 Keyframes --- */
+        /* --- 按钮动画 Keyframes --- */
         
         /* 1. 按钮背景色动画 */
         @keyframes btn-bg-success {
           0% { background-color: #34C759; box-shadow: none; }
-          60% { background-color: #34C759; box-shadow: none; }
-          100% { background-color: #007AFF; } /* 渐变无法动画，这里简化为回归主色 */
+          70% { background-color: #34C759; box-shadow: none; }
+          100% { background-color: #007AFF; } 
         }
         .anim-bg-success {
           animation: btn-bg-success 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-          background-image: none !important; /* 动画期间移除渐变，使用纯色过渡 */
+          background-image: none !important; /* 动画期间移除渐变 */
         }
 
-        /* 2. 成功图标进入动画 */
-        @keyframes content-slide-in {
+        /* 2. 正常内容循环动画 (退出 -> 恢复) */
+        @keyframes slide-normal-cycle {
           0% { transform: translateY(0) scale(1); opacity: 1; }
-          80% { transform: translateY(0) scale(1); opacity: 1; }
-          100% { transform: translateY(-3rem) scale(1.5); opacity: 0; }
+          20% { transform: translateY(-20px) scale(0.95); opacity: 0; } /* 向上滑出 */
+          80% { transform: translateY(20px) scale(0.95); opacity: 0; }  /* 重置到下方 */
+          100% { transform: translateY(0) scale(1); opacity: 1; }       /* 从下方滑入恢复 */
         }
-        .anim-slide-in {
-          animation: content-slide-in 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        .anim-slide-normal {
+          animation: slide-normal-cycle 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
         }
 
-        /* 3. 正常文字退出动画 */
-        @keyframes content-slide-out {
-          0% { transform: translateY(3rem) scale(0.5); opacity: 0; }
-          80% { transform: translateY(3rem) scale(0.5); opacity: 0; }
-          100% { transform: translateY(0) scale(1); opacity: 1; }
+        /* 3. 成功内容循环动画 (进入 -> 退出) */
+        @keyframes slide-success-cycle {
+          0% { transform: translateY(20px) scale(0.9); opacity: 0; }    /* 初始在下方 */
+          25% { transform: translateY(0) scale(1.05); opacity: 1; }     /* 弹跳进入 (Overshoot) */
+          35% { transform: translateY(0) scale(1); opacity: 1; }        /* 稳定 */
+          75% { transform: translateY(0) scale(1); opacity: 1; }        /* 保持显示 */
+          100% { transform: translateY(-20px) scale(0.95); opacity: 0; }/* 向上滑出 */
         }
-        .anim-slide-out {
-          animation: content-slide-out 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        .anim-slide-success {
+          animation: slide-success-cycle 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
         }
       `}</style>
     </div>
