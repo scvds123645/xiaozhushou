@@ -331,7 +331,6 @@ export const DOMAINS = [
   "femdomfan.net",
   "femdom-here.com",
   "femqi.click",
-  "fenart.site",
   "fensv.shop",
   "fenval.online",
   "fenve.fun",
