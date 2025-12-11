@@ -10,7 +10,7 @@ const NUMBERS = "0123456789";
 const SPECIAL_CHARS = "!@#$%&*";
 const CONSONANTS = "bcdfghjklmnpqrstvwxyz";
 
-// 常见的真实密码词汇（扩充为更贴近 Facebook 用户的词汇）
+// 常见的真实密码词汇
 const COMMON_WORDS = [
   'love', 'life', 'star', 'moon', 'king', 'cool', 'super', 'happy', 'lucky', 'smart',
   'dream', 'angel', 'power', 'magic', 'light', 'dark', 'blue', 'fire', 'water', 'earth',
@@ -24,7 +24,7 @@ const COMMON_WORDS = [
 
 const COMMON_NUMBERS = ['123', '456', '789', '000', '111', '222', '321', '666', '888', '999', '12', '23', '34', '45', '56', '67', '78', '89', '11', '22', '33', '44', '55', '77', '99'];
 
-// 字符替换模式(leetspeak) - 真实用户常用
+// 字符替换模式(leetspeak)
 const LEET_REPLACEMENTS: Record<string, string[]> = {
   'a': ['@', '4'],
   'e': ['3'],
@@ -537,195 +537,67 @@ export function generatePhone(country: CountryConfig) {
   }
 }
 
-// 优化版密码生成函数 - Facebook 2024-2025 真实用户习惯
+// 优化版密码生成函数 - 严格限制为 6-8 位
 export function generatePassword(): string {
+  // 1. 设定目标长度为 6 到 8
+  const targetLength = secureRandom(6, 8);
   let password = '';
-  let attempts = 0;
-  const maxAttempts = 10;
   
-  // 长度分布：符合 Facebook 真实用户统计
-  function getPasswordLength(): number {
-    const rand = Math.random();
-    if (rand < 0.25) return 8;
-    if (rand < 0.55) return secureRandom(9, 10);
-    if (rand < 0.80) return secureRandom(11, 12);
-    if (rand < 0.95) return secureRandom(13, 15);
-    return secureRandom(16, 18);
+  // 策略选择
+  const strategy = Math.random();
+  
+  // 策略 1: 单词 + 数字 (70% 概率) - 更像真实用户习惯 (例如: Love520, Sky888)
+  if (strategy < 0.70) {
+    let word = randomChoice(COMMON_WORDS);
+    
+    // 计算留给数字的空间 (至少留1-3位数字)
+    // 如果目标是6位，单词最多留4位；目标8位，单词最多留5-6位
+    const numLength = secureRandom(1, targetLength - 3 > 1 ? targetLength - 3 : 2);
+    const maxWordLen = targetLength - numLength;
+
+    // 如果单词太长，进行截取；如果太短，保持原样
+    if (word.length > maxWordLen) {
+      word = word.substring(0, maxWordLen);
+    }
+    
+    // 大小写处理 (60% 首字母大写, 30% 小写, 10% 全大写)
+    const caseRand = Math.random();
+    if (caseRand < 0.60) {
+      word = word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    } else if (caseRand < 0.90) {
+      word = word.toLowerCase();
+    } else {
+      word = word.toUpperCase();
+    }
+    
+    password = word;
+    
+    // 补齐数字直到达到目标长度
+    while (password.length < targetLength) {
+      password += randomDigit();
+    }
   }
   
-  do {
-    const strategy = Math.random();
-    
-    // 策略1: 常见词 + 年份 + 可选特殊字符 (35%)
-    if (strategy < 0.35) {
-      const word = randomChoice(COMMON_WORDS);
-      const year = secureRandom(1990, 2006).toString();
-      
-      // 大小写模式：60% 首字母大写，25% 全小写，10% 随机大写，5% 全大写
-      let finalWord = '';
-      const caseRand = Math.random();
-      if (caseRand < 0.60) {
-        finalWord = word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-      } else if (caseRand < 0.85) {
-        finalWord = word.toLowerCase();
-      } else if (caseRand < 0.95) {
-        finalWord = capitalizeRandom(word);
-      } else {
-        finalWord = word.toUpperCase();
-      }
-      
-      // 35% 概率添加特殊字符，70% 在末尾
-      let special = '';
-      if (Math.random() < 0.35) {
-        const specialChars = ['!', '@', '#', '$', '&', '*'];
-        const weights = [0.30, 0.25, 0.20, 0.15, 0.07, 0.03];
-        let rand = Math.random();
-        for (let i = 0; i < specialChars.length; i++) {
-          if (rand < weights[i]) {
-            special = specialChars[i];
-            break;
-          }
-          rand -= weights[i];
-        }
-      }
-      
-      password = Math.random() < 0.70 ? finalWord + year + special : finalWord + special + year;
+  // 策略 2: 纯混合随机 (20% 概率) - (例如: aB3d9Z)
+  else if (strategy < 0.90) {
+    const chars = LATIN_CHARS + UPPERCASE + NUMBERS;
+    for (let i = 0; i < targetLength; i++) {
+      password += chars.charAt(secureRandom(0, chars.length - 1));
     }
-    
-    // 策略2: 常见词 + 数字组合 (25%)
-    else if (strategy < 0.60) {
-      const word = randomChoice(COMMON_WORDS);
-      const nums = randomChoice(COMMON_NUMBERS);
-      
-      let finalWord = '';
-      const caseRand = Math.random();
-      if (caseRand < 0.60) {
-        finalWord = word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-      } else if (caseRand < 0.85) {
-        finalWord = word.toLowerCase();
-      } else if (caseRand < 0.95) {
-        finalWord = capitalizeRandom(word);
-      } else {
-        finalWord = word.toUpperCase();
-      }
-      
-      let special = '';
-      if (Math.random() < 0.35) {
-        const specialChars = ['!', '@', '#', '$', '&', '*'];
-        special = randomChoice(specialChars);
-      }
-      
-      password = Math.random() < 0.70 ? finalWord + nums + special : finalWord + special + nums;
-    }
-    
-    // 策略3: Leetspeak风格 (12%)
-    else if (strategy < 0.72) {
-      const word = randomChoice(COMMON_WORDS);
-      const leetWord = applyLeetSpeak(word, 0.35);
-      
-      const result = leetWord.charAt(0).toUpperCase() + leetWord.slice(1);
-      
-      const numLength = secureRandom(2, 3);
-      let nums = '';
-      for (let i = 0; i < numLength; i++) {
-        nums += NUMBERS.charAt(secureRandom(0, NUMBERS.length - 1));
-      }
-      
-      let special = '';
-      if (Math.random() < 0.30) {
-        special = randomChoice(['!', '@', '#']);
-      }
-      
-      password = Math.random() < 0.70 ? result + nums + special : result + special + nums;
-    }
-    
-    // 策略4: 双词组合 (18%)
-    else if (strategy < 0.90) {
-      const word1 = randomChoice(COMMON_WORDS);
-      const word2 = randomChoice(COMMON_WORDS);
-      
-      const finalWord1 = word1.charAt(0).toUpperCase() + word1.slice(1).toLowerCase();
-      const finalWord2 = Math.random() < 0.50 ? 
-        word2.charAt(0).toUpperCase() + word2.slice(1).toLowerCase() : word2.toLowerCase();
-      
-      const numLength = secureRandom(2, 4);
-      let nums = '';
-      for (let i = 0; i < numLength; i++) {
-        nums += NUMBERS.charAt(secureRandom(0, NUMBERS.length - 1));
-      }
-      
-      let special = '';
-      if (Math.random() < 0.25) {
-        special = randomChoice(['!', '@', '#']);
-      }
-      
-      password = Math.random() < 0.70 ? finalWord1 + finalWord2 + nums + special : finalWord1 + finalWord2 + special + nums;
-    }
-    
-    // 策略5: 首字母大写 + 小写字母 + 数字 (8%)
-    else if (strategy < 0.98) {
-      password = UPPERCASE.charAt(secureRandom(0, UPPERCASE.length - 1));
-      
-      const letterLength = secureRandom(5, 8);
-      for (let i = 0; i < letterLength; i++) {
-        password += LOWERCASE.charAt(secureRandom(0, LOWERCASE.length - 1));
-      }
-      
-      const numLength = secureRandom(2, 3);
-      for (let i = 0; i < numLength; i++) {
-        password += NUMBERS.charAt(secureRandom(0, NUMBERS.length - 1));
-      }
-      
-      if (Math.random() < 0.20) {
-        password += randomChoice(['!', '@', '#']);
-      }
-    }
-    
-    // 策略6: 混合随机模式 (2%)
-    else {
-      const baseWord = generateRandomWord(secureRandom(4, 6));
-      password = capitalizeRandom(baseWord);
-      password = applyLeetSpeak(password, 0.2);
-      
-      const numLength = secureRandom(2, 4);
-      for (let i = 0; i < numLength; i++) {
-        password += NUMBERS.charAt(secureRandom(0, NUMBERS.length - 1));
-      }
-      
-      if (Math.random() < 0.30) {
-        const pos = Math.random() < 0.70 ? password.length : secureRandom(1, password.length);
-        password = password.slice(0, pos) + randomChoice(['!', '@', '#']) + password.slice(pos);
-      }
-    }
-    
-    // 长度调整
-    const targetLength = getPasswordLength();
-    if (password.length < targetLength) {
-      const diff = targetLength - password.length;
-      for (let i = 0; i < diff; i++) {
-        password += NUMBERS.charAt(secureRandom(0, NUMBERS.length - 1));
-      }
-    } else if (password.length > targetLength) {
-      password = password.substring(0, targetLength);
-    }
-    
-    attempts++;
-    
-    // 检查是否通过所有验证
-    if (password.length >= 8 && 
-        !hasRepeatedChars(password) && 
-        !hasKeyboardSequence(password) && 
-        hasMinimumVariety(password)) {
-      break;
-    }
-    
-  } while (attempts < maxAttempts);
+  }
   
-  // 如果多次尝试仍失败，使用保底方案
-  if (attempts >= maxAttempts) {
-    const word = randomChoice(COMMON_WORDS);
-    const year = secureRandom(1990, 2006);
-    password = word.charAt(0).toUpperCase() + word.slice(1) + year + '!';
+  // 策略 3: 纯数字 (10% 概率) - 虽然安全性低，但在 6-8 位密码中很常见 (例如: 123456)
+  else {
+    password = randomDigits(targetLength);
+  }
+
+  // 最终兜底检查：如果由于任何原因长度不符，强制截取或补齐
+  if (password.length > targetLength) {
+    password = password.substring(0, targetLength);
+  } else if (password.length < targetLength) {
+    while (password.length < targetLength) {
+      password += randomDigit();
+    }
   }
   
   return password;
