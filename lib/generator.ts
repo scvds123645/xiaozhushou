@@ -21,7 +21,7 @@ const COMMON_WORDS = [
   'wolf', 'bear', 'eagle', 'dragon', 'phoenix', 'prince', 'princess', 'queen', 'royal', 'crown'
 ];
 
-// 字符替换模式(leetspeak)
+// 字符替换模式(leetspeak) - 保留定义供扩展使用
 const LEET_REPLACEMENTS: Record<string, string[]> = {
   'a': ['@', '4'],
   'e': ['3'],
@@ -492,7 +492,7 @@ export function generatePhone(country: CountryConfig) {
   }
 }
 
-// 优化版密码生成函数 - 严格限制为 6-8 位
+// 优化版密码生成函数 - 严格限制为 6-8 位，且【绝无纯数字】
 export function generatePassword(): string {
   // 1. 设定目标长度为 6 到 8
   const targetLength = secureRandom(6, 8);
@@ -501,11 +501,11 @@ export function generatePassword(): string {
   // 策略选择
   const strategy = Math.random();
   
-  // 策略 1: 单词 + 数字 (70% 概率)
-  if (strategy < 0.70) {
+  // 策略 1: 单词 + 数字 (80% 概率) - 最接近真实用户习惯
+  if (strategy < 0.80) {
     let word = randomChoice(COMMON_WORDS);
     
-    // 计算留给数字的空间 (至少留1-3位数字)
+    // 计算留给数字的空间 (至少留1位数字，确保是字母+数字组合)
     const numLength = secureRandom(1, targetLength - 3 > 1 ? targetLength - 3 : 2);
     const maxWordLen = targetLength - numLength;
 
@@ -525,28 +525,31 @@ export function generatePassword(): string {
     
     password = word;
     
+    // 补齐数字
     while (password.length < targetLength) {
       password += randomDigit();
     }
   }
   
-  // 策略 2: 纯混合随机 (20% 概率)
-  else if (strategy < 0.90) {
-    const chars = LATIN_CHARS + UPPERCASE + NUMBERS;
-    for (let i = 0; i < targetLength; i++) {
-      password += chars.charAt(secureRandom(0, chars.length - 1));
+  // 策略 2: 混合随机字符 (20% 概率)
+  else {
+    const letters = LATIN_CHARS + UPPERCASE;
+    const allChars = letters + NUMBERS;
+    
+    // 步骤 A: 强制至少包含一个字母，从根本上杜绝纯数字
+    password += letters.charAt(secureRandom(0, letters.length - 1));
+    
+    // 步骤 B: 剩余位数随机填充 (可以是字母或数字)
+    while (password.length < targetLength) {
+      password += allChars.charAt(secureRandom(0, allChars.length - 1));
     }
   }
-  
-  // 策略 3: 纯数字 (10% 概率)
-  else {
-    password = randomDigits(targetLength);
-  }
 
-  // 最终兜底检查
+  // 最终兜底检查 (处理长度边界情况)
   if (password.length > targetLength) {
     password = password.substring(0, targetLength);
   } else if (password.length < targetLength) {
+    // 如果因意外长度不够，补数字 (因为策略1和策略2都已经保证了至少有字母，补数字是安全的)
     while (password.length < targetLength) {
       password += randomDigit();
     }
