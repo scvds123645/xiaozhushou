@@ -91,7 +91,7 @@ const InfoRow = memo(({ label, value, onCopy, isCopied, isLast = false }: {
 });
 InfoRow.displayName = 'InfoRow';
 
-// --- 组件: 底部弹窗 (保留少量模糊以区分层级，或者也可以去除) ---
+// --- 组件: 底部弹窗 (修改：去模糊，保持透明感) ---
 const BottomSheet = memo(({ 
   isOpen, 
   onClose, 
@@ -109,18 +109,24 @@ const BottomSheet = memo(({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center isolate">
+      {/* 遮罩层：保持半透明黑，让背景变暗，聚焦前景 */}
       <div 
-        className="absolute inset-0 bg-black/60 transition-opacity duration-300" 
+        className="absolute inset-0 bg-black/40 transition-opacity duration-300" 
         onClick={onClose} 
       />
-      {/* 底部弹窗保持一点点模糊或者完全不透明，为了遮挡下面内容 */}
+      
+      {/* 
+          弹窗容器修改：
+          1. bg-black/40: 稍微比卡片的30%深一点点，确保内容清晰，但风格一致。
+          2. 移除了 backdrop-blur 类: 实现“无模糊”效果，背景图清晰可见。
+      */}
       <div 
-        className="relative w-full max-w-md bg-[#1a1a1a]/95 backdrop-blur-xl border border-white/10 rounded-t-[24px] sm:rounded-[24px] max-h-[85vh] flex flex-col shadow-2xl animate-slide-up overflow-hidden will-change-transform transform-gpu"
+        className="relative w-full max-w-md bg-black/40 border border-white/20 rounded-t-[24px] sm:rounded-[24px] max-h-[85vh] flex flex-col shadow-2xl animate-slide-up overflow-hidden will-change-transform transform-gpu"
       >
         <div className="p-4 border-b border-white/10 sticky top-0 z-10 shrink-0 bg-inherit">
-          <div className="w-10 h-1.5 bg-white/20 rounded-full mx-auto mb-4"></div>
+          <div className="w-10 h-1.5 bg-white/30 rounded-full mx-auto mb-4"></div>
           <div className="relative flex items-center justify-center min-h-[24px]">
-             <h3 className="text-[17px] font-semibold text-white tracking-tight">{title}</h3>
+             <h3 className="text-[17px] font-semibold text-white tracking-tight drop-shadow-md">{title}</h3>
              {rightAction ? (
                <div className="absolute right-0 top-1/2 -translate-y-1/2">{rightAction}</div>
              ) : (
@@ -158,7 +164,7 @@ const ListItem = memo(({ label, isSelected, onClick, icon }: { label: string; is
           <Icon name={icon} className={`w-4 h-4 ${isSelected ? 'text-[#409CFF]' : 'text-white/50'}`} />
         </div>
       )}
-      <span className="text-[16px] tracking-tight text-left">{label}</span>
+      <span className="text-[16px] tracking-tight text-left drop-shadow-sm">{label}</span>
     </div>
     {isSelected && <Icon name="check" className="w-5 h-5 text-[#409CFF]" />}
   </button>
@@ -182,7 +188,14 @@ const DomainList = memo(({ allDomains, selectedDomain, onSelect }: { allDomains:
       <div className="px-4 pb-2 sticky top-0 z-10 bg-inherit">
          <div className="relative group">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Icon name="search" className="w-4 h-4 text-white/40" /></div>
-            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="搜索域名" className="w-full pl-9 pr-8 py-2 bg-black/20 border border-white/5 rounded-[10px] text-[16px] text-white placeholder-white/30 focus:ring-1 focus:ring-white/20 focus:bg-black/30 transition-colors caret-[#007AFF]" />
+            {/* 搜索框背景设为 bg-black/30 以保持一致性 */}
+            <input 
+              type="text" 
+              value={searchQuery} 
+              onChange={(e) => setSearchQuery(e.target.value)} 
+              placeholder="搜索域名" 
+              className="w-full pl-9 pr-8 py-2 bg-black/30 border border-white/10 rounded-[10px] text-[16px] text-white placeholder-white/30 focus:ring-1 focus:ring-white/20 focus:bg-black/40 transition-colors caret-[#007AFF]" 
+            />
             {searchQuery && (<button onClick={() => setSearchQuery('')} className="absolute inset-y-0 right-0 pr-3 flex items-center touch-manipulation"><div className="bg-white/20 rounded-full p-0.5"><Icon name="close" className="w-3 h-3 text-white" /></div></button>)}
           </div>
       </div>
@@ -359,7 +372,6 @@ export default function GlassStylePage() {
             脸书小助手
           </h1>
           
-          {/* IP 胶囊: 移除 backdrop-blur-md，保持 bg-black/40 */}
           <div className={`flex items-center gap-1.5 pl-2 pr-2.5 py-1 rounded-full bg-black/40 border border-white/20 shadow-lg transition-all duration-500 ease-in-out will-change-transform ${isImmersive ? 'opacity-0 translate-x-10 pointer-events-none' : 'opacity-100 translate-x-0'}`}>
             <div className="w-1.5 h-1.5 rounded-full bg-[#34C759] shadow-[0_0_6px_rgba(52,199,89,1)]"></div>
             <span className="text-[11px] font-semibold text-white/95 font-mono tracking-tight drop-shadow-md">{ipInfo.ip}</span>
@@ -380,11 +392,7 @@ export default function GlassStylePage() {
             </div>
           ) : (
             <>
-              {/* 
-                  信息卡片: 
-                  - 移除 backdrop-blur
-                  - 调整为 bg-black/30 (稍深的透明黑，为了对比度) 
-              */}
+              {/* 信息卡片: bg-black/30, border-white/20, 无模糊 */}
               <section className="bg-black/30 rounded-[20px] overflow-hidden border border-white/20 transform-gpu isolate">
                 <InfoRow label="姓氏" value={userInfo.lastName} onCopy={() => copyToClipboard(userInfo.lastName, '姓氏')} isCopied={copiedField === '姓氏'} />
                 <InfoRow label="名字" value={userInfo.firstName} onCopy={() => copyToClipboard(userInfo.firstName, '名字')} isCopied={copiedField === '名字'} />
