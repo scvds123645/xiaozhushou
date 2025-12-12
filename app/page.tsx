@@ -32,7 +32,7 @@ const ICON_PATHS: Record<string, React.ReactElement> = {
   inbox: <path d="M19 3H4.99c-1.11 0-1.98.89-1.98 2L3 19c0 1.1.89 2 1.99 2H19c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 12h-4c0 1.66-1.35 3-3 3s-3-1.34-3-3H4.99V5H19v10z"/>,
   link: <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/>,
   copy: <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>,
-  open: <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
+  open: <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
 };
 
 const Icon = memo(({ name, className = "w-6 h-6" }: { name: string; className?: string }) => {
@@ -91,7 +91,7 @@ const InfoRow = memo(({ label, value, onCopy, isCopied, isLast = false }: {
 });
 InfoRow.displayName = 'InfoRow';
 
-// --- 组件: 底部弹窗 (保留少量模糊以区分层级，或者也可以去除) ---
+// --- 组件: 底部弹窗 ---
 const BottomSheet = memo(({ 
   isOpen, 
   onClose, 
@@ -113,7 +113,6 @@ const BottomSheet = memo(({
         className="absolute inset-0 bg-black/60 transition-opacity duration-300" 
         onClick={onClose} 
       />
-      {/* 底部弹窗保持一点点模糊或者完全不透明，为了遮挡下面内容 */}
       <div 
         className="relative w-full max-w-md bg-[#1a1a1a]/95 backdrop-blur-xl border border-white/10 rounded-t-[24px] sm:rounded-[24px] max-h-[85vh] flex flex-col shadow-2xl animate-slide-up overflow-hidden will-change-transform transform-gpu"
       >
@@ -213,6 +212,8 @@ export default function GlassStylePage() {
   const [isImmersive, setIsImmersive] = useState(false);
   // 背景图加载状态
   const [bgLoaded, setBgLoaded] = useState(false);
+  // 背景图是否出错
+  const [bgError, setBgError] = useState(false);
   
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [inboxStatus, setInboxStatus] = useState<'idle' | 'opening'>('idle');
@@ -277,6 +278,7 @@ export default function GlassStylePage() {
     }, 600);
   }, [userInfo.email, inboxStatus]);
 
+  // 初始化 IP 获取
   useEffect(() => {
     let isMounted = true;
     const initializeApp = async () => {
@@ -295,6 +297,20 @@ export default function GlassStylePage() {
     initializeApp();
     return () => { isMounted = false; };
   }, []);
+
+  // 背景加载超时保险 (4秒后强制显示内容)
+  useEffect(() => {
+    if (!bgLoaded && !bgError) {
+      const timer = setTimeout(() => {
+        if (!bgLoaded) {
+          console.log("背景加载超时，启用后备背景");
+          setBgLoaded(true);
+          setBgError(true); // 视为错误，使用渐变色
+        }
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [bgLoaded, bgError]);
 
   useEffect(() => {
     if (isInitialized && !userInfo.firstName) {
@@ -329,15 +345,25 @@ export default function GlassStylePage() {
   return (
     <div className="min-h-screen relative font-sans text-white pb-10 selection:bg-blue-400/30 overflow-x-hidden touch-pan-y">
       
-      {/* 1. 背景层 */}
-      <div className="fixed inset-0 z-0 pointer-events-none bg-gradient-to-br from-[#0f172a] via-[#1e1b4b] to-[#312e81]">
-        <img 
-          src="https://loliapi.com/acg/" 
-          alt="background" 
-          className={`w-full h-full object-cover transition-opacity duration-1000 ease-in-out ${bgLoaded ? 'opacity-100' : 'opacity-0'}`}
-          decoding="async"
-          onLoad={() => setBgLoaded(true)}
-        />
+      {/* 1. 背景层 (修复版) */}
+      <div className="fixed inset-0 z-0 pointer-events-none bg-gradient-to-br from-[#0f172a] via-[#1e1b4b] to-[#312e81] h-[100dvh]">
+        {!bgError && (
+          <img 
+            // 增加时间戳防止手机端强缓存
+            src={`https://loliapi.com/acg/?t=${new Date().getTime()}`} 
+            alt="background" 
+            // 提高优先级
+            fetchPriority="high"
+            className={`w-full h-full object-cover transition-opacity duration-1000 ease-in-out ${bgLoaded ? 'opacity-100' : 'opacity-0'}`}
+            decoding="async"
+            onLoad={() => setBgLoaded(true)}
+            onError={() => {
+              console.log("图片加载失败");
+              setBgLoaded(true);
+              setBgError(true);
+            }}
+          />
+        )}
       </div>
       
       {/* 2. 沉浸模式恢复层 */}
@@ -359,7 +385,6 @@ export default function GlassStylePage() {
             脸书小助手
           </h1>
           
-          {/* IP 胶囊: 移除 backdrop-blur-md，保持 bg-black/40 */}
           <div className={`flex items-center gap-1.5 pl-2 pr-2.5 py-1 rounded-full bg-black/40 border border-white/20 shadow-lg transition-all duration-500 ease-in-out will-change-transform ${isImmersive ? 'opacity-0 translate-x-10 pointer-events-none' : 'opacity-100 translate-x-0'}`}>
             <div className="w-1.5 h-1.5 rounded-full bg-[#34C759] shadow-[0_0_6px_rgba(52,199,89,1)]"></div>
             <span className="text-[11px] font-semibold text-white/95 font-mono tracking-tight drop-shadow-md">{ipInfo.ip}</span>
@@ -380,11 +405,6 @@ export default function GlassStylePage() {
             </div>
           ) : (
             <>
-              {/* 
-                  信息卡片: 
-                  - 移除 backdrop-blur
-                  - 调整为 bg-black/30 (稍深的透明黑，为了对比度) 
-              */}
               <section className="bg-black/30 rounded-[20px] overflow-hidden border border-white/20 transform-gpu isolate">
                 <InfoRow label="姓氏" value={userInfo.lastName} onCopy={() => copyToClipboard(userInfo.lastName, '姓氏')} isCopied={copiedField === '姓氏'} />
                 <InfoRow label="名字" value={userInfo.firstName} onCopy={() => copyToClipboard(userInfo.firstName, '名字')} isCopied={copiedField === '名字'} />
