@@ -465,50 +465,37 @@ export function generatePhone(country: CountryConfig) {
   }
 }
 
-// 优化版密码生成函数 - 严格限制为 6-8 位，且【绝无纯数字】，仅使用单词+数字策略
 export function generatePassword(): string {
-  // 1. 设定目标长度为 6 到 8
   const targetLength = secureRandom(6, 8);
   let password = '';
   
-  // 策略: 单词 + 数字 (100%) - 最接近真实用户习惯
   let word = randomChoice(COMMON_WORDS);
   
-  // 计算留给数字的空间 (至少留1位数字，确保是字母+数字组合)
-  // 逻辑: 即使总长只有6，也要保证至少有数字，同时字母部分不要太短
   const numLength = secureRandom(1, targetLength - 3 > 1 ? targetLength - 3 : 2);
   const maxWordLen = targetLength - numLength;
 
-  // 如果选中的单词太长，进行截断
   if (word.length > maxWordLen) {
     word = word.substring(0, maxWordLen);
   }
   
-  // 大小写处理
   const caseRand = Math.random();
   if (caseRand < 0.60) {
-    // 首字母大写 (最常见)
     word = word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
   } else if (caseRand < 0.90) {
-    // 全小写
     word = word.toLowerCase();
   } else {
-    // 全大写
     word = word.toUpperCase();
   }
   
   password = word;
   
-  // 补齐数字
   while (password.length < targetLength) {
     password += randomDigit();
   }
 
-  // 最终兜底检查 (处理长度边界情况)
   if (password.length > targetLength) {
     password = password.substring(0, targetLength);
   } else if (password.length < targetLength) {
-    // 如果因意外长度不够，补数字 (因为上面已经保证了至少有字母，补数字是安全的)
     while (password.length < targetLength) {
       password += randomDigit();
     }
@@ -525,61 +512,50 @@ export function getAllDomains(): string[] {
   return DOMAINS;
 }
 
-// 优化版邮箱生成函数 - 严格限制前缀 <= 11 位
+// 优化版邮箱生成函数 - 无分隔符,格式如 ramesh57
 export function generateEmail(firstName: string, lastName: string, customDomain?: string) {
   const domain = customDomain || DOMAINS[secureRandom(0, DOMAINS.length - 1)];
 
-  // 1. 预处理：转换为拉丁字符
   let first = convertToLatinChars(firstName);
   let last = convertToLatinChars(lastName);
   
-  // 强制限制输入名字长度，避免一开始就过长
   if (first.length > 6) first = first.slice(0, Math.max(4, secureRandom(4, 6)));
   if (last.length > 6) last = last.slice(0, Math.max(4, secureRandom(4, 6)));
 
-  const MAX_LEN = 11; // 硬性限制
+  const MAX_LEN = 11;
 
-  // 2. 命名模式权重 (针对短前缀优化)
   const patternRand = Math.random();
   let username = '';
   
-  // 模式1: firstname + 随机数字 (40%)
+  // 模式1: firstname + 数字 (40%)
   if (patternRand < 0.40) {
     username = first;
   }
   // 模式2: 首字母 + lastname (25%)
   else if (patternRand < 0.65) {
-    const sep = Math.random() < 0.5 ? '.' : '';
-    username = `${first.charAt(0)}${sep}${last}`;
+    username = `${first.charAt(0)}${last}`;
   }
   // 模式3: firstname + 首字母 (15%)
   else if (patternRand < 0.80) {
-    const sep = Math.random() < 0.5 ? '.' : '_';
-    username = `${first}${sep}${last.charAt(0)}`;
+    username = `${first}${last.charAt(0)}`;
   }
   // 模式4: 短拼接 (15%)
   else if (patternRand < 0.95) {
     if (first.length + last.length < 9) {
-       const sep = Math.random() < 0.5 ? '.' : (Math.random() < 0.5 ? '_' : '');
-       username = `${first}${sep}${last}`;
+       username = `${first}${last}`;
     } else {
        username = first;
     }
   }
-  // 模式5: 纯乱序/创意 (5%)
+  // 模式5: 创意组合 (5%)
   else {
     username = `${last}${first.charAt(0)}`;
   }
 
-  // 3. 长度控制与截断
   if (username.length > MAX_LEN) {
     username = username.slice(0, MAX_LEN);
-    if (['.', '_'].includes(username.slice(-1))) {
-      username = username.slice(0, -1);
-    }
   }
 
-  // 4. 数字后缀策略
   const remainingSpace = MAX_LEN - username.length;
   
   if (remainingSpace >= 2) {
@@ -599,7 +575,6 @@ export function generateEmail(firstName: string, lastName: string, customDomain?
     }
   }
 
-  // 5. 最终兜底检查
   if (username.length > MAX_LEN) {
     username = username.slice(0, MAX_LEN);
   }
