@@ -4,10 +4,9 @@ import { DOMAINS } from '@/lib/domains';
 // --- 静态常量定义 (内存优化 & 行为模拟) ---
 
 const LATIN_CHARS = "abcdefghijklmnopqrstuvwxyz";
-const UPPERCASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-const NUMBERS = "0123456789";
 
-// 增强的密码基础词汇库：真实用户倾向于使用季节、自然、积极词汇，且首字母大写
+// 1. 增强的密码基础词汇库
+// 真实用户倾向于使用季节、自然、积极词汇，且首字母大写
 const PASSWORD_BASE_WORDS = [
   'Summer', 'Winter', 'Autumn', 'Spring', 'Freedom', 'Garden', 'Monster', 'Rocket',
   'Shadow', 'Spirit', 'Sunset', 'Sunrise', 'System', 'Secret', 'Sister', 'Brother',
@@ -19,10 +18,22 @@ const PASSWORD_BASE_WORDS = [
   'King', 'Queen', 'Prince', 'Angel', 'Magic', 'Power', 'Super', 'Lucky'
 ];
 
+// 2. 备用名字库 (关键修复：防止非拉丁字符转写失败产生乱码)
+// 当输入的名字无法转换为 ASCII (如纯韩文/中文) 时，使用这些名字代替
+const FALLBACK_NAMES = [
+  'alex', 'sam', 'jordan', 'taylor', 'casey', 'jamie', 'morgan', 'riley', 
+  'quinn', 'avery', 'parker', 'bailey', 'skyler', 'charlie', 'dakota',
+  'reese', 'zion', 'remy', 'elias', 'sawyer', 'amara', 'finley', 'river',
+  'lee', 'kim', 'chen', 'singh', 'patel', 'wang', 'garcia', 'lopez',
+  'james', 'john', 'robert', 'michael', 'william', 'david', 'richard',
+  'mary', 'patricia', 'jennifer', 'linda', 'elizabeth', 'barbara', 'susan',
+  'thomas', 'jessica', 'sarah', 'karen', 'nancy', 'lisa', 'betty'
+];
+
 // FB 允许且用户常用的安全符号（避免使用 ^ ~ 等输入困难的符号）
 const SAFE_SPECIAL_CHARS = ['!', '@', '#', '$', '*', '.'];
 
-// 备用简单词汇（用于回退）
+// 简单的备用词汇
 const COMMON_WORDS = [
   'love', 'life', 'sky', 'blue', 'fire', 'cool', 'dream', 'star', 'moon'
 ];
@@ -245,20 +256,22 @@ function getRandomCarrierPrefix(carriers: Record<string, string[]>): string {
   return randomChoice(carriers[carrier]);
 }
 
-// 增强版转写函数：确保只返回拉丁字母和数字，处理重音符号
+/**
+ * 修正版转写函数
+ * 逻辑：只保留拉丁字母。如果结果为空或过短（例如非拉丁语系名字且无法转写），
+ * 则从 FALLBACK_NAMES 中随机选择一个真实英文名，而不是生成随机乱码。
+ */
 function convertToLatinChars(str: string): string {
   if (!str) {
-    return randomChoice(COMMON_WORDS);
+    return randomChoice(FALLBACK_NAMES);
   }
   const normalized = str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const ascii = normalized.replace(/[^a-zA-Z0-9]/g, "");
   
+  // 关键修复：如果转换后长度 < 2，说明原名是非拉丁字符（如纯中文）
+  // 此时返回一个真实的备用名，而不是随机字符
   if (ascii.length < 2) {
-    let result = "";
-    for (let i = 0; i < 5; i++) {
-      result += LATIN_CHARS.charAt(Math.floor(Math.random() * LATIN_CHARS.length));
-    }
-    return result;
+    return randomChoice(FALLBACK_NAMES);
   }
   return ascii.toLowerCase();
 }
@@ -497,13 +510,11 @@ export function generatePassword(): string {
   const baseWord = randomChoice(PASSWORD_BASE_WORDS);
   
   // 方案 A (40%): 标准强密码格式 -> "Summer@2023"
-  // 看起来像是有一定安全意识的用户
   if (scheme < 0.4) {
     password = `${baseWord}${specialChar}${yearSuffix}`;
   }
   
   // 方案 B (30%): 单词+简单数字 -> "Tiger1234"
-  // 非常常见的用户行为
   else if (scheme < 0.7) {
     password = `${baseWord}${randomDigit(1, 9)}${randomDigits(2)}`;
     // 确保首字母大写
@@ -511,7 +522,6 @@ export function generatePassword(): string {
   }
   
   // 方案 C (20%): 两个单词组合 -> "BlueSky99"
-  // 增加长度，降低被风控字典撞库的风险
   else if (scheme < 0.9) {
     let secondWord = randomChoice(COMMON_WORDS);
     secondWord = secondWord.charAt(0).toUpperCase() + secondWord.slice(1);
@@ -544,13 +554,15 @@ export function getAllDomains(): string[] {
 
 /**
  * 优化版邮箱生成：
- * 目的：避免 Facebook 检测 (禁止使用 . 或 _ 分隔符)
- * 策略：模拟真实用户注册行为 (名字缩写、加年份、加幸运数字)
+ * 目的：避免 Facebook 检测 (禁止使用 . 或 _ 分隔符)，彻底修复乱码问题
+ * 策略：
+ * 1. 模拟真实用户注册行为 (名字缩写、加年份、加幸运数字)
+ * 2. 如果名字含有无法转写的非拉丁字符，使用 FALLBACK_NAMES 代替，杜绝生成乱码
  */
 export function generateEmail(firstName: string, lastName: string, customDomain?: string) {
   const domain = customDomain || randomChoice(DOMAINS);
   
-  // 1. 数据清洗：转为纯拉丁字母
+  // 1. 数据清洗：转为纯拉丁字母，若失败则使用备用库
   let first = convertToLatinChars(firstName);
   let last = convertToLatinChars(lastName);
   
