@@ -39,7 +39,7 @@ export const countries: CountryConfig[] = [
 ];
 
 export const namesByCountry: Record<string, { firstNames: string[], lastNames: string[] }> = {
-  // 中国大陆：简体中文，基于公安部统计常用名
+  // 中国大陆：简体中文
   CN: {
     firstNames: [
       '伟', '芳', '娜', '秀英', '敏', '静', '丽', '强', '磊', '军', '洋', '勇', '艳', '杰', '娟', '涛', '明', '超', '秀兰', '霞',
@@ -52,7 +52,7 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       '苏', '卢', '蒋', '蔡', '贾', '丁', '魏', '薛', '叶', '阎', '余', '潘', '杜', '戴', '夏', '钟', '汪', '田', '任', '姜'
     ]
   },
-  // 香港：繁体中文，符合粤语拼写习惯的用字
+  // 香港：繁体中文
   HK: {
     firstNames: [
       '家輝', '嘉欣', '志明', '美玲', '偉文', '淑儀', '志華', '麗華', '永勝', '惠貞', '文強', '詠詩', '國榮', '秀英', '建國', '美儀', '志強', '玉珍', '俊傑', '海燕',
@@ -65,7 +65,7 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       '袁', '沈', '田', '高', '蕭', '賴', '霍', '莫', '洪', '姚', '丁', '譚', '區', '黎', '關', '嚴', '歐', '錢', '戴', '薛'
     ]
   },
-  // 台湾：繁体中文，符合台湾常用名统计（包括“菜市场名”和新世代名）
+  // 台湾：繁体中文
   TW: {
     firstNames: [
       '家豪', '淑芬', '志明', '淑惠', '俊傑', '美玲', '建宏', '雅婷', '志偉', '美惠', '志強', '麗華', '承翰', '淑娟', '冠宇', '淑貞', '建志', '玉蘭', '彥廷', '秀英',
@@ -78,7 +78,7 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       '余', '盧', '梁', '趙', '顏', '柯', '翁', '魏', '孫', '戴', '范', '方', '宋', '鄧', '杜', '傅', '侯', '曹', '薛', '丁'
     ]
   },
-  // 澳门：繁体中文，与香港相似但部分受葡语影响（此处主要提供中文名）
+  // 澳门：繁体中文
   MO: {
     firstNames: [
       '志明', '嘉欣', '偉傑', '麗華', '建邦', '淑敏', '志強', '美玲', '國豪', '惠芳', '偉文', '佩琼', '永康', '麗珍', '志偉', '美珍', '家明', '少芬', '偉強', '麗娜',
@@ -91,7 +91,7 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       '袁', '沈', '田', '高', '蕭', '賴', '霍', '莫', '洪', '姚', '丁', '譚', '區', '黎', '關', '嚴', '歐', '錢', '戴', '薛'
     ]
   },
-  // 新加坡：英文名 + 拼音/方言姓氏 (常见组合)
+  // 新加坡：英文 (官方及商务通用)
   SG: {
     firstNames: [
       'Wei Ming', 'Hui Ling', 'Jun Jie', 'Xin Yi', 'Jian Hong', 'Li Lian', 'Guo Qiang', 'Siew Ling', 'Zhi Wei', 'Mei Ling',
@@ -108,7 +108,7 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       'Chiu', 'Mok', 'Kuah', 'Liew', 'Quek', 'Peh', 'Gan', 'Chow', 'Yip', 'Teng'
     ]
   },
-  // 美国：通用英文名
+  // 美国：英文
   US: {
     firstNames: [
       'James', 'Mary', 'Robert', 'Patricia', 'John', 'Jennifer', 'Michael', 'Linda', 'David', 'Elizabeth',
@@ -126,7 +126,7 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       'Green', 'Adams', 'Nelson', 'Baker', 'Hall', 'Rivera', 'Campbell', 'Mitchell', 'Carter', 'Roberts'
     ]
   },
-  // 日本
+  // 日本：日文汉字 (Kanji)
   JP: {
     firstNames: [
       // 男性名
@@ -151,7 +151,7 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       'さいとう', 'ふくだ', 'おおた', 'にしむら', 'ふじい', 'かねこ', 'おかもと', 'ふじわら', 'なかの', 'みうら'
     ]
   },
-  // 英国
+  // 英国：英文
   GB: {
     firstNames: [
       'Oliver', 'George', 'Harry', 'Noah', 'Jack', 'Leo', 'Arthur', 'Muhammad', 'Oscar', 'Charlie',
@@ -169,7 +169,7 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       'Turner', 'Carter', 'Phillips', 'Mitchell', 'Patel', 'Adams', 'Campbell', 'Anderson', 'Allen', 'Cook'
     ]
   },
-  // 德国
+  // 德国：德文 (包含 Umlauts)
   DE: {
     firstNames: [
       'Maximilian', 'Alexander', 'Paul', 'Elias', 'Ben', 'Noah', 'Leon', 'Louis', 'Jonas', 'Felix',
@@ -187,7 +187,7 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       'Kaiser', 'Fuchs', 'Peters', 'Lang', 'Scholz', 'Möller', 'Weiß', 'Jung', 'Hahn', 'Keller'
     ]
   },
-  // 法国
+  // 法国：法文 (包含 Accents)
   FR: {
     firstNames: [
       'Jean', 'Michel', 'Philippe', 'Pierre', 'Alain', 'Nicolas', 'Christophe', 'Patrick', 'Christian', 'Daniel',
@@ -200,12 +200,12 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
     lastNames: [
       'Martin', 'Bernard', 'Thomas', 'Petit', 'Robert', 'Richard', 'Durand', 'Dubois', 'Moreau', 'Laurent',
       'Simon', 'Michel', 'Lefebvre', 'Leroy', 'Roux', 'David', 'Bertrand', 'Morel', 'Fournier', 'Girard',
-      'Bonnet', 'Dupont', 'Lambert', 'Fontaine', 'Rousseau', 'Vincent', 'Muller', 'Lefevre', 'Faure', 'Andre',
-      'Mercier', 'Blanc', 'Guerin', 'Boyer', 'Garnier', 'Chevalier', 'Francois', 'Legrand', 'Gauthier', 'Garcia',
-      'Perrin', 'Robin', 'Clement', 'Morin', 'Nicolas', 'Henry', 'Roussel', 'Mathieu', 'Gautier', 'Masson'
+      'Bonnet', 'Dupont', 'Lambert', 'Fontaine', 'Rousseau', 'Vincent', 'Muller', 'Lefèvre', 'Faure', 'André',
+      'Mercier', 'Blanc', 'Guérin', 'Boyer', 'Garnier', 'Chevalier', 'François', 'Legrand', 'Gauthier', 'Garcia',
+      'Perrin', 'Robin', 'Clément', 'Morin', 'Nicolas', 'Henry', 'Roussel', 'Mathieu', 'Gautier', 'Masson'
     ]
   },
-  // 韩国：谚文
+  // 韩国：韩文 (Hangul)
   KR: {
     firstNames: [
       '민준', '서준', '도윤', '예준', '시우', '하준', '지호', '준우', '주원', '지훈',
@@ -223,7 +223,7 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       '신', '임', '나', '진', '지', '엄', '채', '원', '천', '방'
     ]
   },
-  // 加拿大
+  // 加拿大：英文/法文
   CA: {
     firstNames: [
       'Liam', 'Jackson', 'Noah', 'Lucas', 'Oliver', 'William', 'Benjamin', 'Logan', 'Jacob', 'James',
@@ -231,17 +231,17 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       'David', 'John', 'Robert', 'Michael', 'Paul', 'Daniel', 'Pierre', 'Michel', 'Richard', 'Jean',
       'Marie', 'Jennifer', 'Sarah', 'Karen', 'Susan', 'Linda', 'Lisa', 'Nancy', 'Sylvie', 'Nathalie',
       'Thomas', 'Ryan', 'Matthew', 'Christopher', 'Adam', 'Nathan', 'Ethan', 'Alexander', 'Gabriel', 'Samuel',
-      'Emily', 'Jessica', 'Ashley', 'Megan', 'Hannah', 'Elizabeth', 'Grace', 'Chloe', 'Lily', 'Ella'
+      'Emily', 'Jessica', 'Ashley', 'Megan', 'Hannah', 'Elizabeth', 'Grace', 'Chloé', 'Lily', 'Ella'
     ],
     lastNames: [
       'Smith', 'Brown', 'Tremblay', 'Martin', 'Roy', 'Wilson', 'Gagnon', 'Lee', 'Johnson', 'Bouchard',
-      'Gauthier', 'Morin', 'Lavoie', 'Fortin', 'Côté', 'Pelletier', 'Bélanger', 'Levesque', 'Bergeron', 'Leblanc',
+      'Gauthier', 'Morin', 'Lavoie', 'Fortin', 'Côté', 'Pelletier', 'Bélanger', 'Lévesque', 'Bergeron', 'Leblanc',
       'Paquette', 'Girard', 'Simard', 'Ouellet', 'Caron', 'Dubé', 'Beaulieu', 'Cloutier', 'Fournier', 'Lapointe',
       'Williams', 'Jones', 'Miller', 'Davis', 'Anderson', 'Taylor', 'Moore', 'White', 'Thompson', 'Clark',
       'Young', 'Robinson', 'Walker', 'Hall', 'Lewis', 'Harris', 'Campbell', 'King', 'Wright', 'Scott'
     ]
   },
-  // 澳大利亚
+  // 澳大利亚：英文
   AU: {
     firstNames: [
       'Oliver', 'Noah', 'Jack', 'William', 'Leo', 'Lucas', 'Thomas', 'Henry', 'Charlie', 'James',
@@ -259,7 +259,7 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       'Jackson', 'Watson', 'Cook', 'Murphy', 'Bell', 'Ward', 'James', 'Morgan', 'Phillips', 'Cooper'
     ]
   },
-  // 意大利
+  // 意大利：意大利文
   IT: {
     firstNames: [
       'Leonardo', 'Francesco', 'Alessandro', 'Lorenzo', 'Mattia', 'Tommaso', 'Gabriele', 'Andrea', 'Riccardo', 'Edoardo',
@@ -277,33 +277,33 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       'Parisi', 'Villa', 'Conte', 'Ferraro', 'Ferri', 'Fabbri', 'Bianco', 'Marchetti', 'Grasso', 'Valentini'
     ]
   },
-  // 西班牙
+  // 西班牙：西班牙文 (包含 Accents)
   ES: {
     firstNames: [
-      'Antonio', 'Jose', 'Manuel', 'Francisco', 'David', 'Juan', 'Javier', 'Jose Antonio', 'Daniel', 'Jose Luis',
-      'Maria', 'Carmen', 'Ana', 'Isabel', 'Dolores', 'Pilar', 'Teresa', 'Rosa', 'Cristina', 'Antonia',
-      'Hugo', 'Martin', 'Lucas', 'Mateo', 'Leo', 'Daniel', 'Alejandro', 'Pablo', 'Manuel', 'Alvaro',
-      'Lucia', 'Sofia', 'Martina', 'Maria', 'Julia', 'Paula', 'Valeria', 'Emma', 'Daniela', 'Carla',
-      'Carlos', 'Jesus', 'Miguel', 'Angel', 'Rafael', 'Pedro', 'Luis', 'Sergio', 'Fernando', 'Jorge',
+      'Antonio', 'José', 'Manuel', 'Francisco', 'David', 'Juan', 'Javier', 'José Antonio', 'Daniel', 'José Luis',
+      'María', 'Carmen', 'Ana', 'Isabel', 'Dolores', 'Pilar', 'Teresa', 'Rosa', 'Cristina', 'Antonia',
+      'Hugo', 'Martín', 'Lucas', 'Mateo', 'Leo', 'Daniel', 'Alejandro', 'Pablo', 'Manuel', 'Álvaro',
+      'Lucía', 'Sofía', 'Martina', 'María', 'Julia', 'Paula', 'Valeria', 'Emma', 'Daniela', 'Carla',
+      'Carlos', 'Jesús', 'Miguel', 'Ángel', 'Rafael', 'Pedro', 'Luis', 'Sergio', 'Fernando', 'Jorge',
       'Laura', 'Elena', 'Mercedes', 'Marta', 'Rosario', 'Juana', 'Manuela', 'Beatriz', 'Nuria', 'Silvia'
     ],
     lastNames: [
-      'Garcia', 'Rodriguez', 'Gonzalez', 'Fernandez', 'Lopez', 'Martinez', 'Sanchez', 'Perez', 'Gomez', 'Martin',
-      'Jimenez', 'Ruiz', 'Hernandez', 'Diaz', 'Moreno', 'Muñoz', 'Alvarez', 'Romero', 'Alonso', 'Gutierrez',
-      'Navarro', 'Torres', 'Dominguez', 'Vazquez', 'Ramos', 'Gil', 'Ramirez', 'Serrano', 'Blanco', 'Molina',
-      'Morales', 'Suarez', 'Ortega', 'Delgado', 'Castro', 'Ortiz', 'Rubio', 'Marin', 'Sanz', 'Nuñez',
-      'Iglesias', 'Medina', 'Garrido', 'Cortes', 'Castillo', 'Santos', 'Lozano', 'Guerrero', 'Cano', 'Prieto'
+      'García', 'Rodríguez', 'González', 'Fernández', 'López', 'Martínez', 'Sánchez', 'Pérez', 'Gómez', 'Martín',
+      'Jiménez', 'Ruiz', 'Hernández', 'Díaz', 'Moreno', 'Muñoz', 'Álvarez', 'Romero', 'Alonso', 'Gutiérrez',
+      'Navarro', 'Torres', 'Domínguez', 'Vázquez', 'Ramos', 'Gil', 'Ramírez', 'Serrano', 'Blanco', 'Molina',
+      'Morales', 'Suárez', 'Ortega', 'Delgado', 'Castro', 'Ortiz', 'Rubio', 'Marín', 'Sanz', 'Núñez',
+      'Iglesias', 'Medina', 'Garrido', 'Cortés', 'Castillo', 'Santos', 'Lozano', 'Guerrero', 'Cano', 'Prieto'
     ]
   },
-  // 巴西
+  // 巴西：葡萄牙文 (包含 Accents)
   BR: {
     firstNames: [
-      'Jose', 'Joao', 'Antonio', 'Francisco', 'Carlos', 'Paulo', 'Pedro', 'Lucas', 'Luiz', 'Marcos',
-      'Maria', 'Ana', 'Francisca', 'Antonia', 'Adriana', 'Juliana', 'Marcia', 'Fernanda', 'Patricia', 'Aline',
+      'José', 'João', 'Antônio', 'Francisco', 'Carlos', 'Paulo', 'Pedro', 'Lucas', 'Luiz', 'Marcos',
+      'Maria', 'Ana', 'Francisca', 'Antônia', 'Adriana', 'Juliana', 'Márcia', 'Fernanda', 'Patrícia', 'Aline',
       'Miguel', 'Arthur', 'Heitor', 'Bernardo', 'Davi', 'Théo', 'Lorenzo', 'Gabriel', 'Gaël', 'Bento',
       'Helena', 'Alice', 'Laura', 'Manuela', 'Sophia', 'Isabella', 'Luiza', 'Heloísa', 'Cecília', 'Maitê',
       'Rafael', 'Daniel', 'Marcelo', 'Bruno', 'Eduardo', 'Felipe', 'Raimundo', 'Rodrigo', 'Manoel', 'André',
-      'Camila', 'Bruna', 'Larissa', 'Beatriz', 'Letícia', 'Amanda', 'Julia', 'Jessica', 'Bianca', 'Mariana'
+      'Camila', 'Bruna', 'Larissa', 'Beatriz', 'Letícia', 'Amanda', 'Júlia', 'Jéssica', 'Bianca', 'Mariana'
     ],
     lastNames: [
       'Silva', 'Santos', 'Oliveira', 'Souza', 'Rodrigues', 'Ferreira', 'Alves', 'Pereira', 'Lima', 'Gomes',
@@ -313,61 +313,61 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       'Barros', 'Correia', 'Castro', 'Campos', 'Moura', 'Batista', 'Siqueira', 'Moraes', 'Duarte', 'Reis'
     ]
   },
-  // 俄罗斯
+  // 俄罗斯：西里尔字母 (Cyrillic)
   RU: {
     firstNames: [
-      'Alexander', 'Sergey', 'Dmitry', 'Andrey', 'Alexey', 'Maxim', 'Evgeny', 'Ivan', 'Mikhail', 'Vladimir',
-      'Elena', 'Olga', 'Natalia', 'Tatiana', 'Irina', 'Svetlana', 'Anna', 'Ekaterina', 'Marina', 'Galina',
-      'Artem', 'Kirill', 'Nikita', 'Ilya', 'Egor', 'Matvey', 'Timofey', 'Roman', 'Arseny', 'Mark',
-      'Sofia', 'Maria', 'Anastasia', 'Daria', 'Victoria', 'Polina', 'Alisa', 'Ksenia', 'Alexandra', 'Veronika',
-      'Pavel', 'Igor', 'Yury', 'Oleg', 'Nikolai', 'Anton', 'Denis', 'Konstantin', 'Vitaly', 'Viktor',
-      'Yulia', 'Valentina', 'Lyudmila', 'Nadezhda', 'Larisa', 'Lyubov', 'Nina', 'Tamara', 'Vera', 'Oksana'
+      'Александр', 'Сергей', 'Дмитрий', 'Андрей', 'Алексей', 'Максим', 'Евгений', 'Иван', 'Михаил', 'Владимир',
+      'Елена', 'Ольга', 'Наталья', 'Татьяна', 'Ирина', 'Светлана', 'Анна', 'Екатерина', 'Марина', 'Галина',
+      'Артем', 'Кирилл', 'Никита', 'Илья', 'Егор', 'Матвей', 'Тимофей', 'Роман', 'Арсений', 'Марк',
+      'София', 'Мария', 'Анастасия', 'Дарья', 'Виктория', 'Полина', 'Алиса', 'Ксения', 'Александра', 'Вероника',
+      'Павел', 'Игорь', 'Юрий', 'Олег', 'Николай', 'Антон', 'Денис', 'Константин', 'Виталий', 'Виктор',
+      'Юлия', 'Валентина', 'Людмила', 'Надежда', 'Лариса', 'Любовь', 'Нина', 'Тамара', 'Вера', 'Оксана'
     ],
     lastNames: [
-      'Ivanov', 'Smirnov', 'Kuznetsov', 'Popov', 'Vasiliev', 'Petrov', 'Sokolov', 'Mikhailov', 'Novikov', 'Fedorov',
-      'Morozov', 'Volkov', 'Alekseev', 'Lebedev', 'Semenov', 'Egorov', 'Pavlov', 'Kozlov', 'Stepanov', 'Nikolaev',
-      'Orlov', 'Andreev', 'Makarov', 'Nikitin', 'Zakharov', 'Zaitsev', 'Solovyov', 'Borisov', 'Yakovlev', 'Grigoriev',
-      'Romanov', 'Vorobyov', 'Sergeev', 'Frolov', 'Alexandrov', 'Dmitriev', 'Korolev', 'Gusev', 'Kiselev', 'Ilin',
-      'Maximov', 'Polyakov', 'Sorokin', 'Vinogradov', 'Kovalev', 'Belov', 'Medvedev', 'Antonov', 'Tarasov', 'Zhukov'
+      'Иванов', 'Смирнов', 'Кузнецов', 'Попов', 'Васильев', 'Петров', 'Соколов', 'Михайлов', 'Новиков', 'Федоров',
+      'Морозов', 'Волков', 'Алексеев', 'Лебедев', 'Семенов', 'Егоров', 'Павлов', 'Козлов', 'Степанов', 'Николаев',
+      'Орлов', 'Андреев', 'Макаров', 'Никитин', 'Захаров', 'Зайцев', 'Соловьев', 'Борисов', 'Яковлев', 'Григорьев',
+      'Романов', 'Воробьев', 'Сергеев', 'Фролов', 'Александров', 'Дмитриев', 'Королев', 'Гусев', 'Киселев', 'Ильин',
+      'Максимов', 'Поляков', 'Сорокин', 'Виноградов', 'Ковалев', 'Белов', 'Медведев', 'Антонов', 'Тарасов', 'Жуков'
     ]
   },
-  // 印度
+  // 印度：印地语天城文 (Devanagari)
   IN: {
     firstNames: [
-      'Rahul', 'Amit', 'Sandeep', 'Rohit', 'Sanjay', 'Sunil', 'Ajay', 'Vikas', 'Rajesh', 'Manish',
-      'Pooja', 'Neha', 'Priya', 'Sneha', 'Anjali', 'Divya', 'Kavita', 'Sunita', 'Anita', 'Meena',
-      'Aarav', 'Vivaan', 'Aditya', 'Vihaan', 'Arjun', 'Sai', 'Reyansh', 'Muhammad', 'Krishna', 'Ishaan',
-      'Saanvi', 'Anya', 'Aadhya', 'Pari', 'Diya', 'Myra', 'Ananya', 'Riya', 'Kiara', 'Ira',
-      'Vijay', 'Ravi', 'Anil', 'Dinesh', 'Deepak', 'Suresh', 'Ramesh', 'Vinod', 'Prakash', 'Pradeep',
-      'Deepika', 'Rekha', 'Suman', 'Rani', 'Aarti', 'Kiran', 'Shweta', 'Jyoti', 'Pinky', 'Monika'
+      'राहुल', 'अमित', 'संदीप', 'रोहित', 'संजय', 'सुनील', 'अजय', 'विकास', 'राजेश', 'मनीष',
+      'पूजा', 'नेहा', 'प्रिया', 'स्नेहा', 'अंजलि', 'दिव्या', 'कविता', 'सुनीता', 'अनीता', 'मीना',
+      'आरव', 'विवान', 'आदित्य', 'विहान', 'अर्जुन', 'साई', 'रियांश', 'मुहम्मद', 'कृष्णा', 'ईशान',
+      'सान्वी', 'अन्या', 'आध्या', 'परी', 'दिया', 'मायरा', 'अनन्या', 'रिया', 'कियारा', 'इरा',
+      'विजय', 'रवि', 'अनिल', 'दिनेश', 'दीपक', 'सुरेश', 'रमेश', 'विनोद', 'प्रकाश', 'प्रदीप',
+      'दीपिका', 'रेखा', 'सुमन', 'रानी', 'आरती', 'किरण', 'श्वेता', 'ज्योति', 'पिंकी', 'मोनिका'
     ],
     lastNames: [
-      'Kumar', 'Singh', 'Sharma', 'Patel', 'Yadav', 'Gupta', 'Mishra', 'Khan', 'Das', 'Jain',
-      'Reddy', 'Prasad', 'Rao', 'Shah', 'Verma', 'Nair', 'Choudhary', 'Mehta', 'Iyer', 'Menon',
-      'Chauhan', 'Agarwal', 'Pandey', 'Joshi', 'Bhat', 'Sinha', 'Naik', 'Gowda', 'Kaur', 'Malhotra',
-      'Bhatia', 'Ghosh', 'Kulkarni', 'Desai', 'Saxena', 'Acharya', 'Pillai', 'Sethi', 'Kapoor', 'Banerjee',
-      'Chatterjee', 'Roy', 'Fernandes', 'Dutta', 'Rawat', 'Hegde', 'Kaul', 'Rana', 'Mukherjee', 'Dubey'
+      'कुमार', 'सिंह', 'शर्मा', 'पटेल', 'यादव', 'गुप्ता', 'मिश्रा', 'खान', 'दास', 'जैन',
+      'रेड्डी', 'प्रसाद', 'राव', 'शाह', 'वर्मा', 'नायर', 'चौधरी', 'मेहता', 'अय्यर', 'मेनन',
+      'चौहान', 'अग्रवाल', 'पांडेय', 'जोशी', 'भट', 'सिन्हा', 'नाइक', 'गौड़ा', 'कौर', 'मल्होत्रा',
+      'भाटिया', 'घोष', 'कुलकर्णी', 'देसाई', 'सक्सेना', 'आचार्य', 'पिल्लई', 'सेठी', 'कपूर', 'बनर्जी',
+      'चटर्जी', 'रॉय', 'फर्नांडीस', 'दत्ता', 'रावत', 'हेगड़े', 'कौल', 'राणा', 'मुखर्जी', 'दुबे'
     ]
   },
-  // 墨西哥
+  // 墨西哥：西班牙文 (包含 Accents)
   MX: {
     firstNames: [
-      'Jose', 'Luis', 'Juan', 'Carlos', 'Francisco', 'Jesus', 'Antonio', 'Miguel', 'Pedro', 'Alejandro',
-      'Maria', 'Guadalupe', 'Juana', 'Margarita', 'Veronica', 'Elizabeth', 'Alejandra', 'Leticia', 'Rosa', 'Adriana',
-      'Santiago', 'Mateo', 'Sebastian', 'Leonardo', 'Matias', 'Emiliano', 'Diego', 'Daniel', 'Gael', 'Alexander',
-      'Sofia', 'Valentina', 'Regina', 'Maria Jose', 'Ximena', 'Camila', 'Maria Fernanda', 'Victoria', 'Renata', 'Natalia',
-      'Manuel', 'Jorge', 'Ricardo', 'Eduardo', 'Roberto', 'Fernando', 'Javier', 'Raul', 'David', 'Mario',
+      'José', 'Luis', 'Juan', 'Carlos', 'Francisco', 'Jesús', 'Antonio', 'Miguel', 'Pedro', 'Alejandro',
+      'María', 'Guadalupe', 'Juana', 'Margarita', 'Verónica', 'Elizabeth', 'Alejandra', 'Leticia', 'Rosa', 'Adriana',
+      'Santiago', 'Mateo', 'Sebastián', 'Leonardo', 'Matías', 'Emiliano', 'Diego', 'Daniel', 'Gael', 'Alexander',
+      'Sofía', 'Valentina', 'Regina', 'María José', 'Ximena', 'Camila', 'María Fernanda', 'Victoria', 'Renata', 'Natalia',
+      'Manuel', 'Jorge', 'Ricardo', 'Eduardo', 'Roberto', 'Fernando', 'Javier', 'Raúl', 'David', 'Mario',
       'Gabriela', 'Patricia', 'Martha', 'Yolanda', 'Teresa', 'Sandra', 'Luz', 'Ana', 'Laura', 'Diana'
     ],
     lastNames: [
-      'Hernandez', 'Garcia', 'Martinez', 'Lopez', 'Gonzalez', 'Perez', 'Rodriguez', 'Sanchez', 'Ramirez', 'Cruz',
-      'Flores', 'Gomez', 'Morales', 'Vazquez', 'Jimenez', 'Reyes', 'Diaz', 'Torres', 'Gutierrez', 'Ruiz',
-      'Mendoza', 'Aguilar', 'Ortiz', 'Moreno', 'Castillo', 'Romero', 'Alvarez', 'Mendez', 'Chavez', 'Rivera',
-      'Juarez', 'Ramos', 'Dominguez', 'Herrera', 'Medina', 'Castro', 'Vargas', 'Guzman', 'Velazquez', 'Rojas',
-      'Contreras', 'Salazar', 'Luna', 'De La Cruz', 'Guerrero', 'Estrada', 'Bautista', 'Cortes', 'Soto', 'Alvarado'
+      'Hernández', 'García', 'Martínez', 'López', 'González', 'Pérez', 'Rodríguez', 'Sánchez', 'Ramírez', 'Cruz',
+      'Flores', 'Gómez', 'Morales', 'Vázquez', 'Jiménez', 'Reyes', 'Díaz', 'Torres', 'Gutiérrez', 'Ruiz',
+      'Mendoza', 'Aguilar', 'Ortiz', 'Moreno', 'Castillo', 'Romero', 'Álvarez', 'Méndez', 'Chávez', 'Rivera',
+      'Juárez', 'Ramos', 'Domínguez', 'Herrera', 'Medina', 'Castro', 'Vargas', 'Guzmán', 'Velázquez', 'Rojas',
+      'Contreras', 'Salazar', 'Luna', 'De La Cruz', 'Guerrero', 'Estrada', 'Bautista', 'Cortés', 'Soto', 'Alvarado'
     ]
   },
-  // 荷兰
+  // 荷兰：荷兰文
   NL: {
     firstNames: [
       'Jan', 'Johannes', 'Cornelis', 'Hendrik', 'Willem', 'Pieter', 'Gerrit', 'Jacob', 'Hans', 'Peter',
@@ -385,7 +385,7 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       'Blom', 'Huisman', 'Peeters', 'De Bruin', 'Kuipers', 'Van Wijk', 'Schouten', 'Van Doorn', 'Veenstra', 'Postma'
     ]
   },
-  // 瑞典
+  // 瑞典：瑞典文 (包含 å, ä, ö)
   SE: {
     firstNames: [
       'Lars', 'Mikael', 'Anders', 'Johan', 'Erik', 'Per', 'Karl', 'Peter', 'Jan', 'Thomas',
@@ -403,7 +403,7 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       'Danielsson', 'Lundin', 'Håkansson', 'Gunnarsson', 'Bergman', 'Samuelsson', 'Fransson', 'Holm', 'Nyström', 'Holmberg'
     ]
   },
-  // 瑞士
+  // 瑞士：德文/法文 (混合)
   CH: {
     firstNames: [
       'Hans', 'Daniel', 'Thomas', 'Peter', 'Christian', 'Andreas', 'Markus', 'Michael', 'Martin', 'Urs',
@@ -421,7 +421,7 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       'Vogel', 'Hug', 'Stadler', 'Hauser', 'Tanner', 'Zürcher', 'Flückiger', 'Bucher', 'Roos', 'Hess'
     ]
   },
-  // 波兰
+  // 波兰：波兰文 (包含 ł, ń, ś, ź, ż 等)
   PL: {
     firstNames: [
       'Jan', 'Piotr', 'Krzysztof', 'Tomasz', 'Paweł', 'Michał', 'Andrzej', 'Marcin', 'Stanisław', 'Adam',
@@ -439,7 +439,7 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       'Walczak', 'Rutkowski', 'Baran', 'Michalak', 'Szewczyk', 'Ostrowski', 'Tomaszewski', 'Pietrzak', 'Zalewski', 'Wróblewski'
     ]
   },
-  // 土耳其
+  // 土耳其：土耳其文 (包含 ş, ı, ğ, ç, ö, ü)
   TR: {
     firstNames: [
       'Mehmet', 'Mustafa', 'Ahmet', 'Ali', 'Hüseyin', 'Hasan', 'İbrahim', 'İsmail', 'Osman', 'Yusuf',
@@ -457,29 +457,29 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       'Turan', 'Tekin', 'Taş', 'Köse', 'Yüksel', 'Ateş', 'Aksoy', 'Çakır', 'Coşkun', 'Sarı'
     ]
   },
-  // 泰国 (名和姓通常较长且独特，此处列出常见部分)
+  // 泰国：泰文 (Thai Script)
   TH: {
     firstNames: [
-      'Somchai', 'Somsak', 'Sompong', 'Surachai', 'Suwat', 'Prasert', 'Wichai', 'Preecha', 'Amnat', 'Narong',
-      'Somying', 'Mali', 'Ratana', 'Nipa', 'Sunisa', 'Supaporn', 'Kannika', 'Siriporn', 'Uraiwan', 'Jintana',
-      'Arthit', 'Nattapong', 'Kittisak', 'Teerawat', 'Weerawat', 'Jirayut', 'Tanawat', 'Worrawit', 'Anuwat', 'Chakrit',
-      'Pimchanok', 'Chutima', 'Warattha', 'Pornthip', 'Kanya', 'Thidarat', 'Benjaporn', 'Kanjana', 'Wilai', 'Patcharee',
-      'Thongchai', 'Manat', 'Sombat', 'Saman', 'Wanchai', 'Paisal', 'Chaloem', 'Chaiyut', 'Suchart', 'Boonmee',
-      'Nongnuch', 'Darunee', 'Suree', 'Mayuree', 'Orathai', 'Suda', 'Malinee', 'Somjit', 'Buapha', 'Chantana'
+      'สมชาย', 'สมศักดิ์', 'สมพงษ์', 'สุรชัย', 'สุวัฒน์', 'ประเสริฐ', 'วิชัย', 'ปรีชา', 'อำนาจ', 'ณรงค์',
+      'สมหญิง', 'มะลิ', 'รัตนา', 'นิภา', 'สุนิสา', 'สุภาพร', 'กรรณิการ์', 'ศิริพร', 'อุไรวรรณ', 'จินตนา',
+      'อาทิตย์', 'ณัฐพงศ์', 'กิตติศักดิ์', 'ธีรวัฒน์', 'วีรวัฒน์', 'จิรายุส', 'ธนวัฒน์', 'วรวิทย์', 'อนุวัฒน์', 'ชาคริต',
+      'พิมพ์ชนก', 'ชุติมา', 'วรัฐฐา', 'พรทิพย์', 'กัญญา', 'ธิดารัตน์', 'เบญจพร', 'กาญจนา', 'วิไล', 'พัชรี',
+      'ธงชัย', 'มนัส', 'สมบัติ', 'สมาน', 'วันชัย', 'ไพศาล', 'เฉลิม', 'ชัยยุทธ', 'สุชาติ', 'บุญมี',
+      'นงนุช', 'ดารุณี', 'สุรี', 'มยุรี', 'อรทัย', 'สุดา', 'มาลินี', 'สมจิตต์', 'บัวผัน', 'ฉันทนา'
     ],
     lastNames: [
-      'Saeli', 'Saetan', 'Saewang', 'Saengern', 'Saelim', 'Saetia', 'Saelee', 'Saechen', 'Saekow', 'Saetang',
-      'Sukcharoen', 'Srithong', 'Wongsuwan', 'Charoenphon', 'Khamkaew', 'Thongdee', 'Chaiyaporn', 'Siriwat', 'Intarachai', 'Kaewmanee',
-      'Suwannarat', 'Prommat', 'Srisuk', 'Rattanaporn', 'Chanthara', 'Maneerat', 'Boonchu', 'Chaiyot', 'Wongsa', 'Sombat',
-      'Phonprasit', 'Klinhom', 'Bunmi', 'Srisawat', 'Panich', 'Nawarat', 'Pattana', 'Kongsawat', 'Tantrakul', 'Wattanapanich',
-      'Jiraporn', 'Sangthong', 'Ketsara', 'Petchsri', 'Boonma', 'Srikram', 'Thongtae', 'Suksawat', 'Charoensuk', 'Meechai'
+      'แซ่ลี้', 'แซ่ตัน', 'แซ่หวัง', 'แซ่เงิน', 'แซ่ลิ้ม', 'แซ่เตีย', 'แซ่หลี', 'แซ่เฉิน', 'แซ่โค้ว', 'แซ่ตั้ง',
+      'สุขเจริญ', 'ศรีทอง', 'วงษ์สุวรรณ', 'เจริญผล', 'คำแก้ว', 'ทองดี', 'ชัยพร', 'ศิริวัฒน์', 'อินทรชัย', 'แก้วมณี',
+      'สุวรรณรัตน์', 'พรหมมาศ', 'ศรีสุข', 'รัตนพร', 'จันทร', 'มณีรัตน์', 'บุญชู', 'ชัยยศ', 'วงษา', 'สมบัติ',
+      'พรประสิทธิ์', 'กลิ่นหอม', 'บุญมี', 'ศรีสวัสดิ์', 'พานิช', 'นวรัตน์', 'พัฒนา', 'คงสวัสดิ์', 'ตันตระกูล', 'วัฒนพานิช',
+      'จิราพร', 'แสงทอง', 'เกศรา', 'เพชรศรี', 'บุญมา', 'ศรีกราม', 'ทองแท้', 'สุขสวัสดิ์', 'เจริญสุข', 'มีชัย'
     ]
   },
-  // 马来西亚 (包含马来人、华人、印度人常用名)
+  // 马来西亚：马来文/英文 (马来西亚官方文字为Rumi Latin)
   MY: {
     firstNames: [
       'Muhammad', 'Abdul', 'Ahmad', 'Mohd', 'Adam', 'Amir', 'Harith', 'Irfan', 'Danish', 'Rayyan',
-      'Nur', 'Siti', 'Nurul', 'Aishah', 'Fatimage', 'Zahra', 'Ain', 'Putri', 'Nor', 'Farah',
+      'Nur', 'Siti', 'Nurul', 'Aishah', 'Fatimah', 'Zahra', 'Ain', 'Putri', 'Nor', 'Farah',
       'Wei', 'Jun', 'Jian', 'Ming', 'Seng', 'Keat', 'Hong', 'Chee', 'Wai', 'Kok',
       'Hui', 'Yee', 'Ling', 'Jing', 'Min', 'Yan', 'Pei', 'Siew', 'Xin', 'Li',
       'Arif', 'Haziq', 'Fikri', 'Syahmi', 'Aiman', 'Khairul', 'Luqman', 'Hakim', 'Syafiq', 'Zul',
@@ -493,7 +493,7 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       'Bin Othman', 'Bin Jaafar', 'Bin Zakaria', 'Bin Aziz', 'Bin Kassim', 'Bin Daud', 'Bin Sulaiman', 'Bin Baba', 'Bin Salleh', 'Bin Omar'
     ]
   },
-  // 印度尼西亚 (很多印尼人仅有单名，这里提供常见名作为First/Last组合)
+  // 印度尼西亚：印尼文 (Latin)
   ID: {
     firstNames: [
       'Budi', 'Agus', 'Dwi', 'Eko', 'Muhammad', 'Nur', 'Sri', 'Siti', 'Tri', 'Dian',
@@ -511,10 +511,10 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       'Maulana', 'Ramadhan', 'Fauzi', 'Permana', 'Hakim', 'Ardiansyah', 'Budiman', 'Gunawan', 'Sanjaya', 'Putra'
     ]
   },
-  // 菲律宾
+  // 菲律宾：英文/菲律宾文 (Latin)
   PH: {
     firstNames: [
-      'Jose', 'Maria', 'Juan', 'Mark', 'Michael', 'Angelo', 'Christian', 'John', 'Joshua', 'Jayson',
+      'José', 'Maria', 'Juan', 'Mark', 'Michael', 'Angelo', 'Christian', 'John', 'Joshua', 'Jayson',
       'Mary', 'Jennifer', 'Michelle', 'Christine', 'Grace', 'Anna', 'Joy', 'Marie', 'Rose', 'Angel',
       'Nathaniel', 'James', 'Gabriel', 'Daniel', 'Francis', 'Patrick', 'Joseph', 'Ryan', 'Adrian', 'Kevin',
       'Princess', 'Jasmine', 'Kimberly', 'Sarah', 'Nicole', 'Andrea', 'Erica', 'Karen', 'Rhea', 'Melissa',
@@ -529,22 +529,22 @@ export const namesByCountry: Record<string, { firstNames: string[], lastNames: s
       'Francisco', 'De Leon', 'Tolentino', 'Marquez', 'Aguilar', 'Soriano', 'Manalo', 'Pascual', 'Lim', 'Tan'
     ]
   },
-  // 越南
+  // 越南：越南文 (Quốc Ngữ，包含声调)
   VN: {
     firstNames: [
-      'Hung', 'Tuan', 'Dung', 'Nam', 'Minh', 'Hieu', 'Huy', 'Hoang', 'Long', 'Duy',
-      'Trang', 'Huyen', 'Thao', 'Linh', 'Mai', 'Huong', 'Thu', 'Lan', 'Phuong', 'Ha',
-      'Quang', 'Duc', 'Thanh', 'Son', 'Trung', 'Cuong', 'Thang', 'Dat', 'Kien', 'Khanh',
-      'Vy', 'Ngoc', 'Quynh', 'Nhi', 'Yen', 'Tram', 'Anh', 'Chau', 'Tuyet', 'Diep',
-      'Tai', 'Loc', 'Phuc', 'Thinh', 'Bao', 'Lam', 'Vinh', 'Khoa', 'Nhat', 'An',
-      'Hang', 'Nhung', 'Thuy', 'Hong', 'Gam', 'Oanh', 'Kim', 'Ly', 'My', 'Tam'
+      'Hùng', 'Tuấn', 'Dũng', 'Nam', 'Minh', 'Hiếu', 'Huy', 'Hoàng', 'Long', 'Duy',
+      'Trang', 'Huyền', 'Thảo', 'Linh', 'Mai', 'Hương', 'Thu', 'Lan', 'Phương', 'Hà',
+      'Quang', 'Đức', 'Thành', 'Sơn', 'Trung', 'Cường', 'Thắng', 'Đạt', 'Kiên', 'Khánh',
+      'Vy', 'Ngọc', 'Quỳnh', 'Nhi', 'Yến', 'Trâm', 'Anh', 'Châu', 'Tuyết', 'Diệp',
+      'Tài', 'Lộc', 'Phúc', 'Thịnh', 'Bảo', 'Lâm', 'Vinh', 'Khoa', 'Nhật', 'An',
+      'Hằng', 'Nhung', 'Thủy', 'Hồng', 'Gấm', 'Oanh', 'Kim', 'Ly', 'My', 'Tâm'
     ],
     lastNames: [
-      'Nguyen', 'Tran', 'Le', 'Pham', 'Hoang', 'Huynh', 'Phan', 'Vu', 'Vo', 'Dang',
-      'Bui', 'Do', 'Ho', 'Ngo', 'Duong', 'Ly', 'Doan', 'Truong', 'Dinh', 'Lam',
-      'Mai', 'Trinh', 'Ha', 'Dao', 'Cao', 'Chau', 'Luong', 'Lac', 'Diep', 'Vong',
-      'Phung', 'To', 'Vuong', 'Ta', 'Bien', 'Than', 'Tong', 'Mac', 'Dam', 'Chu',
-      'Khuu', 'Phi', 'Lieu', 'Tieu', 'Bach', 'Cung', 'Nghiem', 'Thach', 'La', 'On'
+      'Nguyễn', 'Trần', 'Lê', 'Phạm', 'Hoàng', 'Huỳnh', 'Phan', 'Vũ', 'Võ', 'Đặng',
+      'Bùi', 'Đỗ', 'Hồ', 'Ngô', 'Dương', 'Lý', 'Đoàn', 'Trương', 'Đinh', 'Lâm',
+      'Mai', 'Trịnh', 'Hà', 'Đào', 'Cao', 'Châu', 'Lương', 'Lạc', 'Diệp', 'Vương',
+      'Phùng', 'Tô', 'Vương', 'Tạ', 'Biện', 'Thân', 'Tống', 'Mạc', 'Đàm', 'Chu',
+      'Khưu', 'Phí', 'Liêu', 'Tiêu', 'Bạch', 'Cung', 'Nghiêm', 'Thạch', 'La', 'Ôn'
     ]
   }
 };
