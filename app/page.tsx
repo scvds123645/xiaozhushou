@@ -285,7 +285,7 @@ export default function GlassStylePage() {
     setInboxStatus('opening');
     const emailName = userInfo.email.split('@')[0];
     inboxTimerRef.current = setTimeout(() => {
-        window.open(`https://yopmail.com/?login=${emailName}`, '_blank');
+        window.open(`https://yopmail.net/?login=${emailName}`, '_blank');
         setInboxStatus('idle');
     }, 600);
   }, [userInfo.email, inboxStatus]);
